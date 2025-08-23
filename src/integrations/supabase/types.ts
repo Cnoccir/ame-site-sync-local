@@ -71,10 +71,69 @@ export type Database = {
         }
         Relationships: []
       }
+      ame_customer_equipment: {
+        Row: {
+          commissioning_date: string | null
+          created_at: string | null
+          customer_id: string
+          equipment_id: string
+          id: string
+          installation_date: string | null
+          service_responsibility: string | null
+          special_notes: string | null
+          warranty_end: string | null
+          warranty_start: string | null
+        }
+        Insert: {
+          commissioning_date?: string | null
+          created_at?: string | null
+          customer_id: string
+          equipment_id: string
+          id?: string
+          installation_date?: string | null
+          service_responsibility?: string | null
+          special_notes?: string | null
+          warranty_end?: string | null
+          warranty_start?: string | null
+        }
+        Update: {
+          commissioning_date?: string | null
+          created_at?: string | null
+          customer_id?: string
+          equipment_id?: string
+          id?: string
+          installation_date?: string | null
+          service_responsibility?: string | null
+          special_notes?: string | null
+          warranty_end?: string | null
+          warranty_start?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ame_customer_equipment_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "ame_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ame_customer_equipment_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "ame_equipment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ame_customers: {
         Row: {
           access_hours: string | null
+          account_manager: string | null
+          annual_contract_value: number | null
           badge_required: boolean | null
+          billing_contact: string | null
+          billing_email: string | null
+          billing_phone: string | null
           bms_supervisor_ip: unknown | null
           building_access_details: string | null
           building_access_type: string | null
@@ -82,33 +141,49 @@ export type Database = {
           company_name: string
           contact_email: string
           contact_phone: string
+          contract_end_date: string | null
+          contract_start_date: string | null
           contract_status: string | null
+          coordinates: unknown | null
           created_at: string | null
           created_by: string | null
           customer_id: string
+          district: string | null
           drive_folder_id: string | null
           drive_folder_url: string | null
           emergency_contact: string | null
           emergency_email: string | null
           emergency_phone: string | null
+          equipment_list: Json | null
+          escalation_contact: string | null
+          escalation_phone: string | null
           id: string
           last_service: string | null
           next_due: string | null
+          payment_terms: string | null
           platform_password: string | null
           platform_username: string | null
           ppe_required: boolean | null
           primary_contact: string
+          region: string | null
           remote_access: boolean | null
           remote_access_type: string | null
           safety_requirements: string | null
           security_contact: string | null
           security_phone: string | null
+          service_frequency: string | null
           service_tier: string
           site_address: string
           site_hazards: string | null
           site_name: string
+          site_timezone: string | null
+          special_instructions: string | null
           system_type: string
+          technical_contact: string | null
+          technical_email: string | null
+          technical_phone: string | null
           technician_assigned: string | null
+          territory: string | null
           training_required: boolean | null
           updated_at: string | null
           updated_by: string | null
@@ -120,7 +195,12 @@ export type Database = {
         }
         Insert: {
           access_hours?: string | null
+          account_manager?: string | null
+          annual_contract_value?: number | null
           badge_required?: boolean | null
+          billing_contact?: string | null
+          billing_email?: string | null
+          billing_phone?: string | null
           bms_supervisor_ip?: unknown | null
           building_access_details?: string | null
           building_access_type?: string | null
@@ -128,33 +208,49 @@ export type Database = {
           company_name: string
           contact_email: string
           contact_phone: string
+          contract_end_date?: string | null
+          contract_start_date?: string | null
           contract_status?: string | null
+          coordinates?: unknown | null
           created_at?: string | null
           created_by?: string | null
           customer_id: string
+          district?: string | null
           drive_folder_id?: string | null
           drive_folder_url?: string | null
           emergency_contact?: string | null
           emergency_email?: string | null
           emergency_phone?: string | null
+          equipment_list?: Json | null
+          escalation_contact?: string | null
+          escalation_phone?: string | null
           id?: string
           last_service?: string | null
           next_due?: string | null
+          payment_terms?: string | null
           platform_password?: string | null
           platform_username?: string | null
           ppe_required?: boolean | null
           primary_contact: string
+          region?: string | null
           remote_access?: boolean | null
           remote_access_type?: string | null
           safety_requirements?: string | null
           security_contact?: string | null
           security_phone?: string | null
+          service_frequency?: string | null
           service_tier: string
           site_address: string
           site_hazards?: string | null
           site_name: string
+          site_timezone?: string | null
+          special_instructions?: string | null
           system_type: string
+          technical_contact?: string | null
+          technical_email?: string | null
+          technical_phone?: string | null
           technician_assigned?: string | null
+          territory?: string | null
           training_required?: boolean | null
           updated_at?: string | null
           updated_by?: string | null
@@ -166,7 +262,12 @@ export type Database = {
         }
         Update: {
           access_hours?: string | null
+          account_manager?: string | null
+          annual_contract_value?: number | null
           badge_required?: boolean | null
+          billing_contact?: string | null
+          billing_email?: string | null
+          billing_phone?: string | null
           bms_supervisor_ip?: unknown | null
           building_access_details?: string | null
           building_access_type?: string | null
@@ -174,33 +275,49 @@ export type Database = {
           company_name?: string
           contact_email?: string
           contact_phone?: string
+          contract_end_date?: string | null
+          contract_start_date?: string | null
           contract_status?: string | null
+          coordinates?: unknown | null
           created_at?: string | null
           created_by?: string | null
           customer_id?: string
+          district?: string | null
           drive_folder_id?: string | null
           drive_folder_url?: string | null
           emergency_contact?: string | null
           emergency_email?: string | null
           emergency_phone?: string | null
+          equipment_list?: Json | null
+          escalation_contact?: string | null
+          escalation_phone?: string | null
           id?: string
           last_service?: string | null
           next_due?: string | null
+          payment_terms?: string | null
           platform_password?: string | null
           platform_username?: string | null
           ppe_required?: boolean | null
           primary_contact?: string
+          region?: string | null
           remote_access?: boolean | null
           remote_access_type?: string | null
           safety_requirements?: string | null
           security_contact?: string | null
           security_phone?: string | null
+          service_frequency?: string | null
           service_tier?: string
           site_address?: string
           site_hazards?: string | null
           site_name?: string
+          site_timezone?: string | null
+          special_instructions?: string | null
           system_type?: string
+          technical_contact?: string | null
+          technical_email?: string | null
+          technical_phone?: string | null
           technician_assigned?: string | null
+          territory?: string | null
           training_required?: boolean | null
           updated_at?: string | null
           updated_by?: string | null
@@ -209,6 +326,147 @@ export type Database = {
           web_supervisor_url?: string | null
           workbench_password?: string | null
           workbench_username?: string | null
+        }
+        Relationships: []
+      }
+      ame_equipment: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          equipment_id: string
+          equipment_name: string
+          equipment_type: string
+          id: string
+          installation_date: string | null
+          last_service_date: string | null
+          location: string | null
+          maintenance_history: Json | null
+          manufacturer: string | null
+          model: string | null
+          next_service_due: string | null
+          serial_number: string | null
+          service_interval_months: number | null
+          specifications: Json | null
+          status: string | null
+          updated_at: string | null
+          warranty_expiry: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          equipment_id: string
+          equipment_name: string
+          equipment_type: string
+          id?: string
+          installation_date?: string | null
+          last_service_date?: string | null
+          location?: string | null
+          maintenance_history?: Json | null
+          manufacturer?: string | null
+          model?: string | null
+          next_service_due?: string | null
+          serial_number?: string | null
+          service_interval_months?: number | null
+          specifications?: Json | null
+          status?: string | null
+          updated_at?: string | null
+          warranty_expiry?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          equipment_id?: string
+          equipment_name?: string
+          equipment_type?: string
+          id?: string
+          installation_date?: string | null
+          last_service_date?: string | null
+          location?: string | null
+          maintenance_history?: Json | null
+          manufacturer?: string | null
+          model?: string | null
+          next_service_due?: string | null
+          serial_number?: string | null
+          service_interval_months?: number | null
+          specifications?: Json | null
+          status?: string | null
+          updated_at?: string | null
+          warranty_expiry?: string | null
+        }
+        Relationships: []
+      }
+      ame_parts: {
+        Row: {
+          category: string
+          created_at: string | null
+          current_stock: number | null
+          description: string | null
+          hazmat_classification: string | null
+          id: string
+          is_consumable: boolean | null
+          lead_time_days: number | null
+          manufacturer: string | null
+          maximum_stock: number | null
+          minimum_stock: number | null
+          part_id: string
+          part_name: string
+          part_number: string | null
+          reorder_point: number | null
+          shelf_life_months: number | null
+          standard_cost: number | null
+          storage_requirements: string | null
+          subcategory: string | null
+          supplier_info: Json | null
+          unit_of_measure: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          current_stock?: number | null
+          description?: string | null
+          hazmat_classification?: string | null
+          id?: string
+          is_consumable?: boolean | null
+          lead_time_days?: number | null
+          manufacturer?: string | null
+          maximum_stock?: number | null
+          minimum_stock?: number | null
+          part_id: string
+          part_name: string
+          part_number?: string | null
+          reorder_point?: number | null
+          shelf_life_months?: number | null
+          standard_cost?: number | null
+          storage_requirements?: string | null
+          subcategory?: string | null
+          supplier_info?: Json | null
+          unit_of_measure?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          current_stock?: number | null
+          description?: string | null
+          hazmat_classification?: string | null
+          id?: string
+          is_consumable?: boolean | null
+          lead_time_days?: number | null
+          manufacturer?: string | null
+          maximum_stock?: number | null
+          minimum_stock?: number | null
+          part_id?: string
+          part_name?: string
+          part_number?: string | null
+          reorder_point?: number | null
+          shelf_life_months?: number | null
+          standard_cost?: number | null
+          storage_requirements?: string | null
+          subcategory?: string | null
+          supplier_info?: Json | null
+          unit_of_measure?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -266,149 +524,510 @@ export type Database = {
           },
         ]
       }
+      ame_service_schedules: {
+        Row: {
+          created_at: string | null
+          customer_id: string
+          duration_estimate_hours: number | null
+          frequency: string
+          id: string
+          is_active: boolean | null
+          last_completed_date: string | null
+          next_due_date: string
+          schedule_name: string
+          seasonal_adjustments: Json | null
+          service_tier: string
+          tasks: Json | null
+          technician_requirements: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          duration_estimate_hours?: number | null
+          frequency: string
+          id?: string
+          is_active?: boolean | null
+          last_completed_date?: string | null
+          next_due_date: string
+          schedule_name: string
+          seasonal_adjustments?: Json | null
+          service_tier: string
+          tasks?: Json | null
+          technician_requirements?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          duration_estimate_hours?: number | null
+          frequency?: string
+          id?: string
+          is_active?: boolean | null
+          last_completed_date?: string | null
+          next_due_date?: string
+          schedule_name?: string
+          seasonal_adjustments?: Json | null
+          service_tier?: string
+          tasks?: Json | null
+          technician_requirements?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ame_service_schedules_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "ame_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ame_sops: {
         Row: {
+          approval_date: string | null
+          approved_by: string | null
           category: string | null
+          certification_level: string | null
+          compliance_standard: string | null
           description: string | null
+          document_path: string | null
+          effective_date: string | null
+          environmental_conditions: string | null
           estimated_duration: number | null
+          frequency_of_use: string | null
           id: string
           last_updated: string | null
+          prerequisites: string[] | null
           procedure_steps: Json | null
+          quality_checkpoints: Json | null
+          related_sops: string[] | null
+          review_date: string | null
+          revision_number: string | null
+          risk_level: string | null
           safety_requirements: string[] | null
           sop_id: string
           sop_name: string
           system_type: string | null
           tools_required: string[] | null
+          training_required: boolean | null
           version: string | null
+          video_url: string | null
         }
         Insert: {
+          approval_date?: string | null
+          approved_by?: string | null
           category?: string | null
+          certification_level?: string | null
+          compliance_standard?: string | null
           description?: string | null
+          document_path?: string | null
+          effective_date?: string | null
+          environmental_conditions?: string | null
           estimated_duration?: number | null
+          frequency_of_use?: string | null
           id?: string
           last_updated?: string | null
+          prerequisites?: string[] | null
           procedure_steps?: Json | null
+          quality_checkpoints?: Json | null
+          related_sops?: string[] | null
+          review_date?: string | null
+          revision_number?: string | null
+          risk_level?: string | null
           safety_requirements?: string[] | null
           sop_id: string
           sop_name: string
           system_type?: string | null
           tools_required?: string[] | null
+          training_required?: boolean | null
           version?: string | null
+          video_url?: string | null
         }
         Update: {
+          approval_date?: string | null
+          approved_by?: string | null
           category?: string | null
+          certification_level?: string | null
+          compliance_standard?: string | null
           description?: string | null
+          document_path?: string | null
+          effective_date?: string | null
+          environmental_conditions?: string | null
           estimated_duration?: number | null
+          frequency_of_use?: string | null
           id?: string
           last_updated?: string | null
+          prerequisites?: string[] | null
           procedure_steps?: Json | null
+          quality_checkpoints?: Json | null
+          related_sops?: string[] | null
+          review_date?: string | null
+          revision_number?: string | null
+          risk_level?: string | null
           safety_requirements?: string[] | null
           sop_id?: string
           sop_name?: string
           system_type?: string | null
           tools_required?: string[] | null
+          training_required?: boolean | null
           version?: string | null
+          video_url?: string | null
         }
         Relationships: []
       }
       ame_tasks: {
         Row: {
+          acceptable_ranges: Json | null
           category: string
+          certification_required: string[] | null
+          complexity_level: string | null
+          documentation_required: boolean | null
           duration: number | null
+          equipment_types: string[] | null
+          estimated_time_minutes: number | null
+          frequency: string | null
           id: string
+          is_mandatory: boolean | null
           last_updated: string | null
+          measurement_points: Json | null
           navigation_path: string | null
+          parent_task_id: string | null
+          phase: number | null
+          photo_required: boolean | null
           prerequisites: string | null
           quality_checks: string | null
+          quality_criteria: Json | null
           safety_notes: string | null
           service_tiers: string[] | null
           skills_required: string | null
           sop_steps: string | null
           task_id: string
           task_name: string
+          task_order: number | null
           tools_required: string[] | null
           version: string | null
         }
         Insert: {
+          acceptable_ranges?: Json | null
           category: string
+          certification_required?: string[] | null
+          complexity_level?: string | null
+          documentation_required?: boolean | null
           duration?: number | null
+          equipment_types?: string[] | null
+          estimated_time_minutes?: number | null
+          frequency?: string | null
           id?: string
+          is_mandatory?: boolean | null
           last_updated?: string | null
+          measurement_points?: Json | null
           navigation_path?: string | null
+          parent_task_id?: string | null
+          phase?: number | null
+          photo_required?: boolean | null
           prerequisites?: string | null
           quality_checks?: string | null
+          quality_criteria?: Json | null
           safety_notes?: string | null
           service_tiers?: string[] | null
           skills_required?: string | null
           sop_steps?: string | null
           task_id: string
           task_name: string
+          task_order?: number | null
           tools_required?: string[] | null
           version?: string | null
         }
         Update: {
+          acceptable_ranges?: Json | null
           category?: string
+          certification_required?: string[] | null
+          complexity_level?: string | null
+          documentation_required?: boolean | null
           duration?: number | null
+          equipment_types?: string[] | null
+          estimated_time_minutes?: number | null
+          frequency?: string | null
           id?: string
+          is_mandatory?: boolean | null
           last_updated?: string | null
+          measurement_points?: Json | null
           navigation_path?: string | null
+          parent_task_id?: string | null
+          phase?: number | null
+          photo_required?: boolean | null
           prerequisites?: string | null
           quality_checks?: string | null
+          quality_criteria?: Json | null
           safety_notes?: string | null
           service_tiers?: string[] | null
           skills_required?: string | null
           sop_steps?: string | null
           task_id?: string
           task_name?: string
+          task_order?: number | null
           tools_required?: string[] | null
           version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ame_tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "ame_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ame_technicians: {
+        Row: {
+          certifications: string[] | null
+          created_at: string | null
+          email: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          employee_id: string | null
+          employment_status: string | null
+          first_name: string
+          hire_date: string | null
+          hourly_rate: number | null
+          id: string
+          last_name: string
+          max_concurrent_visits: number | null
+          phone: string | null
+          service_regions: string[] | null
+          specializations: string[] | null
+          technician_id: string
+          travel_radius_miles: number | null
+          updated_at: string | null
+          user_id: string | null
+          vehicle_info: Json | null
+        }
+        Insert: {
+          certifications?: string[] | null
+          created_at?: string | null
+          email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          employee_id?: string | null
+          employment_status?: string | null
+          first_name: string
+          hire_date?: string | null
+          hourly_rate?: number | null
+          id?: string
+          last_name: string
+          max_concurrent_visits?: number | null
+          phone?: string | null
+          service_regions?: string[] | null
+          specializations?: string[] | null
+          technician_id: string
+          travel_radius_miles?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          vehicle_info?: Json | null
+        }
+        Update: {
+          certifications?: string[] | null
+          created_at?: string | null
+          email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          employee_id?: string | null
+          employment_status?: string | null
+          first_name?: string
+          hire_date?: string | null
+          hourly_rate?: number | null
+          id?: string
+          last_name?: string
+          max_concurrent_visits?: number | null
+          phone?: string | null
+          service_regions?: string[] | null
+          specializations?: string[] | null
+          technician_id?: string
+          travel_radius_miles?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          vehicle_info?: Json | null
         }
         Relationships: []
       }
       ame_tools: {
         Row: {
+          calibration_frequency_months: number | null
+          calibration_required: boolean | null
           category: string | null
           created_at: string | null
+          current_stock: number | null
           id: string
           is_consumable: boolean | null
+          last_calibration_date: string | null
+          last_inventory_date: string | null
+          maintenance_schedule: string | null
+          manufacturer: string | null
+          maximum_stock: number | null
+          minimum_stock: number | null
+          model_number: string | null
+          next_calibration_date: string | null
           notes: string | null
+          part_number: string | null
           reorder_point: number | null
+          replacement_cost: number | null
           safety_category: string | null
+          storage_location: string | null
           supplier: string | null
           tool_id: string
           tool_name: string
+          tool_status: string | null
           typical_quantity: number | null
+          unit_cost: number | null
           unit_of_measure: string | null
+          warranty_expiry: string | null
         }
         Insert: {
+          calibration_frequency_months?: number | null
+          calibration_required?: boolean | null
           category?: string | null
           created_at?: string | null
+          current_stock?: number | null
           id?: string
           is_consumable?: boolean | null
+          last_calibration_date?: string | null
+          last_inventory_date?: string | null
+          maintenance_schedule?: string | null
+          manufacturer?: string | null
+          maximum_stock?: number | null
+          minimum_stock?: number | null
+          model_number?: string | null
+          next_calibration_date?: string | null
           notes?: string | null
+          part_number?: string | null
           reorder_point?: number | null
+          replacement_cost?: number | null
           safety_category?: string | null
+          storage_location?: string | null
           supplier?: string | null
           tool_id: string
           tool_name: string
+          tool_status?: string | null
           typical_quantity?: number | null
+          unit_cost?: number | null
           unit_of_measure?: string | null
+          warranty_expiry?: string | null
         }
         Update: {
+          calibration_frequency_months?: number | null
+          calibration_required?: boolean | null
           category?: string | null
           created_at?: string | null
+          current_stock?: number | null
           id?: string
           is_consumable?: boolean | null
+          last_calibration_date?: string | null
+          last_inventory_date?: string | null
+          maintenance_schedule?: string | null
+          manufacturer?: string | null
+          maximum_stock?: number | null
+          minimum_stock?: number | null
+          model_number?: string | null
+          next_calibration_date?: string | null
           notes?: string | null
+          part_number?: string | null
           reorder_point?: number | null
+          replacement_cost?: number | null
           safety_category?: string | null
+          storage_location?: string | null
           supplier?: string | null
           tool_id?: string
           tool_name?: string
+          tool_status?: string | null
           typical_quantity?: number | null
+          unit_cost?: number | null
           unit_of_measure?: string | null
+          warranty_expiry?: string | null
         }
         Relationships: []
+      }
+      ame_visit_progress: {
+        Row: {
+          completed_at: string | null
+          completion_percentage: number | null
+          created_at: string | null
+          followup_notes: string | null
+          id: string
+          issues_found: string | null
+          measurements: Json | null
+          phase_number: number
+          photos: Json | null
+          quality_check_passed: boolean | null
+          requires_followup: boolean | null
+          resolution_notes: string | null
+          started_at: string | null
+          status: string | null
+          task_id: string | null
+          technician_notes: string | null
+          time_spent_minutes: number | null
+          updated_at: string | null
+          visit_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completion_percentage?: number | null
+          created_at?: string | null
+          followup_notes?: string | null
+          id?: string
+          issues_found?: string | null
+          measurements?: Json | null
+          phase_number: number
+          photos?: Json | null
+          quality_check_passed?: boolean | null
+          requires_followup?: boolean | null
+          resolution_notes?: string | null
+          started_at?: string | null
+          status?: string | null
+          task_id?: string | null
+          technician_notes?: string | null
+          time_spent_minutes?: number | null
+          updated_at?: string | null
+          visit_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          completion_percentage?: number | null
+          created_at?: string | null
+          followup_notes?: string | null
+          id?: string
+          issues_found?: string | null
+          measurements?: Json | null
+          phase_number?: number
+          photos?: Json | null
+          quality_check_passed?: boolean | null
+          requires_followup?: boolean | null
+          resolution_notes?: string | null
+          started_at?: string | null
+          status?: string | null
+          task_id?: string | null
+          technician_notes?: string | null
+          time_spent_minutes?: number | null
+          updated_at?: string | null
+          visit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ame_visit_progress_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "ame_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ame_visit_progress_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "ame_visits"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ame_visit_sessions: {
         Row: {
