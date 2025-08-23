@@ -24,31 +24,61 @@ export const useVisitSession = (visitId?: string) => {
       const storedToken = localStorage.getItem(`visit_session_${visitId}`);
       
       if (storedToken) {
-        const sessionInfo = await AMEService.getVisitSession(storedToken);
-        if (sessionInfo) {
-          setSessionData({
-            visitId: sessionInfo.visit.id,
-            sessionToken: storedToken,
-            currentPhase: sessionInfo.visit.current_phase || 1,
-            autoSaveData: sessionInfo.auto_save_data || {},
-            lastSaved: new Date()
-          });
-          return;
+        try {
+          const sessionInfo = await AMEService.getVisitSession(storedToken);
+          if (sessionInfo) {
+            setSessionData({
+              visitId: sessionInfo.visit.id,
+              sessionToken: storedToken,
+              currentPhase: sessionInfo.visit.current_phase || 1,
+              autoSaveData: sessionInfo.auto_save_data || {},
+              lastSaved: new Date()
+            });
+            return;
+          }
+        } catch (sessionError) {
+          console.log('Stored session invalid, will try to recover visit');
         }
       }
 
-      // If no valid session found, show recovery message
+      // If no valid session found, try to recover or create a new session for the visit
+      try {
+        const sessionData = await AMEService.createSessionForVisit(visitId);
+        if (sessionData) {
+          // Store new session token
+          localStorage.setItem(`visit_session_${visitId}`, sessionData.sessionToken);
+          
+          setSessionData({
+            visitId: sessionData.visit.id,
+            sessionToken: sessionData.sessionToken,
+            currentPhase: sessionData.visit.current_phase || 1,
+            autoSaveData: sessionData.visit.auto_save_data || {},
+            lastSaved: new Date()
+          });
+
+          toast({
+            title: "Session Restored",
+            description: "Visit session has been restored successfully.",
+            variant: "default"
+          });
+          return;
+        }
+      } catch (visitError) {
+        console.log('Could not find or restore visit');
+      }
+
+      // If all recovery attempts fail, show error
       toast({
-        title: "Session Recovery",
-        description: "Previous session data not found. Starting fresh.",
-        variant: "default"
+        title: "Session Error",
+        description: "Could not restore visit session. The visit may have expired or been completed.",
+        variant: "destructive"
       });
 
     } catch (error) {
       console.error('Failed to initialize session:', error);
       toast({
         title: "Session Error",
-        description: "Could not restore previous session. Starting fresh.",
+        description: "Could not restore previous session. Please try starting a new visit.",
         variant: "destructive"
       });
     }

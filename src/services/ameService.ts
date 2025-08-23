@@ -220,6 +220,41 @@ export class AMEService {
     if (error) throw error;
     return data;
   }
+
+  static async createSessionForVisit(visitId: string): Promise<{ visit: any; sessionToken: string } | null> {
+    // First check if visit exists and is active
+    const { data: visit, error: visitError } = await supabase
+      .from('ame_visits')
+      .select('*')
+      .eq('id', visitId)
+      .eq('is_active', true)
+      .single();
+
+    if (visitError || !visit) {
+      return null;
+    }
+
+    // Generate new session token
+    const sessionToken = crypto.randomUUID();
+    
+    // Create new session record
+    const sessionData = {
+      visit_id: visit.id,
+      technician_id: visit.technician_id,
+      session_token: sessionToken,
+      auto_save_data: visit.auto_save_data || {}
+    };
+
+    const { error: sessionError } = await supabase
+      .from('ame_visit_sessions')
+      .insert(sessionData);
+    
+    if (sessionError) {
+      throw sessionError;
+    }
+
+    return { visit, sessionToken };
+  }
   
   static async getVisit(id: string): Promise<Visit | null> {
     const { data, error } = await supabase
