@@ -11,10 +11,10 @@ export const MainLayout = () => {
     <div className="min-h-screen bg-background">
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
       
-      <div className={`transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-0'}`}>
+      <div className={`transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-16'}`}>
         <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
         
-        <main className="p-6">
+        <main className="flex-1 overflow-auto bg-background">
           <Outlet />
         </main>
       </div>

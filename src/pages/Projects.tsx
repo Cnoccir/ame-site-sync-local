@@ -73,6 +73,8 @@ export const Projects = () => {
       title: "Starting Visit",
       description: `Initiating maintenance visit for ${customer.company_name}`,
     });
+    // Navigate to visit page
+    window.open(`/visit/${customer.id}`, '_blank');
   };
 
   return (

@@ -15,33 +15,33 @@ export const Dashboard = () => {
   }, []);
 
   return (
-    <div className="space-y-6">
-      {/* Welcome Banner */}
+    <div className="p-6 space-y-6">
+      {/* Welcome Banner - exact original styling */}
       <Card className="bg-gradient-to-r from-ame-blue to-ame-blue-dark text-white border-0 shadow-lg">
-        <CardHeader>
+        <CardHeader className="pb-4">
           <CardTitle className="text-2xl font-bold">Welcome to AME Maintenance System</CardTitle>
           <CardDescription className="text-white/80">
             Professional building automation maintenance management
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center space-x-4 text-sm">
+        <CardContent className="pt-0">
+          <div className="flex items-center space-x-6 text-sm">
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-success rounded-full"></div>
               <span>System Status: ONLINE</span>
             </div>
+            <div className="text-white/60">|</div>
             <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-success rounded-full"></div>
               <span>Development Mode</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Stats Grid */}
+      {/* Stats Grid - exact original layout */}
       <DashboardStats stats={stats} />
 
-      {/* Content Grid */}
+      {/* Content Grid - exact original layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <RecentActivity activities={stats.recent_activity} />
         <KeyLinks />

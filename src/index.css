@@ -2,85 +2,85 @@
 @tailwind components;
 @tailwind utilities;
 
-/* AME Maintenance System - Professional Design System */
+/* AME Maintenance System - Exact Original Styling */
 
 @layer base {
   :root {
-    /* Base colors */
-    --background: 215 100% 98%;
-    --foreground: 210 50% 15%;
+    /* Base colors - exact match to original */
+    --background: 0 0% 96%;
+    --foreground: 213 30% 26%;
 
-    /* AME Brand Colors */
-    --ame-navy: 210 50% 15%;
-    --ame-blue: 210 75% 50%;
-    --ame-blue-light: 210 85% 85%;
-    --ame-blue-dark: 210 50% 25%;
+    /* AME Brand Colors - exact original colors */
+    --ame-navy: 213 30% 26%;
+    --ame-blue: 207 90% 54%;
+    --ame-blue-light: 207 90% 94%;
+    --ame-blue-dark: 213 30% 20%;
     
-    /* Card system */
+    /* Card system - exact original styling */
     --card: 0 0% 100%;
-    --card-foreground: 210 50% 15%;
-    --card-header: 210 100% 98%;
-    --card-border: 210 20% 90%;
+    --card-foreground: 213 30% 26%;
+    --card-header: 0 0% 98%;
+    --card-border: 220 13% 91%;
 
-    /* Navigation */
-    --nav-background: 210 50% 15%;
-    --nav-foreground: 210 25% 85%;
-    --nav-active: 210 75% 50%;
-    --nav-hover: 210 50% 25%;
+    /* Navigation - exact original navy */
+    --nav-background: 213 30% 26%;
+    --nav-foreground: 0 0% 100%;
+    --nav-active: 207 90% 54%;
+    --nav-hover: 213 30% 35%;
 
-    /* Interactive elements */
-    --primary: 210 75% 50%;
+    /* Interactive elements - exact original blue */
+    --primary: 207 90% 54%;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 210 75% 45%;
+    --primary-hover: 207 90% 48%;
 
-    --secondary: 210 15% 92%;
-    --secondary-foreground: 210 50% 15%;
-    --secondary-hover: 210 15% 88%;
+    --secondary: 220 13% 91%;
+    --secondary-foreground: 213 30% 26%;
+    --secondary-hover: 220 13% 86%;
 
-    /* Status colors */
-    --success: 140 75% 45%;
+    /* Status colors - exact original system */
+    --success: 134 61% 41%;
     --success-foreground: 0 0% 100%;
-    --success-light: 140 50% 95%;
+    --success-light: 134 61% 95%;
 
-    --warning: 35 85% 55%;
-    --warning-foreground: 35 25% 15%;
-    --warning-light: 35 85% 95%;
+    --warning: 36 100% 50%;
+    --warning-foreground: 0 0% 100%;
+    --warning-light: 36 100% 95%;
 
-    --danger: 0 75% 55%;
+    --danger: 0 100% 50%;
     --danger-foreground: 0 0% 100%;
-    --danger-light: 0 75% 95%;
+    --danger-light: 0 100% 95%;
 
-    --info: 210 75% 50%;
+    --info: 207 90% 54%;
     --info-foreground: 0 0% 100%;
-    --info-light: 210 75% 95%;
+    --info-light: 207 90% 95%;
 
-    /* Service tier colors */
-    --tier-core: 0 75% 55%;
-    --tier-assure: 35 85% 55%;
-    --tier-guardian: 140 75% 45%;
+    /* Service tier colors - exact original badges */
+    --tier-core: 0 100% 50%;
+    --tier-assure: 36 100% 50%;
+    --tier-guardian: 134 61% 41%;
 
-    /* Form elements */
+    /* Form elements - exact original styling */
     --input: 0 0% 100%;
-    --input-border: 210 20% 85%;
-    --input-focus: 210 75% 50%;
+    --input-border: 220 13% 91%;
+    --input-focus: 207 90% 54%;
     
-    --muted: 210 15% 96%;
-    --muted-foreground: 210 15% 45%;
+    --muted: 220 13% 91%;
+    --muted-foreground: 213 16% 55%;
 
-    --accent: 210 85% 85%;
-    --accent-foreground: 210 50% 15%;
+    --accent: 207 90% 94%;
+    --accent-foreground: 213 30% 26%;
 
-    --destructive: 0 75% 55%;
+    --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 20% 90%;
-    --ring: 210 75% 50%;
+    --border: 220 13% 91%;
+    --ring: 207 90% 54%;
     --radius: 0.375rem;
 
-    /* Data table */
-    --table-header: 210 15% 96%;
-    --table-row-hover: 210 25% 98%;
-    --table-border: 210 15% 92%;
+    /* Data table - exact original styling */
+    --table-header: 0 0% 98%;
+    --table-row-hover: 0 0% 98%;
+    --table-border: 220 13% 91%;
 
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 hsl(210 15% 85% / 0.3);
