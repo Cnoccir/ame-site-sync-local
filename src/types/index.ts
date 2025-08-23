@@ -75,8 +75,19 @@ export interface Visit {
   customer_id: string;
   customer?: Customer;
   visit_date: string;
-  visit_status: 'Scheduled' | 'In Progress' | 'Completed' | 'Cancelled';
+  visit_status: 'Scheduled' | 'In Progress' | 'Completed' | 'Cancelled' | 'Abandoned';
   completion_date?: string;
+  
+  // Enhanced visit tracking
+  current_phase?: number;
+  auto_save_data?: any;
+  last_activity?: string;
+  total_duration?: number;
+  started_at?: string;
+  expires_at?: string;
+  is_active?: boolean;
+  customer_satisfaction?: number;
+  next_service_due?: string;
   
   // Phase tracking
   phase_1_status: 'Pending' | 'In Progress' | 'Completed';

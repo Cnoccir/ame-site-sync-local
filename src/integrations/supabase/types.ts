@@ -410,6 +410,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ame_visit_sessions: {
+        Row: {
+          auto_save_data: Json | null
+          created_at: string
+          expires_at: string
+          id: string
+          is_active: boolean
+          last_activity: string
+          session_token: string
+          technician_id: string
+          visit_id: string
+        }
+        Insert: {
+          auto_save_data?: Json | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          last_activity?: string
+          session_token: string
+          technician_id: string
+          visit_id: string
+        }
+        Update: {
+          auto_save_data?: Json | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          last_activity?: string
+          session_token?: string
+          technician_id?: string
+          visit_id?: string
+        }
+        Relationships: []
+      }
       ame_visit_tasks: {
         Row: {
           completed_at: string | null
@@ -469,10 +505,17 @@ export type Database = {
       }
       ame_visits: {
         Row: {
+          auto_save_data: Json | null
           completion_date: string | null
           created_at: string | null
+          current_phase: number | null
           customer_id: string | null
+          customer_satisfaction: number | null
+          expires_at: string | null
           id: string
+          is_active: boolean | null
+          last_activity: string | null
+          next_service_due: string | null
           notes: string | null
           phase_1_completed_at: string | null
           phase_1_status: string | null
@@ -482,17 +525,26 @@ export type Database = {
           phase_3_status: string | null
           phase_4_completed_at: string | null
           phase_4_status: string | null
+          started_at: string | null
           technician_id: string | null
+          total_duration: number | null
           updated_at: string | null
           visit_date: string
           visit_id: string
           visit_status: string | null
         }
         Insert: {
+          auto_save_data?: Json | null
           completion_date?: string | null
           created_at?: string | null
+          current_phase?: number | null
           customer_id?: string | null
+          customer_satisfaction?: number | null
+          expires_at?: string | null
           id?: string
+          is_active?: boolean | null
+          last_activity?: string | null
+          next_service_due?: string | null
           notes?: string | null
           phase_1_completed_at?: string | null
           phase_1_status?: string | null
@@ -502,17 +554,26 @@ export type Database = {
           phase_3_status?: string | null
           phase_4_completed_at?: string | null
           phase_4_status?: string | null
+          started_at?: string | null
           technician_id?: string | null
+          total_duration?: number | null
           updated_at?: string | null
           visit_date: string
           visit_id: string
           visit_status?: string | null
         }
         Update: {
+          auto_save_data?: Json | null
           completion_date?: string | null
           created_at?: string | null
+          current_phase?: number | null
           customer_id?: string | null
+          customer_satisfaction?: number | null
+          expires_at?: string | null
           id?: string
+          is_active?: boolean | null
+          last_activity?: string | null
+          next_service_due?: string | null
           notes?: string | null
           phase_1_completed_at?: string | null
           phase_1_status?: string | null
@@ -522,7 +583,9 @@ export type Database = {
           phase_3_status?: string | null
           phase_4_completed_at?: string | null
           phase_4_status?: string | null
+          started_at?: string | null
           technician_id?: string | null
+          total_duration?: number | null
           updated_at?: string | null
           visit_date?: string
           visit_id?: string
@@ -741,6 +804,14 @@ export type Database = {
       binary_quantize: {
         Args: { "": string } | { "": unknown }
         Returns: unknown
+      }
+      cleanup_expired_visits: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      generate_visit_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       get_chat_sessions: {
         Args: { user_id_param: string }

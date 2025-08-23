@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { CustomerTable } from '@/components/customers/CustomerTable';
+import { VisitManager } from '@/components/visit/VisitManager';
 import { sampleCustomers } from '@/data/sampleData';
 import { Customer } from '@/types';
 import { useToast } from '@/hooks/use-toast';
