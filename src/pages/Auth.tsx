@@ -14,7 +14,7 @@ export const Auth = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [creatingDevAccounts, setCreatingDevAccounts] = useState(false);
+  const [createMode, setCreateMode] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -24,19 +24,38 @@ export const Auth = () => {
     setError('');
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      if (createMode) {
+        // Temporary create mode for dev accounts
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`
+          }
+        });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast({
-        title: "Login Successful",
-        description: "Welcome back!",
-      });
-      
-      navigate('/projects');
+        toast({
+          title: "Account Created",
+          description: "Account created successfully. Now you can login.",
+        });
+        setCreateMode(false);
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Login Successful",
+          description: "Welcome back!",
+        });
+        
+        navigate('/projects');
+      }
     } catch (error: any) {
       setError(error.message);
       toast({
@@ -55,7 +74,7 @@ export const Auth = () => {
   };
 
   const createDevAccounts = async () => {
-    setCreatingDevAccounts(true);
+    setLoading(true);
     const accounts = [
       { email: 'tech@ame-inc.com', password: 'Ameinc4100' },
       { email: 'admin@ame-inc.com', password: 'Ameinc4100' }
@@ -67,27 +86,23 @@ export const Auth = () => {
           email: account.email,
           password: account.password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: {
-              email_confirm: true
-            }
+            emailRedirectTo: `${window.location.origin}/`
           }
         });
-
+        
         if (error && !error.message.includes('already registered')) {
-          console.error(`Failed to create ${account.email}:`, error);
+          console.error(`Error creating ${account.email}:`, error);
         }
       } catch (err) {
         console.error(`Error creating ${account.email}:`, err);
       }
     }
-
-    toast({
-      title: "Dev Accounts Ready",
-      description: "Development accounts have been created. You can now login.",
-    });
     
-    setCreatingDevAccounts(false);
+    setLoading(false);
+    toast({
+      title: "Dev Accounts Created",
+      description: "Development accounts are ready for use.",
+    });
   };
 
   return (
@@ -108,24 +123,23 @@ export const Auth = () => {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Dev Account Creation */}
+          {/* Dev Account Setup */}
           <div className="space-y-2">
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={createDevAccounts}
-              disabled={creatingDevAccounts}
+              disabled={loading}
               className="w-full text-xs"
             >
-              {creatingDevAccounts && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
-              Create Dev Accounts (First Time Setup)
+              {loading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
+              Create Dev Accounts (One-time setup)
             </Button>
           </div>
 
           {/* Dev Login Buttons */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Development Accounts:</Label>
+            <Label className="text-sm font-medium">Development Accounts (Click to auto-fill):</Label>
             <div className="grid grid-cols-2 gap-2">
               <Button
                 type="button"
@@ -148,6 +162,9 @@ export const Auth = () => {
                 Admin
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Password for both accounts: <strong>Ameinc4100</strong>
+            </p>
           </div>
 
           <div className="relative">
@@ -156,7 +173,7 @@ export const Auth = () => {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
+                Or enter manually
               </span>
             </div>
           </div>
@@ -194,9 +211,19 @@ export const Auth = () => {
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Sign In
+              {createMode ? 'Create Account' : 'Sign In'}
             </Button>
           </form>
+
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setCreateMode(!createMode)}
+              className="text-xs text-primary hover:underline"
+            >
+              {createMode ? 'Back to Sign In' : 'Need to create accounts?'}
+            </button>
+          </div>
         </CardContent>
       </Card>
     </div>
