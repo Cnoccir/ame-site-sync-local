@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
+import { Header } from './Header';
 
 export const MainLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -11,6 +12,8 @@ export const MainLayout = () => {
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
       
       <div className="ame-main-content">
+        <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+        
         <main className="flex-1 overflow-auto" style={{ background: 'hsl(var(--ame-light))' }}>
           <Outlet />
         </main>

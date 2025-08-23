@@ -39,16 +39,20 @@ export const Header = ({ onMenuToggle }: HeaderProps) => {
   };
 
   return (
-    <header className="ame-top-bar">
+    <header className="bg-card border-b border-card-border h-16 flex items-center justify-between px-6">
       <div className="flex items-center space-x-4">
-        <h1 className="ame-page-title">{getPageTitle()}</h1>
+        <h1 className="text-xl font-semibold text-foreground">{getPageTitle()}</h1>
       </div>
 
-      <div className="flex items-center space-x-4">
-        <button className="ame-top-bar-btn">
-          <RefreshCw className="w-4 h-4" />
+      <div className="flex items-center space-x-2">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="bg-primary hover:bg-primary-hover text-primary-foreground border-primary"
+        >
+          <RefreshCw className="w-4 h-4 mr-2" />
           Refresh
-        </button>
+        </Button>
 
         <Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-secondary">
           <Bell className="w-5 h-5" />
