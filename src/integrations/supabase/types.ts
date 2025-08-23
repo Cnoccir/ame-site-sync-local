@@ -852,15 +852,46 @@ export type Database = {
         }
         Relationships: []
       }
+      ame_tool_categories: {
+        Row: {
+          category_name: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_essential: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          category_name: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_essential?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          category_name?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_essential?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       ame_tools: {
         Row: {
           calibration_frequency_months: number | null
           calibration_required: boolean | null
           category: string | null
+          category_id: string | null
           created_at: string | null
           current_stock: number | null
           id: string
           is_consumable: boolean | null
+          is_essential: boolean | null
+          is_required: boolean | null
+          is_safety: boolean | null
           last_calibration_date: string | null
           last_inventory_date: string | null
           maintenance_schedule: string | null
@@ -888,10 +919,14 @@ export type Database = {
           calibration_frequency_months?: number | null
           calibration_required?: boolean | null
           category?: string | null
+          category_id?: string | null
           created_at?: string | null
           current_stock?: number | null
           id?: string
           is_consumable?: boolean | null
+          is_essential?: boolean | null
+          is_required?: boolean | null
+          is_safety?: boolean | null
           last_calibration_date?: string | null
           last_inventory_date?: string | null
           maintenance_schedule?: string | null
@@ -919,10 +954,14 @@ export type Database = {
           calibration_frequency_months?: number | null
           calibration_required?: boolean | null
           category?: string | null
+          category_id?: string | null
           created_at?: string | null
           current_stock?: number | null
           id?: string
           is_consumable?: boolean | null
+          is_essential?: boolean | null
+          is_required?: boolean | null
+          is_safety?: boolean | null
           last_calibration_date?: string | null
           last_inventory_date?: string | null
           maintenance_schedule?: string | null
@@ -946,7 +985,15 @@ export type Database = {
           unit_of_measure?: string | null
           warranty_expiry?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ame_tools_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "ame_tool_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ame_visit_progress: {
         Row: {
