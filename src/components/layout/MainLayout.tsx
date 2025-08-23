@@ -8,13 +8,13 @@ export const MainLayout = () => {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="ame-container">
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
       
-      <div className={`transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-16'}`}>
+      <div className="ame-main-content">
         <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
         
-        <main className="flex-1 overflow-auto bg-background">
+        <main className="flex-1 overflow-auto" style={{ background: 'rgb(var(--ame-light))' }}>
           <Outlet />
         </main>
       </div>

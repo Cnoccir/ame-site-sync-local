@@ -39,24 +39,16 @@ export const DashboardStats = ({ stats }: DashboardStatsProps) => {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="ame-stats-grid">
       {statCards.map((stat) => (
-        <Card key={stat.title} className="border-card-border shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <div className={`p-2 rounded-lg bg-muted ${stat.color}`}>
-              <stat.icon className="w-5 h-5" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                {stat.title}
-              </p>
-              <p className="text-3xl font-bold text-foreground">{stat.value}</p>
-              <p className="text-xs text-muted-foreground">{stat.description}</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div key={stat.title} className="ame-stat-card">
+          <div className="ame-stat-icon">
+            <stat.icon />
+          </div>
+          <div className="ame-stat-label">{stat.title}</div>
+          <div className="ame-stat-value">{stat.value}</div>
+          <div className="ame-stat-description">{stat.description}</div>
+        </div>
       ))}
     </div>
   );

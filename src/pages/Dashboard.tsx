@@ -15,28 +15,22 @@ export const Dashboard = () => {
   }, []);
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Welcome Banner - exact original styling */}
-      <Card className="bg-gradient-to-r from-ame-blue to-ame-blue-dark text-white border-0 shadow-lg">
-        <CardHeader className="pb-4">
-          <CardTitle className="text-2xl font-bold">Welcome to AME Maintenance System</CardTitle>
-          <CardDescription className="text-white/80">
-            Professional building automation maintenance management
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="flex items-center space-x-6 text-sm">
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-success rounded-full"></div>
-              <span>System Status: ONLINE</span>
-            </div>
-            <div className="text-white/60">|</div>
-            <div className="flex items-center space-x-2">
-              <span>Development Mode</span>
-            </div>
+    <div className="p-8">
+      {/* Welcome Section - exact original styling */}
+      <div className="ame-welcome-section">
+        <h1 className="ame-welcome-title">Welcome to AME Maintenance System</h1>
+        <p className="ame-welcome-subtitle">Professional building automation maintenance management</p>
+        <div className="flex items-center space-x-6 text-sm">
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 rounded-full" style={{ background: 'rgb(var(--ame-success))' }}></div>
+            <span>System Status: ONLINE</span>
           </div>
-        </CardContent>
-      </Card>
+          <div className="text-white/60">|</div>
+          <div className="flex items-center space-x-2">
+            <span>Development Mode</span>
+          </div>
+        </div>
+      </div>
 
       {/* Stats Grid - exact original layout */}
       <DashboardStats stats={stats} />
