@@ -10,11 +10,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
 export const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [creatingDevAccounts, setCreatingDevAccounts] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -54,6 +54,42 @@ export const Auth = () => {
     setPassword('Ameinc4100');
   };
 
+  const createDevAccounts = async () => {
+    setCreatingDevAccounts(true);
+    const accounts = [
+      { email: 'tech@ame-inc.com', password: 'Ameinc4100' },
+      { email: 'admin@ame-inc.com', password: 'Ameinc4100' }
+    ];
+
+    for (const account of accounts) {
+      try {
+        const { error } = await supabase.auth.signUp({
+          email: account.email,
+          password: account.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              email_confirm: true
+            }
+          }
+        });
+
+        if (error && !error.message.includes('already registered')) {
+          console.error(`Failed to create ${account.email}:`, error);
+        }
+      } catch (err) {
+        console.error(`Error creating ${account.email}:`, err);
+      }
+    }
+
+    toast({
+      title: "Dev Accounts Ready",
+      description: "Development accounts have been created. You can now login.",
+    });
+    
+    setCreatingDevAccounts(false);
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <Card className="w-full max-w-md">
@@ -72,6 +108,21 @@ export const Auth = () => {
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {/* Dev Account Creation */}
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={createDevAccounts}
+              disabled={creatingDevAccounts}
+              className="w-full text-xs"
+            >
+              {creatingDevAccounts && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+              Create Dev Accounts (First Time Setup)
+            </Button>
+          </div>
+
           {/* Dev Login Buttons */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">Development Accounts:</Label>
