@@ -48,6 +48,12 @@ export const Auth = () => {
     }
   };
 
+  const handleQuickLogin = (userType: 'admin' | 'tech') => {
+    const email = userType === 'admin' ? 'admin@ame-inc.com' : 'tech@ame-inc.com';
+    setEmail(email);
+    setPassword('Ameinc4100');
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <Card className="w-full max-w-md">
@@ -66,6 +72,44 @@ export const Auth = () => {
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {/* Quick Access Buttons */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Quick Access:</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleQuickLogin('tech')}
+                className="text-xs"
+              >
+                <User className="w-3 h-3 mr-1" />
+                Technician
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleQuickLogin('admin')}
+                className="text-xs"
+              >
+                <Lock className="w-3 h-3 mr-1" />
+                Admin
+              </Button>
+            </div>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or enter manually
+              </span>
+            </div>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
