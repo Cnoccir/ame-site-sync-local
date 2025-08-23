@@ -38,35 +38,38 @@ export const Admin = () => {
     }
   };
 
-  const authorizeGoogleDrive = async () => {
+  const testGoogleDriveConnection = async () => {
     try {
       setLoading(true);
-      const clientId = 'YOUR_GOOGLE_CLIENT_ID'; // This should come from environment
-      const redirectUri = `${window.location.origin}/admin`;
-      const scope = 'https://www.googleapis.com/auth/drive';
       
-      const authUrl = `https://accounts.google.com/oauth/authorize?` +
-        `client_id=${clientId}&` +
-        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-        `scope=${encodeURIComponent(scope)}&` +
-        `response_type=code&` +
-        `access_type=offline`;
+      // Test the edge function to verify secrets
+      const { data, error } = await supabase.functions.invoke('google-drive-manager', {
+        body: { action: 'list_folders' }
+      });
 
-      window.open(authUrl, '_blank', 'width=500,height=600');
-      
-      // Listen for the auth completion
-      window.addEventListener('message', handleAuthMessage);
+      if (error) throw error;
+
+      setIsAuthorized(true);
+      toast({
+        title: "Success",
+        description: "Google Drive connection verified successfully",
+      });
       
     } catch (error) {
-      console.error('Auth error:', error);
+      console.error('Connection test failed:', error);
       toast({
-        title: "Authorization Failed",
-        description: "Failed to authorize Google Drive access",
+        title: "Connection Failed", 
+        description: "Please check your Google OAuth2 credentials in Supabase secrets",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  const authorizeGoogleDrive = async () => {
+    // For now, just test the connection
+    await testGoogleDriveConnection();
   };
 
   const handleAuthMessage = async (event: MessageEvent) => {
