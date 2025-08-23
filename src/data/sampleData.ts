@@ -1,4 +1,4 @@
-import { Customer, Visit, Task, Tool, DashboardStats, ActivityItem } from '@/types';
+import { Customer, Visit, Task, Tool, DashboardStats, ActivityItem, GOOGLE_DRIVE_CONFIG } from '@/types';
 
 export const sampleCustomers: Customer[] = [
   {
@@ -16,9 +16,15 @@ export const sampleCustomers: Customer[] = [
     contact_email: 'facility@metrogeneral.com',
     emergency_contact: 'Dr. Sarah Johnson',
     emergency_phone: '555-111-9999',
+    ppe_required: true,
+    badge_required: true,
+    training_required: true,
+    remote_access: false,
+    vpn_required: false,
     last_service: '2024-01-15',
     next_due: '2024-06-15',
     technician_assigned: 'John Technician',
+    drive_folder_id: GOOGLE_DRIVE_CONFIG.masterFolder,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-15T00:00:00Z'
   },
@@ -35,9 +41,15 @@ export const sampleCustomers: Customer[] = [
     primary_contact: 'Head of Maintenance',
     contact_phone: '555-222-6666',
     contact_email: 'maintenance@springfield.edu',
+    ppe_required: false,
+    badge_required: false,
+    training_required: false,
+    remote_access: true,
+    vpn_required: false,
     last_service: '2024-02-01',
     next_due: '2024-05-20',
     technician_assigned: 'Jane Smith',
+    drive_folder_id: GOOGLE_DRIVE_CONFIG.serviceToolDataFolder,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-02-01T00:00:00Z'
   },
@@ -54,6 +66,11 @@ export const sampleCustomers: Customer[] = [
     primary_contact: 'Property Manager',
     contact_phone: '555-777-4888',
     contact_email: 'property@downtownoffice.com',
+    ppe_required: false,
+    badge_required: false,
+    training_required: false,
+    remote_access: false,
+    vpn_required: false,
     last_service: '2024-01-30',
     next_due: '2024-01-19',
     technician_assigned: 'Mike Wilson',
@@ -166,9 +183,9 @@ export const sampleVisits: Visit[] = [
     customer_id: '1',
     visit_date: '2024-01-19',
     visit_status: 'In Progress',
-    phase_1_status: 'Complete',
+    phase_1_status: 'Completed',
     phase_1_completed_at: '2024-01-19T09:00:00Z',
-    phase_2_status: 'Complete',
+    phase_2_status: 'Completed',
     phase_2_completed_at: '2024-01-19T10:30:00Z',
     phase_3_status: 'In Progress',
     phase_4_status: 'Pending',
