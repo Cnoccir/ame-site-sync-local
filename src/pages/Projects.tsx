@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Play, Settings } from 'lucide-react';
+import { Search, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +16,8 @@ import { Customer } from '@/types';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { AMEService } from '@/services/ameService';
+import { ProjectVisitManager } from '@/components/projects/ProjectVisitManager';
+import { ActiveVisitsDisplay } from '@/components/projects/ActiveVisitsDisplay';
 
 export const Projects = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -86,14 +88,6 @@ export const Projects = () => {
     );
   };
 
-  const handleStartVisit = (customer: Customer) => {
-    toast({
-      title: "Starting Visit",
-      description: `Initiating maintenance visit for ${customer.company_name}`,
-    });
-    // Navigate to visit page
-    window.open(`/visit/${customer.id}`, '_blank');
-  };
 
   return (
     <div className="space-y-6">
@@ -107,16 +101,7 @@ export const Projects = () => {
             </Button>
           </div>
           
-          {/* Active Visits Banner */}
-          <div className="flex items-center space-x-4 mt-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-success rounded-full animate-pulse"></div>
-              <span className="text-success font-medium">Active Visits</span>
-            </div>
-            <Badge variant="outline" className="bg-success/10 text-success border-success">
-              0 active
-            </Badge>
-          </div>
+          <ActiveVisitsDisplay />
         </CardHeader>
         
         <CardContent>
@@ -214,14 +199,7 @@ export const Projects = () => {
                         {getStatusBadge(customer.contract_status)}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          size="sm"
-                          onClick={() => handleStartVisit(customer)}
-                          className="bg-primary hover:bg-primary-hover text-white"
-                        >
-                          <Play className="w-3 h-3 mr-1" />
-                          Start Visit
-                        </Button>
+                        <ProjectVisitManager customer={customer} />
                       </TableCell>
                     </TableRow>
                   ))}

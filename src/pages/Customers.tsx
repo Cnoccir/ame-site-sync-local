@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { CustomerTable } from '@/components/customers/CustomerTable';
-import { VisitManager } from '@/components/visit/VisitManager';
 import { Customer } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { AMEService } from '@/services/ameService';
@@ -38,13 +37,6 @@ export const Customers = () => {
     });
   };
 
-  const handleStartVisit = (customer: Customer) => {
-    toast({
-      title: "Starting Visit",
-      description: `Initiating maintenance visit for ${customer.company_name}`,
-    });
-    // In a real app, this would navigate to the visit workflow
-  };
 
   if (loading) {
     return (
@@ -62,7 +54,6 @@ export const Customers = () => {
       <CustomerTable 
         customers={customers}
         onCustomerSelect={handleCustomerSelect}
-        onStartVisit={handleStartVisit}
       />
     </div>
   );

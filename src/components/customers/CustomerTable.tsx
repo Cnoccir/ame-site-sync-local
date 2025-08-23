@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MoreHorizontal, Search, Plus, RefreshCw, Edit, Eye, Play } from 'lucide-react';
+import { MoreHorizontal, Search, Plus, RefreshCw, Edit, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,10 +24,9 @@ import { cn } from '@/lib/utils';
 interface CustomerTableProps {
   customers: Customer[];
   onCustomerSelect?: (customer: Customer) => void;
-  onStartVisit?: (customer: Customer) => void;
 }
 
-export const CustomerTable = ({ customers, onCustomerSelect, onStartVisit }: CustomerTableProps) => {
+export const CustomerTable = ({ customers, onCustomerSelect }: CustomerTableProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [serviceFilter, setServiceFilter] = useState<string>('All Tiers');
   const [statusFilter, setStatusFilter] = useState<string>('All Status');
@@ -200,37 +199,23 @@ export const CustomerTable = ({ customers, onCustomerSelect, onStartVisit }: Cus
                     {getStatusBadge(customer.contract_status)}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onStartVisit?.(customer);
-                        }}
-                        className="bg-primary hover:bg-primary-hover text-white"
-                      >
-                        <Play className="w-3 h-3 mr-1" />
-                        Start Visit
-                      </Button>
-                      
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Eye className="w-4 h-4 mr-2" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edit Customer
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>
+                          <Eye className="w-4 h-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit Customer
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
