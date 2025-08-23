@@ -1,228 +1,472 @@
-import { useState } from 'react';
-import { CheckCircle, MapPin, AlertCircle, User, FileText } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { AlertTriangle, Network, BarChart3, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+
+// Import assessment components
+import { AssessmentTimer } from '@/components/assessment/AssessmentTimer';
+import { ProtocolStep } from '@/components/assessment/ProtocolStep';
+import { SafetyChecklist } from '@/components/assessment/SafetyChecklist';
+import { LocationMapping } from '@/components/assessment/LocationMapping';
+import { ConnectionTester } from '@/components/assessment/ConnectionTester';
+import { FileUploader } from '@/components/assessment/FileUploader';
+import { NetworkAnalysisResults } from '@/components/assessment/NetworkAnalysisResults';
+import { SystemStatusCard } from '@/components/assessment/SystemStatusCard';
+import { PriorityDiscussion } from '@/components/assessment/PriorityDiscussion';
 
 interface AssessmentPhaseProps {
   onPhaseComplete: () => void;
 }
 
-export const AssessmentPhase = ({ onPhaseComplete }: AssessmentPhaseProps) => {
-  const [walkthroughItems, setWalkthroughItems] = useState({
-    siteEntry: false,
-    equipmentLocation: false,
-    accessPoints: false,
-    emergencyProcedures: false,
-    workArea: false
-  });
-
-  const [customerPriorities, setCustomerPriorities] = useState({
-    comfort: '',
-    equipment: '',
-    energy: '',
-    operational: ''
-  });
-
-  const [equipmentStatus, setEquipmentStatus] = useState({
-    systemOperational: false,
-    noAlarms: false,
-    accessGranted: false,
-    documentationAvailable: false
-  });
-
+export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplete }) => {
   const { toast } = useToast();
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [expandedStep, setExpandedStep] = useState(1);
+  
+  // Step completion states
+  const [stepStatuses, setStepStatuses] = useState({
+    1: 'pending',
+    2: 'pending', 
+    3: 'pending',
+    4: 'pending',
+    5: 'pending',
+    6: 'pending'
+  });
 
-  const allWalkthroughComplete = Object.values(walkthroughItems).every(Boolean);
-  const allStatusChecked = Object.values(equipmentStatus).every(Boolean);
-  const hasCustomerInput = Object.values(customerPriorities).some(value => value.trim().length > 0);
-  const canComplete = allWalkthroughComplete && allStatusChecked && hasCustomerInput;
+  // Form data for each step
+  const [step1Data, setStep1Data] = useState({
+    contactPerson: '',
+    specialRequests: ''
+  });
 
-  const handleWalkthroughChange = (item: keyof typeof walkthroughItems, checked: boolean) => {
-    setWalkthroughItems(prev => ({ ...prev, [item]: checked }));
-  };
+  const [step2Data, setStep2Data] = useState({
+    ppeAvailable: false,
+    hazardsReviewed: false,
+    emergencyProcedures: false,
+    notes: ''
+  });
 
-  const handleStatusChange = (item: keyof typeof equipmentStatus, checked: boolean) => {
-    setEquipmentStatus(prev => ({ ...prev, [item]: checked }));
-  };
+  const [step3Data, setStep3Data] = useState({
+    supervisorLocation: '',
+    supervisorAccess: '',
+    jaceLocations: '',
+    jaceAccess: '',
+    controllerDetails: '',
+    controllerChallenges: '',
+    panelsAccessible: false,
+    wiringCondition: false,
+    environmentalOk: false,
+    issuesFound: ''
+  });
 
-  const handlePriorityChange = (type: keyof typeof customerPriorities, value: string) => {
-    setCustomerPriorities(prev => ({ ...prev, [type]: value }));
-  };
+  const [step4Data, setStep4Data] = useState({
+    supervisorIp: '',
+    supervisorUsername: '',
+    supervisorPassword: '',
+    supervisorStatus: 'not_tested' as 'not_tested' | 'testing' | 'success' | 'failed',
+    workbenchUsername: '',
+    workbenchPassword: '',
+    workbenchStatus: 'not_tested' as 'not_tested' | 'testing' | 'success' | 'failed',
+    systemVersion: '',
+    connectionNotes: ''
+  });
 
-  const handleCompletePhase = () => {
-    if (!canComplete) {
-      toast({
-        title: 'Assessment Incomplete',
-        description: 'Please complete all assessment requirements before proceeding.',
-        variant: 'destructive'
-      });
-      return;
+  const [step5Data, setStep5Data] = useState({
+    uploadedFiles: [] as File[],
+    analysisData: null as any,
+    manualStationCount: '',
+    manualComponents: ''
+  });
+
+  const [step6Data, setStep6Data] = useState({
+    activeAlarms: '',
+    criticalAlarms: '',
+    cpuUsage: '',
+    memoryUsage: '',
+    criticalIssues: ''
+  });
+
+  const [priorityData, setPriorityData] = useState({
+    comfortIssues: '',
+    equipmentProblems: '',
+    energyConcerns: '',
+    operationalRequests: ''
+  });
+
+  const [systemStatusData, setSystemStatusData] = useState({
+    activeAlarms: 0,
+    commHealth: 95,
+    overridePoints: 3,
+    performance: 87
+  });
+
+  const protocolSteps = [
+    { number: 1, title: 'Customer Check-In', duration: 5 },
+    { number: 2, title: 'Safety Assessment', duration: 5 },
+    { number: 3, title: 'Physical System Walk', duration: 10 },
+    { number: 4, title: 'System Access Test', duration: 15 },
+    { number: 5, title: 'Network Inventory Analysis', duration: 15 },
+    { number: 6, title: 'Initial System Status', duration: 10 }
+  ];
+
+  // Auto-save functionality
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Auto-save logic here
+      console.log('Auto-saving assessment progress...');
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleStepStart = (stepNumber: number) => {
+    if (!isTimerRunning && stepNumber === 1) {
+      setIsTimerRunning(true);
     }
-
-    toast({
-      title: 'Phase 2 Complete',
-      description: 'Initial assessment completed successfully.',
-      variant: 'default'
-    });
-    onPhaseComplete();
+    
+    setStepStatuses(prev => ({
+      ...prev,
+      [stepNumber]: 'active'
+    }));
+    setCurrentStep(stepNumber);
+    setExpandedStep(stepNumber);
   };
 
-  const walkthroughChecklist = [
-    { key: 'siteEntry' as const, label: 'Site entry and check-in completed', icon: MapPin },
-    { key: 'equipmentLocation' as const, label: 'Equipment room location confirmed', icon: MapPin },
-    { key: 'accessPoints' as const, label: 'All access points identified', icon: MapPin },
-    { key: 'emergencyProcedures' as const, label: 'Emergency procedures reviewed with contact', icon: AlertCircle },
-    { key: 'workArea' as const, label: 'Work area prepared and secured', icon: MapPin }
-  ];
+  const handleStepComplete = (stepNumber: number) => {
+    setStepStatuses(prev => ({
+      ...prev,
+      [stepNumber]: 'completed'
+    }));
+    
+    // Auto-advance to next step
+    if (stepNumber < 6) {
+      setCurrentStep(stepNumber + 1);
+      setExpandedStep(stepNumber + 1);
+    }
+  };
 
-  const statusChecklist = [
-    { key: 'systemOperational' as const, label: 'Building automation system operational' },
-    { key: 'noAlarms' as const, label: 'No active critical alarms present' },
-    { key: 'accessGranted' as const, label: 'System access credentials verified' },
-    { key: 'documentationAvailable' as const, label: 'System documentation accessible' }
-  ];
+  const canStartStep = (stepNumber: number) => {
+    if (stepNumber === 1) return true;
+    return stepStatuses[stepNumber - 1] === 'completed';
+  };
+
+  const canCompleteStep = (stepNumber: number) => {
+    switch (stepNumber) {
+      case 1:
+        return step1Data.contactPerson.trim() !== '';
+      case 2:
+        return step2Data.ppeAvailable && step2Data.hazardsReviewed && step2Data.emergencyProcedures;
+      case 3:
+        return step3Data.panelsAccessible && step3Data.wiringCondition && step3Data.environmentalOk;
+      case 4:
+        return step4Data.supervisorStatus === 'success' || step4Data.workbenchStatus === 'success';
+      case 5:
+        return step5Data.uploadedFiles.length > 0 || step5Data.manualStationCount.trim() !== '';
+      case 6:
+        return step6Data.activeAlarms !== '' && step6Data.criticalAlarms !== '';
+      default:
+        return false;
+    }
+  };
+
+  const handleTimeWarning = () => {
+    toast({
+      title: "Time Warning",
+      description: "Assessment approaching 25 minutes. Consider wrapping up current step.",
+      variant: "destructive"
+    });
+  };
+
+  const handleTimeUp = () => {
+    toast({
+      title: "Time Exceeded",
+      description: "30-minute assessment period has elapsed.",
+      variant: "destructive"
+    });
+  };
+
+  const handleNetworkAnalysis = () => {
+    if (step5Data.uploadedFiles.length === 0) return;
+
+    // Simulate network analysis
+    const analysisResults = {
+      totalStations: Math.floor(Math.random() * 500) + 100,
+      totalNetworks: Math.floor(Math.random() * 20) + 5,
+      protocolsFound: ['BACnet', 'Modbus', 'LON', 'Ethernet IP'],
+      filesProcessed: step5Data.uploadedFiles.length,
+      networkSegments: [
+        '192.168.1.0/24 - Main Building Network',
+        '192.168.10.0/24 - HVAC Controllers',
+        '192.168.20.0/24 - Lighting Systems'
+      ],
+      recommendations: [
+        'Review BACnet device priorities for optimal performance',
+        'Consider network segmentation for improved security',
+        'Update firmware on legacy controllers identified'
+      ]
+    };
+
+    setStep5Data(prev => ({ ...prev, analysisData: analysisResults }));
+  };
+
+  const runDiagnostics = () => {
+    setSystemStatusData({
+      activeAlarms: Math.floor(Math.random() * 20),
+      commHealth: Math.floor(Math.random() * 20) + 80,
+      overridePoints: Math.floor(Math.random() * 10),
+      performance: Math.floor(Math.random() * 30) + 70
+    });
+  };
+
+  const isAssessmentComplete = () => {
+    return Object.values(stepStatuses).every(status => status === 'completed');
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-foreground">Phase 2: Initial Assessment</h2>
-          <p className="text-muted-foreground">Evaluate site conditions and gather customer priorities</p>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+          <Search className="w-5 h-5 text-orange-600" />
         </div>
-        <Badge variant={canComplete ? 'default' : 'secondary'} className="px-3 py-1">
-          Assessment {canComplete ? 'Complete' : 'In Progress'}
-        </Badge>
+        <div>
+          <h2 className="text-2xl font-bold">Phase 2: Initial Assessment</h2>
+          <p className="text-muted-foreground">30-minute systematic arrival protocol</p>
+        </div>
       </div>
 
-      {/* Site Walkthrough */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center space-x-2">
-            <MapPin className="w-5 h-5 text-primary" />
-            <span>Site Walkthrough Checklist</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {walkthroughChecklist.map((item) => (
-              <div key={item.key} className="flex items-center space-x-3 p-2 rounded">
-                <Checkbox
-                  id={item.key}
-                  checked={walkthroughItems[item.key]}
-                  onCheckedChange={(checked) => handleWalkthroughChange(item.key, checked as boolean)}
-                />
-                <div className="flex items-center space-x-2 flex-1">
-                  <item.icon className="w-4 h-4 text-muted-foreground" />
-                  <label htmlFor={item.key} className="text-sm font-medium cursor-pointer">
-                    {item.label}
-                  </label>
-                  {walkthroughItems[item.key] && (
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                  )}
+      {/* Assessment Timer */}
+      <AssessmentTimer 
+        isRunning={isTimerRunning}
+        onTimeWarning={handleTimeWarning}
+        onTimeUp={handleTimeUp}
+      />
+
+      {/* Protocol Steps */}
+      <div className="space-y-4">
+        {protocolSteps.map(step => (
+          <ProtocolStep
+            key={step.number}
+            stepNumber={step.number}
+            title={step.title}
+            duration={step.duration}
+            status={stepStatuses[step.number]}
+            isExpanded={expandedStep === step.number}
+            onToggle={() => setExpandedStep(expandedStep === step.number ? 0 : step.number)}
+            onStart={() => handleStepStart(step.number)}
+            onComplete={() => handleStepComplete(step.number)}
+            canStart={canStartStep(step.number)}
+            canComplete={canCompleteStep(step.number)}
+          >
+            {/* Step Content */}
+            {step.number === 1 && (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Contact Person</label>
+                  <Input
+                    placeholder="Primary contact on-site"
+                    value={step1Data.contactPerson}
+                    onChange={(e) => setStep1Data(prev => ({ ...prev, contactPerson: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Special Requests</label>
+                  <Textarea
+                    placeholder="Any special requests or considerations..."
+                    value={step1Data.specialRequests}
+                    onChange={(e) => setStep1Data(prev => ({ ...prev, specialRequests: e.target.value }))}
+                    rows={3}
+                  />
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            )}
 
-      {/* Customer Priorities */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center space-x-2">
-            <User className="w-5 h-5 text-primary" />
-            <span>Customer Priorities Assessment</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Comfort Issues</label>
-              <Textarea
-                placeholder="Temperature complaints, air quality concerns, noise issues..."
-                value={customerPriorities.comfort}
-                onChange={(e) => handlePriorityChange('comfort', e.target.value)}
-                className="min-h-20"
+            {step.number === 2 && (
+              <SafetyChecklist
+                value={step2Data}
+                onChange={setStep2Data}
               />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">Equipment Problems</label>
-              <Textarea
-                placeholder="Equipment failures, performance issues, maintenance concerns..."
-                value={customerPriorities.equipment}
-                onChange={(e) => handlePriorityChange('equipment', e.target.value)}
-                className="min-h-20"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">Energy Concerns</label>
-              <Textarea
-                placeholder="High utility bills, efficiency improvements, scheduling issues..."
-                value={customerPriorities.energy}
-                onChange={(e) => handlePriorityChange('energy', e.target.value)}
-                className="min-h-20"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">Operational Requests</label>
-              <Textarea
-                placeholder="System modifications, new features, training needs..."
-                value={customerPriorities.operational}
-                onChange={(e) => handlePriorityChange('operational', e.target.value)}
-                className="min-h-20"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            )}
 
-      {/* Equipment Status Check */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center space-x-2">
-            <FileText className="w-5 h-5 text-primary" />
-            <span>Equipment Status Verification</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {statusChecklist.map((item) => (
-              <div key={item.key} className="flex items-center space-x-3 p-2 rounded">
-                <Checkbox
-                  id={item.key}
-                  checked={equipmentStatus[item.key]}
-                  onCheckedChange={(checked) => handleStatusChange(item.key, checked as boolean)}
+            {step.number === 3 && (
+              <LocationMapping
+                value={step3Data}
+                onChange={setStep3Data}
+              />
+            )}
+
+            {step.number === 4 && (
+              <ConnectionTester
+                value={step4Data}
+                onChange={setStep4Data}
+              />
+            )}
+
+            {step.number === 5 && (
+              <div className="space-y-6">
+                <FileUploader
+                  files={step5Data.uploadedFiles}
+                  onFilesChange={(files) => setStep5Data(prev => ({ ...prev, uploadedFiles: files }))}
                 />
-                <div className="flex items-center space-x-2 flex-1">
-                  <label htmlFor={item.key} className="text-sm font-medium cursor-pointer">
-                    {item.label}
-                  </label>
-                  {equipmentStatus[item.key] && (
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                  )}
+                
+                {step5Data.uploadedFiles.length > 0 && (
+                  <Button onClick={handleNetworkAnalysis} className="w-full">
+                    Analyze Network Files
+                  </Button>
+                )}
+
+                {step5Data.analysisData && (
+                  <NetworkAnalysisResults data={step5Data.analysisData} />
+                )}
+
+                <Card className="p-4">
+                  <h5 className="font-medium mb-3">Manual Entry Alternative</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm font-medium">Station Count</label>
+                      <Input
+                        type="number"
+                        placeholder="Number of stations"
+                        value={step5Data.manualStationCount}
+                        onChange={(e) => setStep5Data(prev => ({ ...prev, manualStationCount: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Key Components</label>
+                      <Textarea
+                        placeholder="Main system components..."
+                        value={step5Data.manualComponents}
+                        onChange={(e) => setStep5Data(prev => ({ ...prev, manualComponents: e.target.value }))}
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {step.number === 6 && (
+              <div className="space-y-4">
+                <h5 className="font-medium">System Status Grid</h5>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Active Alarms</label>
+                    <Input
+                      type="number"
+                      placeholder="Count"
+                      value={step6Data.activeAlarms}
+                      onChange={(e) => setStep6Data(prev => ({ ...prev, activeAlarms: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Critical Alarms</label>
+                    <Input
+                      type="number"
+                      placeholder="Count"
+                      value={step6Data.criticalAlarms}
+                      onChange={(e) => setStep6Data(prev => ({ ...prev, criticalAlarms: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">CPU Usage %</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      placeholder="0-100"
+                      value={step6Data.cpuUsage}
+                      onChange={(e) => setStep6Data(prev => ({ ...prev, cpuUsage: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Memory Usage %</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      placeholder="0-100"
+                      value={step6Data.memoryUsage}
+                      onChange={(e) => setStep6Data(prev => ({ ...prev, memoryUsage: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Critical Issues</label>
+                  <Textarea
+                    placeholder="Document any critical issues found..."
+                    value={step6Data.criticalIssues}
+                    onChange={(e) => setStep6Data(prev => ({ ...prev, criticalIssues: e.target.value }))}
+                    rows={3}
+                  />
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Complete Phase Button */}
-      <div className="flex justify-end">
-        <Button
-          onClick={handleCompletePhase}
-          disabled={!canComplete}
-          size="lg"
-          className="px-8"
-        >
-          <CheckCircle className="w-5 h-5 mr-2" />
-          Complete Phase 2
-        </Button>
+            )}
+          </ProtocolStep>
+        ))}
       </div>
+
+      {/* System Status Cards */}
+      {isAssessmentComplete() && (
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">System Diagnostics</h3>
+            <Button onClick={runDiagnostics} variant="outline">
+              Run Diagnostics
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <SystemStatusCard
+              icon={AlertTriangle}
+              title="Active Alarms"
+              value={systemStatusData.activeAlarms}
+              variant={systemStatusData.activeAlarms > 10 ? 'warning' : 'default'}
+            />
+            <SystemStatusCard
+              icon={Network}
+              title="Communication Health"
+              value={`${systemStatusData.commHealth}%`}
+              variant={systemStatusData.commHealth > 90 ? 'success' : 'warning'}
+            />
+            <SystemStatusCard
+              icon={AlertTriangle}
+              title="Override Points"
+              value={systemStatusData.overridePoints}
+              variant={systemStatusData.overridePoints > 5 ? 'warning' : 'default'}
+            />
+            <SystemStatusCard
+              icon={BarChart3}
+              title="System Performance"
+              value={`${systemStatusData.performance}%`}
+              variant={systemStatusData.performance > 85 ? 'success' : 'warning'}
+            />
+          </div>
+        </Card>
+      )}
+
+      {/* Customer Priority Discussion */}
+      {isAssessmentComplete() && (
+        <Card className="p-6">
+          <PriorityDiscussion
+            value={priorityData}
+            onChange={setPriorityData}
+          />
+        </Card>
+      )}
+
+      {/* Complete Assessment Button */}
+      {isAssessmentComplete() && (
+        <div className="flex justify-end pt-4">
+          <Button onClick={onPhaseComplete} size="lg" className="min-w-[200px]">
+            Complete Assessment
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

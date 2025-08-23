@@ -1267,6 +1267,53 @@ export type Database = {
           },
         ]
       }
+      assessment_steps: {
+        Row: {
+          completion_time: string | null
+          created_at: string | null
+          form_data: Json | null
+          id: string
+          start_time: string | null
+          status: string | null
+          step_name: string
+          step_number: number
+          updated_at: string | null
+          visit_id: string | null
+        }
+        Insert: {
+          completion_time?: string | null
+          created_at?: string | null
+          form_data?: Json | null
+          id?: string
+          start_time?: string | null
+          status?: string | null
+          step_name: string
+          step_number: number
+          updated_at?: string | null
+          visit_id?: string | null
+        }
+        Update: {
+          completion_time?: string | null
+          created_at?: string | null
+          form_data?: Json | null
+          id?: string
+          start_time?: string | null
+          status?: string | null
+          step_name?: string
+          step_number?: number
+          updated_at?: string | null
+          visit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_steps_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "ame_visits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_metadata: {
         Row: {
           created_at: string | null
@@ -1417,6 +1464,47 @@ export type Database = {
         }
         Relationships: []
       }
+      network_inventory: {
+        Row: {
+          analysis_completed_at: string | null
+          analysis_data: Json | null
+          created_at: string | null
+          file_names: string[] | null
+          id: string
+          protocols_found: string[] | null
+          total_stations: number | null
+          visit_id: string | null
+        }
+        Insert: {
+          analysis_completed_at?: string | null
+          analysis_data?: Json | null
+          created_at?: string | null
+          file_names?: string[] | null
+          id?: string
+          protocols_found?: string[] | null
+          total_stations?: number | null
+          visit_id?: string | null
+        }
+        Update: {
+          analysis_completed_at?: string | null
+          analysis_data?: Json | null
+          created_at?: string | null
+          file_names?: string[] | null
+          id?: string
+          protocols_found?: string[] | null
+          total_stations?: number | null
+          visit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_inventory_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "ame_visits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -1461,6 +1549,50 @@ export type Database = {
           usage_history?: Json | null
         }
         Relationships: []
+      }
+      system_connections: {
+        Row: {
+          connection_type: string
+          created_at: string | null
+          id: string
+          ip_address: string | null
+          notes: string | null
+          status: string | null
+          test_time: string | null
+          username: string | null
+          visit_id: string | null
+        }
+        Insert: {
+          connection_type: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          notes?: string | null
+          status?: string | null
+          test_time?: string | null
+          username?: string | null
+          visit_id?: string | null
+        }
+        Update: {
+          connection_type?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          notes?: string | null
+          status?: string | null
+          test_time?: string | null
+          username?: string | null
+          visit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_connections_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "ame_visits"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
