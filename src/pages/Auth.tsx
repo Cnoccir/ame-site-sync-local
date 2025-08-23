@@ -24,36 +24,19 @@ export const Auth = () => {
     setError('');
 
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        toast({
-          title: "Login Successful",
-          description: "Welcome back!",
-        });
-        
-        navigate('/projects');
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`
-          }
-        });
-
-        if (error) throw error;
-
-        toast({
-          title: "Account Created",
-          description: "Please check your email to verify your account.",
-        });
-      }
+      toast({
+        title: "Login Successful",
+        description: "Welcome back!",
+      });
+      
+      navigate('/projects');
     } catch (error: any) {
       setError(error.message);
       toast({
@@ -81,10 +64,10 @@ export const Auth = () => {
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-center">
-            {isLogin ? 'Sign In' : 'Create Account'}
+            Sign In to AME
           </CardTitle>
           <p className="text-muted-foreground text-center">
-            {isLogin ? 'Enter your credentials to access AME' : 'Create your AME account'}
+            Enter your credentials to access the maintenance system
           </p>
         </CardHeader>
 
@@ -160,19 +143,9 @@ export const Auth = () => {
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {isLogin ? 'Sign In' : 'Create Account'}
+              Sign In
             </Button>
           </form>
-
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-sm text-primary hover:underline"
-            >
-              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-            </button>
-          </div>
         </CardContent>
       </Card>
     </div>
