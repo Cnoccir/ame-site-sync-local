@@ -17,6 +17,8 @@ interface WorkflowDashboardProps {
 export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
   const [searchParams] = useSearchParams();
   const visitId = searchParams.get('visitId');
+  console.log('🔍 WorkflowDashboard - visitId from URL params:', visitId);
+  console.log('🔍 WorkflowDashboard - customer ID:', customer.id);
   
   const { 
     sessionData, 
@@ -28,6 +30,25 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
 
   const [currentPhase, setCurrentPhase] = useState(1);
   const [completedPhases, setCompletedPhases] = useState<number[]>([]);
+  const [noActiveVisit, setNoActiveVisit] = useState(false);
+
+  // If no visitId in URL, try to find an active visit for this customer
+  useEffect(() => {
+    const checkForActiveVisit = async () => {
+      if (!visitId) {
+        console.log('🔍 No visitId in URL, checking for active visits for customer');
+        try {
+          // TODO: We need the technician ID - for now let's show a message
+          setNoActiveVisit(true);
+        } catch (error) {
+          console.error('Error checking for active visits:', error);
+          setNoActiveVisit(true);
+        }
+      }
+    };
+
+    checkForActiveVisit();
+  }, [visitId, customer.id]);
 
   // Sync with session data
   useEffect(() => {
@@ -70,12 +91,45 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
     }
   };
 
+  if (noActiveVisit) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">No Active Visit</h2>
+          <p className="text-muted-foreground mb-4">
+            No active visit found for this customer. Please start a new visit from the customer management page.
+          </p>
+          <p className="text-sm text-muted-foreground mb-4">
+            Customer: {customer.company_name} - {customer.site_name}
+          </p>
+          <div className="space-x-2">
+            <button 
+              onClick={() => window.location.href = '/customers'}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+            >
+              Go to Customer Management
+            </button>
+            <button 
+              onClick={() => window.location.href = '/projects'}
+              className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90"
+            >
+              Go to Projects
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!sessionData) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold mb-2">Loading Visit Session...</h2>
           <p className="text-muted-foreground">Please wait while we prepare your visit workflow.</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Visit ID: {visitId || 'Not provided'}
+          </p>
         </div>
       </div>
     );
