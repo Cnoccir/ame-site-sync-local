@@ -1,4 +1,4 @@
-import { Bell, Menu, RefreshCw, User } from 'lucide-react';
+import { Bell, Menu, RefreshCw, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu,
@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useLocation } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 interface HeaderProps {
   onMenuToggle: () => void;
@@ -15,6 +16,28 @@ interface HeaderProps {
 
 export const Header = ({ onMenuToggle }: HeaderProps) => {
   const location = useLocation();
+  const { user, userRole, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
+  const getRoleLabel = () => {
+    switch (userRole) {
+      case 'admin':
+        return 'Administrator';
+      case 'technician':
+        return 'Technician';
+      default:
+        return 'User';
+    }
+  };
+
+  const getUserDisplayName = () => {
+    if (user?.email === 'tech@ame-inc.com') return 'Tech User';
+    if (user?.email === 'admin@ame-inc.com') return 'Admin User';
+    return user?.email?.split('@')[0] || 'User';
+  };
   
   const getPageTitle = () => {
     switch (location.pathname) {
@@ -62,14 +85,22 @@ export const Header = ({ onMenuToggle }: HeaderProps) => {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-secondary">
               <User className="w-4 h-4 mr-2" />
-              John Technician
+              {getUserDisplayName()}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
+            <div className="px-2 py-1.5 text-sm">
+              <div className="font-medium">{getUserDisplayName()}</div>
+              <div className="text-xs text-muted-foreground">{getRoleLabel()}</div>
+            </div>
+            <DropdownMenuSeparator />
             <DropdownMenuItem>Profile Settings</DropdownMenuItem>
             <DropdownMenuItem>Preferences</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-danger">Logout</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleSignOut} className="text-danger">
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
