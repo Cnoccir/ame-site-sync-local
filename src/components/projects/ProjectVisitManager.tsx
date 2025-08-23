@@ -21,8 +21,8 @@ export const ProjectVisitManager = ({ customer }: ProjectVisitManagerProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Mock technician ID - in real app this would come from auth
-  const technicianId = 'temp-tech-id';
+  // Use proper UUID format for technician - in real app this would come from auth
+  const technicianId = '00000000-0000-0000-0000-000000000001';
 
   useEffect(() => {
     loadActiveVisits();

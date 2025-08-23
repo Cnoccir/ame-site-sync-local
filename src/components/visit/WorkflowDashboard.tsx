@@ -121,8 +121,8 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
     console.log('🔍 Starting new visit for customer:', customer.id);
     try {
       setLoading(true);
-      // Mock technician ID - in real app this would come from auth
-      const technicianId = 'temp-tech-id';
+      // Use proper UUID format for technician - in real app this would come from auth
+      const technicianId = '00000000-0000-0000-0000-000000000001';
       
       const { visit, sessionToken } = await AMEService.createVisitWithSession(customer.id, technicianId);
       
