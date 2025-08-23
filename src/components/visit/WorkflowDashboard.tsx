@@ -10,6 +10,7 @@ import { Customer } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { AMEService } from '@/services/ameService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -116,10 +117,27 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
     window.location.href = `/visit/${customer.id}?visitId=${visit.id}`;
   };
 
-  const handleStartNewVisit = () => {
+  const handleStartNewVisit = async () => {
     console.log('🔍 Starting new visit for customer:', customer.id);
-    // Navigate to a page that can start a new visit or show the VisitManager
-    window.location.href = `/customers`;
+    try {
+      setLoading(true);
+      // Mock technician ID - in real app this would come from auth
+      const technicianId = 'temp-tech-id';
+      
+      const { visit, sessionToken } = await AMEService.createVisitWithSession(customer.id, technicianId);
+      
+      // Store session token in localStorage for recovery
+      localStorage.setItem(`visit_session_${visit.id}`, sessionToken);
+      
+      // Navigate with the new visitId
+      window.location.href = `/visit/${customer.id}?visitId=${visit.id}`;
+    } catch (error) {
+      console.error('Failed to start visit:', error);
+      // Fallback to customers page
+      window.location.href = `/customers`;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFormDataChange = (phaseData: any) => {
@@ -180,6 +198,37 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
                 className="w-full"
               >
                 Start New Visit Instead
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (noActiveVisit) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <Card className="w-full max-w-2xl">
+          <CardHeader>
+            <CardTitle>No Active Visit Found</CardTitle>
+            <p className="text-muted-foreground">
+              No active visit was found for {customer.company_name}. Would you like to start a new visit?
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-3">
+              <Button 
+                onClick={handleStartNewVisit}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                Start New Visit
+              </Button>
+              <Button 
+                onClick={() => window.location.href = '/customers'}
+                variant="outline"
+              >
+                Back to Customers
               </Button>
             </div>
           </CardContent>
