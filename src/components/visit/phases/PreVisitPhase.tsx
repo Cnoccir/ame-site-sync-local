@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Customer } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { ToolManagement } from '@/components/ToolManagement';
 
 interface PreVisitPhaseProps {
   customer: Customer;
@@ -22,6 +23,7 @@ export const PreVisitPhase = ({ customer, onPhaseComplete }: PreVisitPhaseProps)
   });
   
   const [safetyAcknowledgment, setSafetyAcknowledgment] = useState(false);
+  const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const { toast } = useToast();
 
   const allItemsChecked = Object.values(reviewItems).every(Boolean) && safetyAcknowledgment;
@@ -152,6 +154,9 @@ export const PreVisitPhase = ({ customer, onPhaseComplete }: PreVisitPhaseProps)
           </div>
         </CardContent>
       </Card>
+
+      {/* Tool Management */}
+      <ToolManagement onToolSelectionChange={setSelectedTools} />
 
       {/* Safety Acknowledgment */}
       <Card>
