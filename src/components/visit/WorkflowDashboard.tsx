@@ -8,7 +8,10 @@ import { AssessmentPhase } from './phases/AssessmentPhase';
 import { useVisitSession } from '@/hooks/useVisitSession';
 import { Customer } from '@/types';
 import { Badge } from '@/components/ui/badge';
-import { Clock } from 'lucide-react';
+import { Clock, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface WorkflowDashboardProps {
   customer: Customer;
@@ -31,23 +34,45 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
   const [currentPhase, setCurrentPhase] = useState(1);
   const [completedPhases, setCompletedPhases] = useState<number[]>([]);
   const [noActiveVisit, setNoActiveVisit] = useState(false);
+  const [activeVisits, setActiveVisits] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // If no visitId in URL, try to find an active visit for this customer
+  // If no visitId in URL, check for active visits for this customer
   useEffect(() => {
-    const checkForActiveVisit = async () => {
+    const checkForActiveVisits = async () => {
       if (!visitId) {
         console.log('🔍 No visitId in URL, checking for active visits for customer');
+        setLoading(true);
         try {
-          // TODO: We need the technician ID - for now let's show a message
-          setNoActiveVisit(true);
+          // Get all active visits for this customer
+          const { data, error } = await supabase
+            .from('ame_visits')
+            .select('*')
+            .eq('customer_id', customer.id)
+            .eq('is_active', true)
+            .in('visit_status', ['Scheduled', 'In Progress']);
+
+          if (error) throw error;
+
+          console.log('🔍 Found active visits:', data?.length || 0);
+          
+          if (data && data.length > 0) {
+            setActiveVisits(data);
+          } else {
+            setNoActiveVisit(true);
+          }
         } catch (error) {
           console.error('Error checking for active visits:', error);
           setNoActiveVisit(true);
+        } finally {
+          setLoading(false);
         }
+      } else {
+        setLoading(false);
       }
     };
 
-    checkForActiveVisit();
+    checkForActiveVisits();
   }, [visitId, customer.id]);
 
   // Sync with session data
@@ -85,38 +110,80 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
     }
   };
 
+  const handleContinueVisit = (visit: any) => {
+    console.log('🔍 Continuing visit:', visit.id);
+    // Navigate with the correct visitId parameter
+    window.location.href = `/visit/${customer.id}?visitId=${visit.id}`;
+  };
+
+  const handleStartNewVisit = () => {
+    console.log('🔍 Starting new visit for customer:', customer.id);
+    // Navigate to a page that can start a new visit or show the VisitManager
+    window.location.href = `/customers`;
+  };
+
   const handleFormDataChange = (phaseData: any) => {
     if (sessionData) {
       updateAutoSaveData({ [`phase_${currentPhase}`]: phaseData });
     }
   };
 
-  if (noActiveVisit) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">No Active Visit</h2>
-          <p className="text-muted-foreground mb-4">
-            No active visit found for this customer. Please start a new visit from the customer management page.
-          </p>
-          <p className="text-sm text-muted-foreground mb-4">
-            Customer: {customer.company_name} - {customer.site_name}
-          </p>
-          <div className="space-x-2">
-            <button 
-              onClick={() => window.location.href = '/customers'}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-            >
-              Go to Customer Management
-            </button>
-            <button 
-              onClick={() => window.location.href = '/projects'}
-              className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90"
-            >
-              Go to Projects
-            </button>
-          </div>
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Checking for Active Visits...</h2>
+          <p className="text-muted-foreground">Please wait while we check for existing visits.</p>
         </div>
+      </div>
+    );
+  }
+
+  if (activeVisits.length > 0) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <Card className="w-full max-w-2xl">
+          <CardHeader>
+            <CardTitle>Active Visits Found</CardTitle>
+            <p className="text-muted-foreground">
+              We found {activeVisits.length} active visit(s) for {customer.company_name}. 
+              Please choose to continue an existing visit or start a new one.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {activeVisits.map((visit) => (
+              <div key={visit.id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div>
+                  <h3 className="font-semibold">Visit {visit.visit_id}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Started: {new Date(visit.started_at).toLocaleDateString()}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Phase: {visit.current_phase}/4 • Status: {visit.visit_status}
+                  </p>
+                </div>
+                <div className="space-x-2">
+                  <Button 
+                    onClick={() => handleContinueVisit(visit)}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    Continue Visit
+                  </Button>
+                </div>
+              </div>
+            ))}
+            <div className="pt-4 border-t">
+              <Button 
+                onClick={handleStartNewVisit}
+                variant="outline"
+                className="w-full"
+              >
+                Start New Visit Instead
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -125,6 +192,7 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Loading Visit Session...</h2>
           <p className="text-muted-foreground">Please wait while we prepare your visit workflow.</p>
           <p className="text-sm text-muted-foreground mt-2">
