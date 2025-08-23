@@ -66,11 +66,10 @@ export class CSVImportService {
   }
 
   /**
-   * Import customers data from Google Sheets
+   * Import customers data from CSV text
    */
-  static async importCustomers(): Promise<{ success: number; errors: string[] }> {
+  static async importCustomersFromCsv(csvData: string): Promise<{ success: number; errors: string[] }> {
     try {
-      const csvData = await GoogleDriveService.getCustomersData();
       const customers = this.parseCSV(csvData);
       
       let success = 0;
@@ -154,16 +153,27 @@ export class CSVImportService {
       
       return { success, errors };
     } catch (error) {
+      throw new Error(`Failed to import customers from CSV: ${error}`);
+    }
+  }
+
+  /**
+   * Import customers data from Google Sheets
+   */
+  static async importCustomers(): Promise<{ success: number; errors: string[] }> {
+    try {
+      const csvData = await GoogleDriveService.getCustomersData();
+      return this.importCustomersFromCsv(csvData);
+    } catch (error) {
       throw new Error(`Failed to import customers: ${error}`);
     }
   }
 
   /**
-   * Import tasks data from Google Sheets
+   * Import tasks data from CSV text
    */
-  static async importTasks(): Promise<{ success: number; errors: string[] }> {
+  static async importTasksFromCsv(csvData: string): Promise<{ success: number; errors: string[] }> {
     try {
-      const csvData = await GoogleDriveService.getTaskLibraryData();
       const tasks = this.parseCSV(csvData);
       
       let success = 0;
@@ -212,16 +222,27 @@ export class CSVImportService {
       
       return { success, errors };
     } catch (error) {
+      throw new Error(`Failed to import tasks from CSV: ${error}`);
+    }
+  }
+
+  /**
+   * Import tasks data from Google Sheets
+   */
+  static async importTasks(): Promise<{ success: number; errors: string[] }> {
+    try {
+      const csvData = await GoogleDriveService.getTaskLibraryData();
+      return this.importTasksFromCsv(csvData);
+    } catch (error) {
       throw new Error(`Failed to import tasks: ${error}`);
     }
   }
 
   /**
-   * Import tools data from Google Sheets
+   * Import tools data from CSV text
    */
-  static async importTools(): Promise<{ success: number; errors: string[] }> {
+  static async importToolsFromCsv(csvData: string): Promise<{ success: number; errors: string[] }> {
     try {
-      const csvData = await GoogleDriveService.getToolLibraryData();
       const tools = this.parseCSV(csvData);
       
       let success = 0;
@@ -269,16 +290,27 @@ export class CSVImportService {
       
       return { success, errors };
     } catch (error) {
+      throw new Error(`Failed to import tools from CSV: ${error}`);
+    }
+  }
+
+  /**
+   * Import tools data from Google Sheets
+   */
+  static async importTools(): Promise<{ success: number; errors: string[] }> {
+    try {
+      const csvData = await GoogleDriveService.getToolLibraryData();
+      return this.importToolsFromCsv(csvData);
+    } catch (error) {
       throw new Error(`Failed to import tools: ${error}`);
     }
   }
 
   /**
-   * Import SOPs data from Google Sheets
+   * Import SOPs data from CSV text
    */
-  static async importSOPs(): Promise<{ success: number; errors: string[] }> {
+  static async importSOPsFromCsv(csvData: string): Promise<{ success: number; errors: string[] }> {
     try {
-      const csvData = await GoogleDriveService.getSopLibraryData();
       const sops = this.parseCSV(csvData);
       
       let success = 0;
@@ -324,6 +356,18 @@ export class CSVImportService {
       }
       
       return { success, errors };
+    } catch (error) {
+      throw new Error(`Failed to import SOPs from CSV: ${error}`);
+    }
+  }
+
+  /**
+   * Import SOPs data from Google Sheets
+   */
+  static async importSOPs(): Promise<{ success: number; errors: string[] }> {
+    try {
+      const csvData = await GoogleDriveService.getSopLibraryData();
+      return this.importSOPsFromCsv(csvData);
     } catch (error) {
       throw new Error(`Failed to import SOPs: ${error}`);
     }

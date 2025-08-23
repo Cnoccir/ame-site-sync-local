@@ -1,10 +1,13 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { CSVImportService } from '@/services/csvImportService';
 import { SampleDataImportService } from '@/services/sampleDataImportService';
+import { CsvFileUpload } from './CsvFileUpload';
 import { Loader2, Upload, Database, Users, Wrench, BookOpen, FileText, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface ImportResult {
@@ -24,6 +27,47 @@ export const DataImportPanel = () => {
   const [importingItem, setImportingItem] = useState<string | null>(null);
   const [results, setResults] = useState<ImportResults | null>(null);
   const { toast } = useToast();
+
+  const importFromCsvData = async (csvData: string, type: 'customers' | 'tasks' | 'tools' | 'sops') => {
+    setImportingItem(type);
+    try {
+      let result: ImportResult;
+      
+      switch (type) {
+        case 'customers':
+          result = await CSVImportService.importCustomersFromCsv(csvData);
+          break;
+        case 'tasks':
+          result = await CSVImportService.importTasksFromCsv(csvData);
+          break;
+        case 'tools':
+          result = await CSVImportService.importToolsFromCsv(csvData);
+          break;
+        case 'sops':
+          result = await CSVImportService.importSOPsFromCsv(csvData);
+          break;
+      }
+
+      setResults(prev => ({
+        ...prev,
+        [type]: result
+      } as ImportResults));
+
+      toast({
+        title: `${type.charAt(0).toUpperCase() + type.slice(1)} Import Complete`,
+        description: `Successfully imported ${result.success} records from CSV file. ${result.errors.length} errors.`,
+        variant: result.errors.length > 0 ? 'destructive' : 'default'
+      });
+    } catch (error) {
+      toast({
+        title: 'Import Failed',
+        description: `Failed to import ${type}: ${error}`,
+        variant: 'destructive'
+      });
+    } finally {
+      setImportingItem(null);
+    }
+  };
 
   const importSingleDataset = async (type: 'customers' | 'tasks' | 'tools' | 'sops') => {
     setImportingItem(type);
@@ -160,28 +204,28 @@ export const DataImportPanel = () => {
     {
       key: 'customers' as const,
       name: 'Customers',
-      description: 'Import customer data from Google Sheets',
+      description: 'Import customer data from CSV file or Google Sheets',
       icon: Users,
       color: 'text-purple-600'
     },
     {
       key: 'tasks' as const,
       name: 'Tasks',
-      description: 'Import task library from Google Sheets',
+      description: 'Import task library from CSV file or Google Sheets',
       icon: FileText,
       color: 'text-green-600'
     },
     {
       key: 'tools' as const,
       name: 'Tools',
-      description: 'Import tool library from Google Sheets',
+      description: 'Import tool library from CSV file or Google Sheets',
       icon: Wrench,
       color: 'text-orange-600'
     },
     {
       key: 'sops' as const,
       name: 'SOPs',
-      description: 'Import SOP library from Google Sheets',
+      description: 'Import SOP library from CSV file or Google Sheets',
       icon: BookOpen,
       color: 'text-blue-600'
     }
@@ -197,7 +241,7 @@ export const DataImportPanel = () => {
               Data Import System
             </CardTitle>
             <CardDescription>
-              Import data from Google Sheets or load sample data for testing
+              Import data from CSV files, Google Sheets, or load sample data for testing
             </CardDescription>
           </div>
           <Button 
@@ -215,46 +259,90 @@ export const DataImportPanel = () => {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {datasets.map((dataset) => (
-            <div 
-              key={dataset.key}
-              className="flex items-center justify-between p-4 rounded-lg border border-card-border hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg bg-muted ${dataset.color}`}>
-                  <dataset.icon className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-medium">{dataset.name}</h4>
-                    {getStatusIcon(results?.[dataset.key])}
-                  </div>
-                  <p className="text-xs text-muted-foreground">{dataset.description}</p>
-                  {results?.[dataset.key] && (
-                    <div className="mt-1">
-                      {getStatusBadge(results[dataset.key])}
+        <Tabs defaultValue="upload" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="upload">CSV File Upload</TabsTrigger>
+            <TabsTrigger value="remote">Remote Import</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="upload" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {datasets.map((dataset) => (
+                <Card key={dataset.key} className="border-card-border">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg bg-muted ${dataset.color}`}>
+                        <dataset.icon className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-medium">{dataset.name}</h4>
+                          {getStatusIcon(results?.[dataset.key])}
+                        </div>
+                        <p className="text-xs text-muted-foreground">Upload CSV file directly</p>
+                        {results?.[dataset.key] && (
+                          <div className="mt-1">
+                            {getStatusBadge(results[dataset.key])}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => importSingleDataset(dataset.key)}
-                disabled={importing || importingItem === dataset.key}
-                className="gap-2"
-              >
-                {importingItem === dataset.key ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                  <Upload className="w-3 h-3" />
-                )}
-                Import
-              </Button>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <CsvFileUpload
+                      label={`Upload ${dataset.name} CSV`}
+                      onFileData={(csvData) => importFromCsvData(csvData, dataset.key)}
+                      disabled={importing || importingItem === dataset.key}
+                    />
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          ))}
-        </div>
+          </TabsContent>
+
+          <TabsContent value="remote" className="space-y-4">
+            <div className="space-y-4">
+              {datasets.map((dataset) => (
+                <div 
+                  key={dataset.key}
+                  className="flex items-center justify-between p-4 rounded-lg border border-card-border hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg bg-muted ${dataset.color}`}>
+                      <dataset.icon className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-medium">{dataset.name}</h4>
+                        {getStatusIcon(results?.[dataset.key])}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{dataset.description}</p>
+                      {results?.[dataset.key] && (
+                        <div className="mt-1">
+                          {getStatusBadge(results[dataset.key])}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => importSingleDataset(dataset.key)}
+                    disabled={importing || importingItem === dataset.key}
+                    className="gap-2"
+                  >
+                    {importingItem === dataset.key ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Upload className="w-3 h-3" />
+                    )}
+                    Import
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
 
         {results && (
           <div className="mt-6 p-4 bg-muted rounded-lg">
