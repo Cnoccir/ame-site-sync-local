@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { AMEService } from '@/services/ameService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/hooks/useAuth';
 
 interface WorkflowDashboardProps {
   customer: Customer;
@@ -21,6 +22,7 @@ interface WorkflowDashboardProps {
 export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
   const [searchParams] = useSearchParams();
   const visitId = searchParams.get('visitId');
+  const { user, isAuthenticated } = useAuth();
   console.log('🔍 WorkflowDashboard - visitId from URL params:', visitId);
   console.log('🔍 WorkflowDashboard - customer ID:', customer.id);
   
@@ -38,10 +40,13 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
   const [activeVisits, setActiveVisits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Get technician ID from authenticated user
+  const technicianId = user?.id;
+
   // If no visitId in URL, check for active visits for this customer
   useEffect(() => {
     const checkForActiveVisits = async () => {
-      if (!visitId) {
+      if (!visitId && technicianId) {
         console.log('🔍 No visitId in URL, checking for active visits for customer');
         setLoading(true);
         try {
@@ -50,6 +55,7 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
             .from('ame_visits')
             .select('*')
             .eq('customer_id', customer.id)
+            .eq('technician_id', technicianId)
             .eq('is_active', true)
             .in('visit_status', ['Scheduled', 'In Progress']);
 
@@ -74,7 +80,7 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
     };
 
     checkForActiveVisits();
-  }, [visitId, customer.id]);
+  }, [visitId, customer.id, technicianId]);
 
   // Sync with session data
   useEffect(() => {
@@ -119,10 +125,15 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
 
   const handleStartNewVisit = async () => {
     console.log('🔍 Starting new visit for customer:', customer.id);
+    
+    if (!technicianId) {
+      console.error('No technician ID available');
+      window.location.href = `/customers`;
+      return;
+    }
+    
     try {
       setLoading(true);
-      // Use proper UUID format for technician - in real app this would come from auth
-      const technicianId = '00000000-0000-0000-0000-000000000001';
       
       const { visit, sessionToken } = await AMEService.createVisitWithSession(customer.id, technicianId);
       
@@ -145,6 +156,26 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
       updateAutoSaveData({ [`phase_${currentPhase}`]: phaseData });
     }
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <Card className="w-full max-w-2xl">
+          <CardHeader>
+            <CardTitle>Authentication Required</CardTitle>
+            <p className="text-muted-foreground">
+              Please log in to access the visit workflow.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => window.location.href = '/auth'}>
+              Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

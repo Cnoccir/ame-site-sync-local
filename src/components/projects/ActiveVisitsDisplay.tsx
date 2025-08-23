@@ -6,23 +6,29 @@ import { AMEService } from '@/services/ameService';
 import { Visit } from '@/types';
 import { AlertCircle, Clock, User, Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 export const ActiveVisitsDisplay = () => {
   const [activeVisits, setActiveVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
 
-  // Use proper UUID format for technician - in real app this would come from auth
-  const technicianId = '00000000-0000-0000-0000-000000000001';
+  // Get technician ID from authenticated user
+  const technicianId = user?.id;
 
   useEffect(() => {
-    loadActiveVisits();
-    // Refresh every 30 seconds
-    const interval = setInterval(loadActiveVisits, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    if (technicianId) {
+      loadActiveVisits();
+      // Refresh every 30 seconds
+      const interval = setInterval(loadActiveVisits, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [technicianId]);
 
   const loadActiveVisits = async () => {
+    if (!technicianId) return;
+    
     try {
       setLoading(true);
       const visits = await AMEService.getActiveVisits(technicianId);
@@ -52,6 +58,15 @@ export const ActiveVisitsDisplay = () => {
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
     return `${hours}h ${minutes}m`;
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center space-x-2">
+        <div className="w-3 h-3 bg-muted rounded-full"></div>
+        <span className="text-muted-foreground font-medium">Please log in to view visits</span>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

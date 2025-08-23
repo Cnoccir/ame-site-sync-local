@@ -8,6 +8,7 @@ import { Customer, Visit } from '@/types';
 import { Play, Clock, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ProjectVisitManagerProps {
   customer: Customer;
@@ -20,16 +21,21 @@ export const ProjectVisitManager = ({ customer }: ProjectVisitManagerProps) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
 
-  // Use proper UUID format for technician - in real app this would come from auth
-  const technicianId = '00000000-0000-0000-0000-000000000001';
+  // Get technician ID from authenticated user
+  const technicianId = user?.id;
 
   useEffect(() => {
-    loadActiveVisits();
-    checkCustomerActiveVisit();
-  }, [customer.id]);
+    if (technicianId) {
+      loadActiveVisits();
+      checkCustomerActiveVisit();
+    }
+  }, [customer.id, technicianId]);
 
   const loadActiveVisits = async () => {
+    if (!technicianId) return;
+    
     try {
       const visits = await AMEService.getActiveVisits(technicianId);
       setActiveVisits(visits);
@@ -39,6 +45,8 @@ export const ProjectVisitManager = ({ customer }: ProjectVisitManagerProps) => {
   };
 
   const checkCustomerActiveVisit = async () => {
+    if (!technicianId) return;
+    
     try {
       const activeVisit = await AMEService.getActiveVisitForCustomer(customer.id, technicianId);
       setCustomerActiveVisit(activeVisit);
@@ -48,6 +56,15 @@ export const ProjectVisitManager = ({ customer }: ProjectVisitManagerProps) => {
   };
 
   const startNewVisit = async () => {
+    if (!technicianId) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to start a visit.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Check if technician has too many active visits
     if (activeVisits.length >= 3) {
       toast({
@@ -115,17 +132,21 @@ export const ProjectVisitManager = ({ customer }: ProjectVisitManagerProps) => {
   return (
     <>
       <div className="flex items-center gap-2">
-        {customerActiveVisit && (
+        {!isAuthenticated ? (
+          <Badge variant="outline" className="bg-warning/10 text-warning border-warning">
+            Login Required
+          </Badge>
+        ) : customerActiveVisit ? (
           <Badge variant="outline" className="bg-warning/10 text-warning border-warning">
             <AlertCircle className="w-3 h-3 mr-1" />
             Active Visit
           </Badge>
-        )}
+        ) : null}
         
         <Button
           size="sm"
           onClick={handleStartVisit}
-          disabled={loading}
+          disabled={loading || !isAuthenticated}
           className="bg-primary hover:bg-primary-hover text-white"
         >
           <Play className="w-3 h-3 mr-1" />
