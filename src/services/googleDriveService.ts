@@ -7,10 +7,11 @@ export class GoogleDriveService {
   private static readonly BASE_URL = 'https://drive.google.com';
   
   /**
-   * Get the CSV export URL for a Google Drive file (works better for sheets)
+   * Get the CSV export URL for a public Google Drive file
+   * Uses the direct download format that works with public files
    */
   static getCsvExportUrl(fileId: string): string {
-    return `https://docs.google.com/spreadsheets/d/${fileId}/export?format=csv`;
+    return `https://drive.google.com/uc?export=download&id=${fileId}`;
   }
   
   /**
