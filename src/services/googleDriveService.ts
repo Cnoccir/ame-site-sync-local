@@ -7,10 +7,10 @@ export class GoogleDriveService {
   private static readonly BASE_URL = 'https://drive.google.com';
   
   /**
-   * Get the direct download URL for a Google Drive file
+   * Get the CSV export URL for a Google Drive file (works better for sheets)
    */
-  static getDownloadUrl(fileId: string): string {
-    return `${this.BASE_URL}/uc?export=download&id=${fileId}`;
+  static getCsvExportUrl(fileId: string): string {
+    return `https://docs.google.com/spreadsheets/d/${fileId}/export?format=csv`;
   }
   
   /**
@@ -35,19 +35,19 @@ export class GoogleDriveService {
       masterFolder: this.getFolderUrl(GOOGLE_DRIVE_CONFIG.masterFolder),
       serviceToolDataFolder: this.getFolderUrl(GOOGLE_DRIVE_CONFIG.serviceToolDataFolder),
       customers: {
-        download: this.getDownloadUrl(GOOGLE_DRIVE_CONFIG.files.customers),
+        download: this.getCsvExportUrl(GOOGLE_DRIVE_CONFIG.files.customers),
         view: this.getViewUrl(GOOGLE_DRIVE_CONFIG.files.customers)
       },
       sopLibrary: {
-        download: this.getDownloadUrl(GOOGLE_DRIVE_CONFIG.files.sopLibrary),
+        download: this.getCsvExportUrl(GOOGLE_DRIVE_CONFIG.files.sopLibrary),
         view: this.getViewUrl(GOOGLE_DRIVE_CONFIG.files.sopLibrary)
       },
       taskLibrary: {
-        download: this.getDownloadUrl(GOOGLE_DRIVE_CONFIG.files.taskLibrary),
+        download: this.getCsvExportUrl(GOOGLE_DRIVE_CONFIG.files.taskLibrary),
         view: this.getViewUrl(GOOGLE_DRIVE_CONFIG.files.taskLibrary)
       },
       toolLibrary: {
-        download: this.getDownloadUrl(GOOGLE_DRIVE_CONFIG.files.toolLibrary),
+        download: this.getCsvExportUrl(GOOGLE_DRIVE_CONFIG.files.toolLibrary),
         view: this.getViewUrl(GOOGLE_DRIVE_CONFIG.files.toolLibrary)
       }
     };
@@ -58,7 +58,12 @@ export class GoogleDriveService {
    */
   static async downloadCsvData(fileId: string): Promise<string> {
     try {
-      const response = await fetch(this.getDownloadUrl(fileId));
+      const response = await fetch(this.getCsvExportUrl(fileId), {
+        mode: 'cors',
+        headers: {
+          'Accept': 'text/csv'
+        }
+      });
       if (!response.ok) {
         throw new Error(`Failed to download file: ${response.statusText}`);
       }

@@ -13,21 +13,44 @@ export class CSVImportService {
     const lines = csvText.trim().split('\n');
     if (lines.length < 2) return [];
     
-    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+    // Handle quoted fields properly
+    const parseCSVLine = (line: string): string[] => {
+      const result: string[] = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      result.push(current.trim());
+      return result;
+    };
+    
+    const headers = parseCSVLine(lines[0]).map(h => h.replace(/"/g, '').trim());
     const rows: Record<string, any>[] = [];
     
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+      if (!lines[i].trim()) continue; // Skip empty lines
+      
+      const values = parseCSVLine(lines[i]).map(v => v.replace(/"/g, '').trim());
       const row: Record<string, any> = {};
       
       headers.forEach((header, index) => {
         const value = values[index] || '';
         // Convert common data types
-        if (value === 'TRUE' || value === 'true') {
+        if (value === 'TRUE' || value === 'true' || value === '1') {
           row[header] = true;
-        } else if (value === 'FALSE' || value === 'false') {
+        } else if (value === 'FALSE' || value === 'false' || value === '0') {
           row[header] = false;
-        } else if (value && !isNaN(Number(value))) {
+        } else if (value && !isNaN(Number(value)) && value !== '') {
           row[header] = Number(value);
         } else {
           row[header] = value || null;
