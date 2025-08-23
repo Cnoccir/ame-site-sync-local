@@ -12,21 +12,39 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { sampleCustomers } from '@/data/sampleData';
 import { Customer } from '@/types';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { AMEService } from '@/services/ameService';
 
 export const Projects = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [serviceFilter, setServiceFilter] = useState('All Tiers');
   const [statusFilter, setStatusFilter] = useState('All Status');
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    setCustomers(sampleCustomers);
-  }, []);
+    const loadCustomers = async () => {
+      try {
+        setLoading(true);
+        const data = await AMEService.getCustomers();
+        setCustomers(data);
+      } catch (error) {
+        console.error('Failed to load customers:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load customer data",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCustomers();
+  }, [toast]);
 
   const filteredCustomers = customers.filter(customer => {
     const matchesSearch = customer.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -142,75 +160,81 @@ export const Projects = () => {
 
           {/* Projects Table */}
           <div className="border border-table-border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-table-header">
-                  <TableHead className="font-semibold text-foreground">COMPANY</TableHead>
-                  <TableHead className="font-semibold text-foreground">SITE</TableHead>
-                  <TableHead className="font-semibold text-foreground">SERVICE TIER</TableHead>
-                  <TableHead className="font-semibold text-foreground">CONTACT</TableHead>
-                  <TableHead className="font-semibold text-foreground">SYSTEM</TableHead>
-                  <TableHead className="font-semibold text-foreground">NEXT DUE</TableHead>
-                  <TableHead className="font-semibold text-foreground">STATUS</TableHead>
-                  <TableHead className="font-semibold text-foreground">ACTIONS</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCustomers.map((customer) => (
-                  <TableRow 
-                    key={customer.id}
-                    className="hover:bg-table-row-hover"
-                  >
-                    <TableCell>
-                      <div>
-                        <div className="font-medium text-foreground">{customer.company_name}</div>
-                        <div className="text-sm text-muted-foreground">{customer.customer_id}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm text-foreground">{customer.site_name}</div>
-                    </TableCell>
-                    <TableCell>
-                      {getServiceTierBadge(customer.service_tier)}
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="text-sm font-medium text-foreground">{customer.primary_contact}</div>
-                        <div className="text-xs text-muted-foreground">{customer.contact_phone}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm text-foreground">{customer.system_type}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm text-foreground">
-                        {customer.next_due ? new Date(customer.next_due).toLocaleDateString() : 'Not scheduled'}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(customer.contract_status)}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="sm"
-                        onClick={() => handleStartVisit(customer)}
-                        className="bg-primary hover:bg-primary-hover text-white"
-                      >
-                        <Play className="w-3 h-3 mr-1" />
-                        Start Visit
-                      </Button>
-                    </TableCell>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-8 h-8 animate-spin border-4 border-primary border-t-transparent rounded-full"></div>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-table-header">
+                    <TableHead className="font-semibold text-foreground">COMPANY</TableHead>
+                    <TableHead className="font-semibold text-foreground">SITE</TableHead>
+                    <TableHead className="font-semibold text-foreground">SERVICE TIER</TableHead>
+                    <TableHead className="font-semibold text-foreground">CONTACT</TableHead>
+                    <TableHead className="font-semibold text-foreground">SYSTEM</TableHead>
+                    <TableHead className="font-semibold text-foreground">NEXT DUE</TableHead>
+                    <TableHead className="font-semibold text-foreground">STATUS</TableHead>
+                    <TableHead className="font-semibold text-foreground">ACTIONS</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredCustomers.map((customer) => (
+                    <TableRow 
+                      key={customer.id}
+                      className="hover:bg-table-row-hover"
+                    >
+                      <TableCell>
+                        <div>
+                          <div className="font-medium text-foreground">{customer.company_name}</div>
+                          <div className="text-sm text-muted-foreground">{customer.customer_id}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm text-foreground">{customer.site_name}</div>
+                      </TableCell>
+                      <TableCell>
+                        {getServiceTierBadge(customer.service_tier)}
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="text-sm font-medium text-foreground">{customer.primary_contact}</div>
+                          <div className="text-xs text-muted-foreground">{customer.contact_phone}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm text-foreground">{customer.system_type}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm text-foreground">
+                          {customer.next_due ? new Date(customer.next_due).toLocaleDateString() : 'Not scheduled'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(customer.contract_status)}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          onClick={() => handleStartVisit(customer)}
+                          className="bg-primary hover:bg-primary-hover text-white"
+                        >
+                          <Play className="w-3 h-3 mr-1" />
+                          Start Visit
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </div>
 
-          {filteredCustomers.length === 0 && (
+          {!loading && filteredCustomers.length === 0 && (
             <div className="text-center py-12">
               <div className="text-muted-foreground space-y-2">
-                <p className="text-lg font-medium">No active visits</p>
-                <p className="text-sm">Start a new visit to see it here</p>
+                <p className="text-lg font-medium">No customers found</p>
+                <p className="text-sm">Try adjusting your search filters or import customer data</p>
               </div>
             </div>
           )}
