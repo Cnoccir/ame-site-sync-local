@@ -6,75 +6,75 @@
 
 @layer base {
   :root {
-    /* Exact original AME colors from HTML */
-    --ame-primary: 30 58 95; /* #1e3a5f */
-    --ame-secondary: 74 144 194; /* #4a90c2 */
-    --ame-success: 40 167 69; /* #28a745 */
-    --ame-warning: 240 173 78; /* #f0ad4e */
-    --ame-danger: 217 83 79; /* #d9534f */
-    --ame-light: 249 250 251; /* #f9fafb */
-    --ame-medium: 229 231 235; /* #e5e7eb */
-    --ame-dark: 55 65 81; /* #374151 */
-    --ame-white: 255 255 255; /* #ffffff */
-    --ame-text: 51 51 51; /* #333333 */
+    /* Exact original AME colors from HTML - HSL format */
+    --ame-primary: 210 55% 22%; /* #1e3a5f */
+    --ame-secondary: 209 44% 52%; /* #4a90c2 */
+    --ame-success: 134 61% 40%; /* #28a745 */
+    --ame-warning: 38 92% 62%; /* #f0ad4e */
+    --ame-danger: 354 70% 54%; /* #d9534f */
+    --ame-light: 210 17% 98%; /* #f9fafb */
+    --ame-medium: 220 13% 91%; /* #e5e7eb */
+    --ame-dark: 220 13% 18%; /* #374151 */
+    --ame-white: 0 0% 100%; /* #ffffff */
+    --ame-text: 0 0% 20%; /* #333333 */
 
     /* Design system mapping to AME colors */
-    --background: 249 250 251; /* var(--ame-light) */
-    --foreground: 51 51 51; /* var(--ame-text) */
+    --background: 210 17% 98%; /* var(--ame-light) */
+    --foreground: 0 0% 20%; /* var(--ame-text) */
 
-    --card: 255 255 255; /* var(--ame-white) */
-    --card-foreground: 51 51 51; /* var(--ame-text) */
-    --card-header: 255 255 255;
-    --card-border: 229 231 235; /* var(--ame-medium) */
+    --card: 0 0% 100%; /* var(--ame-white) */
+    --card-foreground: 0 0% 20%; /* var(--ame-text) */
+    --card-header: 0 0% 100%;
+    --card-border: 220 13% 91%; /* var(--ame-medium) */
 
     /* Navigation - exact original */
-    --nav-background: 30 58 95; /* var(--ame-primary) */
-    --nav-foreground: 255 255 255;
-    --nav-active: 74 144 194; /* var(--ame-secondary) */
-    --nav-hover: 30 58 95;
+    --nav-background: 210 55% 22%; /* var(--ame-primary) */
+    --nav-foreground: 0 0% 100%;
+    --nav-active: 209 44% 52%; /* var(--ame-secondary) */
+    --nav-hover: 210 55% 22%;
 
-    /* Primary using AME secondary blue */
-    --primary: 30 58 95; /* var(--ame-primary) */
-    --primary-foreground: 255 255 255;
-    --primary-hover: 74 144 194; /* var(--ame-secondary) */
+    /* Primary using AME primary */
+    --primary: 210 55% 22%; /* var(--ame-primary) */
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 209 44% 52%; /* var(--ame-secondary) */
 
-    --secondary: 229 231 235; /* var(--ame-medium) */
-    --secondary-foreground: 51 51 51;
+    --secondary: 220 13% 91%; /* var(--ame-medium) */
+    --secondary-foreground: 0 0% 20%;
     --secondary-hover: 220 13% 86%;
 
     /* Status colors - exact original */
-    --success: 40 167 69; /* var(--ame-success) */
-    --success-foreground: 255 255 255;
+    --success: 134 61% 40%; /* var(--ame-success) */
+    --success-foreground: 0 0% 100%;
     --success-light: 134 61% 95%;
 
-    --warning: 240 173 78; /* var(--ame-warning) */
-    --warning-foreground: 255 255 255;
-    --warning-light: 36 100% 95%;
+    --warning: 38 92% 62%; /* var(--ame-warning) */
+    --warning-foreground: 0 0% 100%;
+    --warning-light: 38 92% 95%;
 
-    --danger: 217 83 79; /* var(--ame-danger) */
-    --danger-foreground: 255 255 255;
-    --danger-light: 0 100% 95%;
+    --danger: 354 70% 54%; /* var(--ame-danger) */
+    --danger-foreground: 0 0% 100%;
+    --danger-light: 354 70% 95%;
 
-    --info: 74 144 194; /* var(--ame-secondary) */
-    --info-foreground: 255 255 255;
-    --info-light: 207 90% 95%;
+    --info: 209 44% 52%; /* var(--ame-secondary) */
+    --info-foreground: 0 0% 100%;
+    --info-light: 209 44% 95%;
 
     /* Form elements */
-    --input: 255 255 255;
-    --input-border: 229 231 235;
-    --input-focus: 74 144 194;
+    --input: 0 0% 100%;
+    --input-border: 220 13% 91%;
+    --input-focus: 209 44% 52%;
     
-    --muted: 229 231 235;
-    --muted-foreground: 55 65 81;
+    --muted: 220 13% 96%;
+    --muted-foreground: 220 13% 46%;
 
-    --accent: 249 250 251;
-    --accent-foreground: 30 58 95;
+    --accent: 210 17% 98%;
+    --accent-foreground: 210 55% 22%;
 
-    --destructive: 217 83 79;
-    --destructive-foreground: 255 255 255;
+    --destructive: 354 70% 54%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 229 231 235;
-    --ring: 74 144 194;
+    --border: 220 13% 91%;
+    --ring: 209 44% 52%;
     --radius: 0.375rem;
 
     /* Typography */
@@ -127,8 +127,8 @@
 
   body {
     font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
-    background: rgb(var(--ame-light));
-    color: rgb(var(--ame-text));
+    background: hsl(var(--ame-light));
+    color: hsl(var(--ame-text));
     line-height: 1.5;
     font-size: 14px;
     @apply bg-background text-foreground;
@@ -144,7 +144,7 @@
   /* Sidebar Styling */
   .ame-sidebar {
     width: 280px;
-    background: rgb(var(--ame-primary));
+    background: hsl(var(--ame-primary));
     color: white;
     @apply flex flex-col fixed h-screen overflow-y-auto z-50 transition-transform duration-300;
   }
@@ -204,7 +204,7 @@
   .ame-nav-item.active {
     background: rgba(255, 255, 255, 0.1);
     color: white;
-    border-right: 3px solid rgb(var(--ame-secondary));
+    border-right: 3px solid hsl(var(--ame-secondary));
   }
 
   /* Main Content */
@@ -212,28 +212,33 @@
     flex: 1;
     margin-left: 280px;
     min-height: 100vh;
-    background: rgb(var(--ame-light));
+    background: hsl(var(--ame-light));
   }
 
-  /* Top Bar */
-  .ame-top-bar {
-    background: rgb(var(--ame-white));
-    padding: 20px 30px;
+  /* Sidebar Top Section with Navigation */
+  .ame-sidebar-top {
+    background: hsl(var(--ame-white));
+    padding: 20px 25px;
     @apply flex justify-between items-center shadow-sm;
-    border-bottom: 1px solid rgb(var(--ame-medium));
+    border-bottom: 1px solid hsl(var(--ame-medium));
+    margin: 0 0 20px 0;
   }
 
-  .ame-page-title {
-    font-size: 24px;
+  .ame-sidebar-page-title {
+    font-size: 18px;
     font-weight: 600;
-    color: rgb(var(--ame-primary));
+    color: hsl(var(--ame-primary));
   }
 
-  .ame-top-bar-btn {
-    background: rgb(var(--ame-primary));
+  .ame-sidebar-actions {
+    @apply flex items-center gap-3;
+  }
+
+  .ame-sidebar-btn {
+    background: hsl(var(--ame-primary));
     color: white;
     border: none;
-    padding: 10px 20px;
+    padding: 8px 16px;
     border-radius: 6px;
     font-size: 14px;
     font-weight: 500;
@@ -241,13 +246,13 @@
     @apply flex items-center gap-2;
   }
 
-  .ame-top-bar-btn:hover {
-    background: rgb(var(--ame-secondary));
+  .ame-sidebar-btn:hover {
+    background: hsl(var(--ame-secondary));
   }
 
   /* Welcome Section */
   .ame-welcome-section {
-    background: linear-gradient(135deg, rgb(var(--ame-primary)), rgb(var(--ame-secondary)));
+    background: linear-gradient(135deg, hsl(var(--ame-primary)), hsl(var(--ame-secondary)));
     color: white;
     padding: 40px;
     border-radius: 15px;
@@ -273,17 +278,17 @@
   }
 
   .ame-stat-card {
-    background: rgb(var(--ame-white));
+    background: hsl(var(--ame-white));
     border-radius: 12px;
     padding: 25px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    border: 1px solid rgb(var(--ame-medium));
+    border: 1px solid hsl(var(--ame-medium));
   }
 
   .ame-stat-icon {
     width: 50px;
     height: 50px;
-    background: linear-gradient(135deg, rgb(var(--ame-primary)), rgb(var(--ame-secondary)));
+    background: linear-gradient(135deg, hsl(var(--ame-primary)), hsl(var(--ame-secondary)));
     border-radius: 12px;
     @apply flex items-center justify-center text-white text-xl mb-4;
   }
@@ -291,7 +296,7 @@
   .ame-stat-label {
     font-size: 14px;
     font-weight: 600;
-    color: rgb(var(--ame-dark));
+    color: hsl(var(--ame-dark));
     margin-bottom: 8px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -300,13 +305,13 @@
   .ame-stat-value {
     font-size: 36px;
     font-weight: 700;
-    color: rgb(var(--ame-primary));
+    color: hsl(var(--ame-primary));
     margin-bottom: 5px;
   }
 
   .ame-stat-description {
     font-size: 13px;
-    color: rgb(var(--ame-dark));
+    color: hsl(var(--ame-dark));
     opacity: 0.7;
   }
 }
