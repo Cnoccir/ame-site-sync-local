@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Upload, FolderPlus, Settings, Database, Users, FileText } from 'lucide-react';
+import { DataImportPanel } from '@/components/admin/DataImportPanel';
 
 export const Admin = () => {
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -186,6 +187,7 @@ export const Admin = () => {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="import">Data Import</TabsTrigger>
           <TabsTrigger value="customers">Customer Management</TabsTrigger>
           <TabsTrigger value="folders">Drive Integration</TabsTrigger>
           <TabsTrigger value="system">System Settings</TabsTrigger>
@@ -223,6 +225,10 @@ export const Admin = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="import" className="space-y-4">
+          <DataImportPanel />
         </TabsContent>
 
         <TabsContent value="customers" className="space-y-4">
