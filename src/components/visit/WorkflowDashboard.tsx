@@ -5,6 +5,7 @@ import { WorkflowPhaseTracker } from './WorkflowPhaseTracker';
 import { CustomerInfoCard } from './CustomerInfoCard';
 import { PreVisitPhase } from './phases/PreVisitPhase';
 import { AssessmentPhase } from './phases/AssessmentPhase';
+import { ServiceExecutionPhase } from './phases/ServiceExecutionPhase';
 import { useVisitSession } from '@/hooks/useVisitSession';
 import { Customer } from '@/types';
 import { Badge } from '@/components/ui/badge';
@@ -111,10 +112,12 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
   };
 
   const handlePhaseClick = (phaseId: number) => {
-    // Allow clicking on completed phases or current phase
-    if (completedPhases.includes(phaseId) || phaseId === currentPhase) {
-      setCurrentPhase(phaseId);
-    }
+    // DEV MODE: Remove progress locks for testing - allow any phase
+    setCurrentPhase(phaseId);
+    // ORIGINAL: Allow clicking on completed phases or current phase
+    // if (completedPhases.includes(phaseId) || phaseId === currentPhase) {
+    //   setCurrentPhase(phaseId);
+    // }
   };
 
   const handleContinueVisit = (visit: any) => {
@@ -338,10 +341,10 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
             </TabsContent>
             
             <TabsContent value="phase-3" className="space-y-6">
-              <div className="text-center py-12">
-                <h3 className="text-lg font-semibold mb-2">Phase 3: Service Execution</h3>
-                <p className="text-muted-foreground">Coming soon...</p>
-              </div>
+              <ServiceExecutionPhase 
+                customer={customer}
+                onPhaseComplete={() => handlePhaseComplete(3)}
+              />
             </TabsContent>
             
             <TabsContent value="phase-4" className="space-y-6">

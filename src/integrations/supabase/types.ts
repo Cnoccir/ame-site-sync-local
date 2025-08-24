@@ -1574,6 +1574,51 @@ export type Database = {
         }
         Relationships: []
       }
+      service_tier_tasks: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          estimated_duration: number
+          id: string
+          is_required: boolean | null
+          prerequisites: string[] | null
+          service_tier: string
+          sop_content: Json | null
+          sort_order: number | null
+          task_name: string
+          tools_required: string[] | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          estimated_duration?: number
+          id?: string
+          is_required?: boolean | null
+          prerequisites?: string[] | null
+          service_tier: string
+          sop_content?: Json | null
+          sort_order?: number | null
+          task_name: string
+          tools_required?: string[] | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          estimated_duration?: number
+          id?: string
+          is_required?: boolean | null
+          prerequisites?: string[] | null
+          service_tier?: string
+          sop_content?: Json | null
+          sort_order?: number | null
+          task_name?: string
+          tools_required?: string[] | null
+        }
+        Relationships: []
+      }
       service_tiers: {
         Row: {
           annual_frequency: number | null
@@ -1707,6 +1752,50 @@ export type Database = {
           phase?: number | null
         }
         Relationships: []
+      }
+      task_procedures: {
+        Row: {
+          additional_resources: Json | null
+          created_at: string | null
+          id: string
+          procedure_category: string | null
+          procedure_steps: Json
+          procedure_title: string
+          task_id: string | null
+          updated_at: string | null
+          visual_guides: Json | null
+        }
+        Insert: {
+          additional_resources?: Json | null
+          created_at?: string | null
+          id?: string
+          procedure_category?: string | null
+          procedure_steps?: Json
+          procedure_title: string
+          task_id?: string | null
+          updated_at?: string | null
+          visual_guides?: Json | null
+        }
+        Update: {
+          additional_resources?: Json | null
+          created_at?: string | null
+          id?: string
+          procedure_category?: string | null
+          procedure_steps?: Json
+          procedure_title?: string
+          task_id?: string | null
+          updated_at?: string | null
+          visual_guides?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_procedures_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "service_tier_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       task_service_tiers: {
         Row: {
@@ -1950,6 +2039,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      visit_tasks: {
+        Row: {
+          actual_duration: number | null
+          completion_time: string | null
+          created_at: string | null
+          id: string
+          notes: string | null
+          start_time: string | null
+          status: string | null
+          task_id: string | null
+          updated_at: string | null
+          visit_id: string
+        }
+        Insert: {
+          actual_duration?: number | null
+          completion_time?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          start_time?: string | null
+          status?: string | null
+          task_id?: string | null
+          updated_at?: string | null
+          visit_id: string
+        }
+        Update: {
+          actual_duration?: number | null
+          completion_time?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          start_time?: string | null
+          status?: string | null
+          task_id?: string | null
+          updated_at?: string | null
+          visit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visit_tasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "service_tier_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

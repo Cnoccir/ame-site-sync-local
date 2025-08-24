@@ -75,12 +75,10 @@ export const WorkflowPhaseTracker = ({ currentPhase, completedPhases, onPhaseCli
         {phases.map((phase, index) => (
           <div key={phase.id} className="relative">
             <button
-              onClick={() => phase.id <= Math.max(currentPhase, ...completedPhases) && onPhaseClick(phase.id)}
-              disabled={phase.id > Math.max(currentPhase, ...completedPhases)}
+              onClick={() => onPhaseClick(phase.id)}
               className={cn(
-                'w-full p-3 rounded-lg border-2 transition-all duration-200 text-left',
-                getPhaseStyles(phase),
-                phase.id <= Math.max(currentPhase, ...completedPhases) ? 'cursor-pointer hover:shadow-md' : 'cursor-not-allowed opacity-60'
+                'w-full p-3 rounded-lg border-2 transition-all duration-200 text-left cursor-pointer hover:shadow-md',
+                getPhaseStyles(phase)
               )}
             >
               <div className="flex items-center space-x-3">
