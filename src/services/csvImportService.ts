@@ -77,20 +77,20 @@ export class CSVImportService {
       for (const task of tasks) {
         try {
           const taskData = {
-            task_id: task.Task_ID || task.task_id || task.ID,
-            task_name: task.Task_Name || task.task_name || task.Name,
-            navigation_path: task.Navigation || task.navigation_path || task.Navigation_Path,
-            sop_steps: task.SOP_Steps || task.sop_steps || task.Steps,
-            sop_template_sheet: task.SOP_Template || task.sop_template_sheet || task.Template,
-            quality_checks: task.Quality_Checks || task.quality_checks || task.QC,
-            prerequisites: task.Prerequisites || task.prerequisites,
-            skills_required: task.Skills_Required || task.skills_required || task.Skills,
-            safety_notes: task.Safety_Notes || task.safety_notes || task.Safety,
-            duration_minutes: parseInt(task.Duration || task.duration_minutes || task.Time || '30') || 30,
-            phase: parseInt(task.Phase || task.phase || '1') || 1,
-            task_order: parseInt(task.Order || task.task_order || '1') || 1,
-            is_mandatory: task.Mandatory === 'TRUE' || task.is_mandatory === true || task.Required === 'TRUE' || true,
-            version: task.Version || task.version || '1.0'
+            task_id: task.Task_ID,
+            task_name: task.Task_Name,
+            navigation_path: task.Navigation_Path,
+            sop_steps: task.SOP_Steps,
+            sop_template_sheet: task.SOP_Template_Sheet,
+            quality_checks: task.Quality_Checks,
+            prerequisites: task.Prerequisites,
+            skills_required: task.Skills_Required,
+            safety_notes: task.Safety_Notes,
+            duration_minutes: parseInt(task.Duration) || 30,
+            phase: 1, // Default phase
+            task_order: 1, // Default order  
+            is_mandatory: true, // Default mandatory
+            version: task.Version || '1.0'
           };
 
           const { error } = await supabase
