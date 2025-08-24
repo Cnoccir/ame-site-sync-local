@@ -20,16 +20,22 @@ import {
 } from '@/components/ui/table';
 import { Customer } from '@/types';
 import { cn } from '@/lib/utils';
+import { NewCustomerWizard } from './NewCustomerWizard';
+import { CustomerDetailsModal } from './CustomerDetailsModal';
 
 interface CustomerTableProps {
   customers: Customer[];
   onCustomerSelect?: (customer: Customer) => void;
+  onCustomersChanged?: () => void;
 }
 
-export const CustomerTable = ({ customers, onCustomerSelect }: CustomerTableProps) => {
+export const CustomerTable = ({ customers, onCustomerSelect, onCustomersChanged }: CustomerTableProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [serviceFilter, setServiceFilter] = useState<string>('All Tiers');
   const [statusFilter, setStatusFilter] = useState<string>('All Status');
+  const [showNewCustomerWizard, setShowNewCustomerWizard] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [customerModalMode, setCustomerModalMode] = useState<'view' | 'edit'>('view');
 
   const filteredCustomers = customers.filter(customer => {
     const matchesSearch = customer.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -94,15 +100,16 @@ export const CustomerTable = ({ customers, onCustomerSelect }: CustomerTableProp
     <Card className="border-card-border shadow-sm">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-xl font-semibold">Customer Management</CardTitle>
-          </div>
           <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => onCustomersChanged?.()}>
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
             </Button>
-            <Button size="sm" className="bg-primary hover:bg-primary-hover">
+            <Button 
+              size="sm" 
+              className="bg-primary hover:bg-primary-hover"
+              onClick={() => setShowNewCustomerWizard(true)}
+            >
               <Plus className="w-4 h-4 mr-2" />
               Add New Customer
             </Button>
@@ -206,11 +213,21 @@ export const CustomerTable = ({ customers, onCustomerSelect }: CustomerTableProp
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setSelectedCustomer(customer);
+                            setCustomerModalMode('view');
+                          }}
+                        >
                           <Eye className="w-4 h-4 mr-2" />
                           View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setSelectedCustomer(customer);
+                            setCustomerModalMode('edit');
+                          }}
+                        >
                           <Edit className="w-4 h-4 mr-2" />
                           Edit Customer
                         </DropdownMenuItem>
@@ -228,6 +245,22 @@ export const CustomerTable = ({ customers, onCustomerSelect }: CustomerTableProp
             <p className="text-muted-foreground">No customers found matching your criteria.</p>
           </div>
         )}
+
+        {/* New Customer Wizard */}
+        <NewCustomerWizard
+          isOpen={showNewCustomerWizard}
+          onClose={() => setShowNewCustomerWizard(false)}
+          onCustomerCreated={() => onCustomersChanged?.()}
+        />
+
+        {/* Customer Details Modal */}
+        <CustomerDetailsModal
+          isOpen={!!selectedCustomer}
+          onClose={() => setSelectedCustomer(null)}
+          customer={selectedCustomer}
+          onCustomerUpdated={() => onCustomersChanged?.()}
+          mode={customerModalMode}
+        />
       </CardContent>
     </Card>
   );

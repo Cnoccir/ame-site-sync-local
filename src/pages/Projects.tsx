@@ -94,7 +94,6 @@ export const Projects = () => {
       <Card className="border-card-border shadow-sm">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xl font-semibold">Project Selector</CardTitle>
             <Button variant="outline" size="sm">
               <Settings className="w-4 h-4 mr-2" />
               Refresh

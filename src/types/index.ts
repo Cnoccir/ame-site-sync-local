@@ -59,6 +59,16 @@ export interface Customer {
   last_service?: string;
   next_due?: string;
   technician_assigned?: string;
+  service_frequency?: string;
+  special_instructions?: string;
+  
+  // Administrative
+  account_manager?: string;
+  region?: string;
+  district?: string;
+  territory?: string;
+  escalation_contact?: string;
+  escalation_phone?: string;
   
   // Metadata
   drive_folder_id?: string;

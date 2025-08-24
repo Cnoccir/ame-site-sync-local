@@ -30,6 +30,26 @@ export const Customers = () => {
     loadCustomers();
   }, [toast]);
 
+  const handleCustomersChanged = () => {
+    const loadCustomers = async () => {
+      try {
+        setLoading(true);
+        const data = await AMEService.getCustomers();
+        setCustomers(data);
+      } catch (error) {
+        console.error('Failed to load customers:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load customer data",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadCustomers();
+  };
+
   const handleCustomerSelect = (customer: Customer) => {
     toast({
       title: "Customer Selected",
@@ -54,6 +74,7 @@ export const Customers = () => {
       <CustomerTable 
         customers={customers}
         onCustomerSelect={handleCustomerSelect}
+        onCustomersChanged={handleCustomersChanged}
       />
     </div>
   );

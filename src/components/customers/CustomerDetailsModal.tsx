@@ -1,0 +1,468 @@
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Save, X, Edit3, Eye } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { AMEService } from '@/services/ameService';
+import { Customer } from '@/types';
+
+interface CustomerDetailsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  customer: Customer | null;
+  onCustomerUpdated: () => void;
+  mode: 'view' | 'edit';
+}
+
+export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
+  isOpen,
+  onClose,
+  customer,
+  onCustomerUpdated,
+  mode: initialMode,
+}) => {
+  const [mode, setMode] = useState<'view' | 'edit'>(initialMode);
+  const [formData, setFormData] = useState<Customer | null>(customer);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+
+  React.useEffect(() => {
+    setFormData(customer);
+    setMode(initialMode);
+  }, [customer, initialMode]);
+
+  const updateFormData = (field: keyof Customer, value: any) => {
+    if (!formData) return;
+    setFormData(prev => prev ? { ...prev, [field]: value } : null);
+  };
+
+  const handleSave = async () => {
+    if (!formData) return;
+
+    try {
+      setIsSubmitting(true);
+      await AMEService.updateCustomer(formData.id, formData);
+      
+      toast({
+        title: "Success",
+        description: "Customer updated successfully",
+      });
+      
+      onCustomerUpdated();
+      setMode('view');
+    } catch (error) {
+      console.error('Error updating customer:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update customer",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setFormData(customer);
+    setMode('view');
+  };
+
+  if (!formData) return null;
+
+  const isEditing = mode === 'edit';
+
+  const InputField = ({ 
+    label, 
+    field, 
+    type = 'text', 
+    placeholder = '', 
+    rows = 3 
+  }: { 
+    label: string;
+    field: keyof Customer;
+    type?: string;
+    placeholder?: string;
+    rows?: number;
+  }) => (
+    <div>
+      <Label>{label}</Label>
+      {type === 'textarea' ? (
+        <Textarea
+          value={String(formData[field] || '')}
+          onChange={(e) => updateFormData(field, e.target.value)}
+          disabled={!isEditing}
+          placeholder={placeholder}
+          rows={rows}
+        />
+      ) : (
+        <Input
+          type={type}
+          value={String(formData[field] || '')}
+          onChange={(e) => updateFormData(field, e.target.value)}
+          disabled={!isEditing}
+          placeholder={placeholder}
+        />
+      )}
+    </div>
+  );
+
+  const SelectField = ({ 
+    label, 
+    field, 
+    options 
+  }: { 
+    label: string;
+    field: keyof Customer;
+    options: { value: string; label: string }[];
+  }) => (
+    <div>
+      <Label>{label}</Label>
+      <Select 
+        value={String(formData[field] || '')} 
+        onValueChange={(value) => updateFormData(field, value)}
+        disabled={!isEditing}
+      >
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map(option => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
+  const CheckboxField = ({ 
+    label, 
+    field 
+  }: { 
+    label: string;
+    field: keyof Customer;
+  }) => (
+    <div className="flex items-center space-x-2">
+      <Checkbox
+        checked={!!formData[field]}
+        onCheckedChange={(checked) => updateFormData(field, checked)}
+        disabled={!isEditing}
+      />
+      <Label>{label}</Label>
+    </div>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <DialogTitle className="text-xl">
+                {formData.company_name} - {formData.site_name}
+              </DialogTitle>
+              <Badge>{formData.service_tier}</Badge>
+              <Badge variant="outline">{formData.contract_status}</Badge>
+            </div>
+            <div className="flex items-center space-x-2">
+              {mode === 'view' ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMode('edit')}
+                >
+                  <Edit3 className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCancel}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSave}
+                    disabled={isSubmitting}
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    {isSubmitting ? 'Saving...' : 'Save'}
+                  </Button>
+                </>
+              )}
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <Tabs defaultValue="basic" className="w-full">
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="basic">Basic Info</TabsTrigger>
+            <TabsTrigger value="contacts">Contacts</TabsTrigger>
+            <TabsTrigger value="access">Access & Security</TabsTrigger>
+            <TabsTrigger value="system">System Access</TabsTrigger>
+            <TabsTrigger value="service">Service Info</TabsTrigger>
+            <TabsTrigger value="admin">Administrative</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="basic" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Basic Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Customer ID" field="customer_id" />
+                  <InputField label="Company Name" field="company_name" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Site Name" field="site_name" />
+                  <InputField label="Building Type" field="building_type" />
+                </div>
+                <InputField label="Site Address" field="site_address" type="textarea" />
+                <div className="grid grid-cols-3 gap-4">
+                  <SelectField 
+                    label="Service Tier" 
+                    field="service_tier"
+                    options={[
+                      { value: 'CORE', label: 'CORE' },
+                      { value: 'ASSURE', label: 'ASSURE' },
+                      { value: 'GUARDIAN', label: 'GUARDIAN' }
+                    ]}
+                  />
+                  <InputField label="System Type" field="system_type" />
+                  <SelectField 
+                    label="Contract Status" 
+                    field="contract_status"
+                    options={[
+                      { value: 'Active', label: 'Active' },
+                      { value: 'Inactive', label: 'Inactive' },
+                      { value: 'Pending', label: 'Pending' },
+                      { value: 'Expired', label: 'Expired' }
+                    ]}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="contacts" className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Primary Contact</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <InputField label="Contact Name" field="primary_contact" />
+                  <InputField label="Phone" field="contact_phone" />
+                  <InputField label="Email" field="contact_email" type="email" />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Emergency Contact</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <InputField label="Emergency Contact" field="emergency_contact" />
+                  <InputField label="Emergency Phone" field="emergency_phone" />
+                  <InputField label="Emergency Email" field="emergency_email" type="email" />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Technical Contact</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label>Technical Contact</Label>
+                    <Input
+                      value={String(formData.technician_assigned || '')}
+                      onChange={(e) => updateFormData('technician_assigned', e.target.value)}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Other Contacts</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <InputField label="Security Contact" field="security_contact" />
+                  <InputField label="Security Phone" field="security_phone" />
+                  <div>
+                    <Label>Escalation Contact</Label>
+                    <Input
+                      value={String(formData.escalation_contact || '')}
+                      onChange={(e) => updateFormData('escalation_contact', e.target.value)}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="access" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Access & Security Requirements</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Building Access Type" field="building_access_type" />
+                  <InputField label="Access Hours" field="access_hours" />
+                </div>
+                <InputField label="Building Access Details" field="building_access_details" type="textarea" />
+                
+                <div className="grid grid-cols-3 gap-4">
+                  <CheckboxField label="PPE Required" field="ppe_required" />
+                  <CheckboxField label="Badge Required" field="badge_required" />
+                  <CheckboxField label="Training Required" field="training_required" />
+                </div>
+
+                <InputField label="Safety Requirements" field="safety_requirements" type="textarea" />
+                <InputField label="Site Hazards" field="site_hazards" type="textarea" />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="system" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>System Access Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <InputField label="Web Supervisor URL" field="web_supervisor_url" />
+                <InputField label="BMS Supervisor IP" field="bms_supervisor_ip" />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Workbench Username" field="workbench_username" />
+                  <InputField label="Workbench Password" field="workbench_password" type="password" />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Platform Username" field="platform_username" />
+                  <InputField label="Platform Password" field="platform_password" type="password" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <CheckboxField label="Remote Access Available" field="remote_access" />
+                  <CheckboxField label="VPN Required" field="vpn_required" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Remote Access Type" field="remote_access_type" />
+                  <InputField label="VPN Details" field="vpn_details" type="textarea" />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="service" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Service Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Assigned Technician" field="technician_assigned" />
+                  <div>
+                    <Label>Service Frequency</Label>
+                    <Input
+                      value={String(formData.service_frequency || '')}
+                      onChange={(e) => updateFormData('service_frequency', e.target.value)}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Last Service Date" field="last_service" type="date" />
+                  <InputField label="Next Service Due" field="next_due" type="date" />
+                </div>
+
+                <div>
+                  <Label>Special Instructions</Label>
+                  <Textarea
+                    value={String(formData.special_instructions || '')}
+                    onChange={(e) => updateFormData('special_instructions', e.target.value)}
+                    disabled={!isEditing}
+                    rows={3}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="admin" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Administrative Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label>Account Manager</Label>
+                    <Input
+                      value={String(formData.account_manager || '')}
+                      onChange={(e) => updateFormData('account_manager', e.target.value)}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div>
+                    <Label>Region</Label>
+                    <Input
+                      value={String(formData.region || '')}
+                      onChange={(e) => updateFormData('region', e.target.value)}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div>
+                    <Label>District</Label>
+                    <Input
+                      value={String(formData.district || '')}
+                      onChange={(e) => updateFormData('district', e.target.value)}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <Label>Territory</Label>
+                  <Input
+                    value={String(formData.territory || '')}
+                    onChange={(e) => updateFormData('territory', e.target.value)}
+                    disabled={!isEditing}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Drive Folder ID" field="drive_folder_id" />
+                  <InputField label="Drive Folder URL" field="drive_folder_url" />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+};
