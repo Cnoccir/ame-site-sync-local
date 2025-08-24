@@ -120,7 +120,7 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
   useEffect(() => {
     const interval = setInterval(() => {
       // Auto-save logic here
-      console.log('Auto-saving assessment progress...');
+      
     }, 15000);
 
     return () => clearInterval(interval);
@@ -324,8 +324,8 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
                   </Card>
                 )}
 
-                <Card className="p-4">
-                  <h5 className="font-medium mb-3">Legacy Network Analysis (Optional)</h5>
+                  <Card className="p-4">
+                    <h5 className="font-medium mb-3">Network Analysis (Optional)</h5>
                   <FileUploader
                     files={step5Data.uploadedFiles}
                     onFilesChange={(files) => setStep5Data(prev => ({ ...prev, uploadedFiles: files }))}

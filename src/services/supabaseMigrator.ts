@@ -85,7 +85,7 @@ export class SupabaseMigrator {
           results.push(...result);
         }
         
-        console.log(`Inserted batch ${Math.floor(i / batchSize) + 1} for ${table}: ${batch.length} records`);
+        
       } catch (error) {
         console.error(`Error inserting batch for ${table}:`, error);
         throw error;
@@ -381,7 +381,7 @@ export class SupabaseMigrator {
     };
 
     try {
-      console.log('Starting migration...');
+      
 
       // Step 1: Test connection
       const connected = await this.testConnection();
@@ -390,7 +390,7 @@ export class SupabaseMigrator {
       }
 
       // Step 2: Insert lookup tables (already done in migration)
-      console.log('Fetching existing lookup data...');
+      
       const [serviceTiers, systemTypes, taskCategories, toolCategories] = await Promise.all([
         supabase.from('service_tiers').select('*'),
         supabase.from('system_types').select('*'),
@@ -411,7 +411,7 @@ export class SupabaseMigrator {
       });
 
       // Step 3: Insert main entity data
-      console.log('Inserting main entity data...');
+      
       
       // Insert customers
       if (parsedData.customers.length > 0) {
@@ -454,11 +454,11 @@ export class SupabaseMigrator {
       }
 
       // Step 4: Insert relationships
-      console.log('Inserting relationships...');
+      
       result.relationshipsCreated = await this.insertRelationships(parsedData.relationships);
 
       result.success = true;
-      console.log('Migration completed successfully!');
+      
 
     } catch (error) {
       console.error('Migration failed:', error);

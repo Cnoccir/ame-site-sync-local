@@ -54,7 +54,7 @@ export class MigrationOrchestrator {
 
       // Stage 3: Generate reports
       const parseReport = CSVParser.generateSummaryReport(parsedData);
-      console.log('Parse Report:', parseReport);
+      
 
       // Stage 4: Migrate to database
       this.updateProgress('migrating', 70, 'Migrating data to normalized database...');
@@ -78,7 +78,7 @@ export class MigrationOrchestrator {
 
       // Stage 6: Generate final report
       const migrationReport = migrator.generateMigrationReport(migrationResult);
-      console.log('Migration Report:', migrationReport);
+      
 
       this.updateProgress('completed', 100, 'Migration completed successfully!', {
         recordsInserted: migrationResult.recordsInserted,
@@ -216,7 +216,7 @@ export class MigrationOrchestrator {
     
     try {
       // This would need to be implemented in the migrator
-      console.log('Clearing normalized data...');
+      
       return true;
     } catch (error) {
       console.error('Error clearing data:', error);

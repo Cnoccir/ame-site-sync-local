@@ -77,7 +77,7 @@ export const ProjectVisitManager = ({ customer }: ProjectVisitManagerProps) => {
 
     setLoading(true);
     try {
-      console.log('🚀 Creating visit with session for customer:', customer.id, 'service tier:', customer.service_tier);
+      
       
       const { visit, sessionToken } = await AMEService.createVisitWithSession(customer.id, technicianId);
       

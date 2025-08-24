@@ -77,7 +77,7 @@ export class GoogleDriveService {
       }
       
       const csvData = await response.text();
-      console.log(`Successfully downloaded ${csvData.length} characters of CSV data for file ${fileId}`);
+      
       return csvData;
       
     } catch (error) {

@@ -134,13 +134,13 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
   };
 
   const handleContinueVisit = (visit: any) => {
-    console.log('🔍 Continuing visit:', visit.id);
+    
     // Navigate with the correct visitId parameter
     window.location.href = `/visit/${customer.id}?visitId=${visit.id}`;
   };
 
   const handleStartNewVisit = async () => {
-    console.log('🔍 Starting new visit for customer:', customer.id);
+    
     
     if (!technicianId) {
       console.error('No technician ID available');

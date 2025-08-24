@@ -21,20 +21,18 @@ export const useVisitSession = (visitId?: string) => {
   const AUTO_SAVE_INTERVAL = 30000;
 
   const initializeSession = useCallback(async (visitId: string) => {
-    console.log('🔍 Initializing session for visitId:', visitId);
+    
     setIsLoading(true);
     setError(null);
     
     try {
       // Try to get session token from localStorage first
       const storedToken = localStorage.getItem(`visit_session_${visitId}`);
-      console.log('🔍 Stored token found:', !!storedToken);
+      
       
       if (storedToken) {
         try {
-          console.log('🔍 Attempting to get session with stored token');
           const sessionInfo = await AMEService.getVisitSession(storedToken);
-          console.log('🔍 Session info retrieved:', !!sessionInfo);
           if (sessionInfo) {
             setSessionData({
               visitId: sessionInfo.visit.id,
@@ -43,21 +41,19 @@ export const useVisitSession = (visitId?: string) => {
               autoSaveData: sessionInfo.auto_save_data || {},
               lastSaved: new Date()
             });
-            console.log('✅ Session restored from localStorage');
+            
             return;
           }
         } catch (sessionError) {
-          console.log('❌ Stored session invalid, will try to recover visit:', sessionError);
+          
           // Clear invalid token
           localStorage.removeItem(`visit_session_${visitId}`);
         }
       }
 
       // If no valid session found, try to recover or create a new session for the visit
-      console.log('🔍 Attempting to create session for visit:', visitId);
       try {
         const sessionData = await AMEService.createSessionForVisit(visitId);
-        console.log('🔍 Session creation result:', !!sessionData);
         if (sessionData) {
           // Store new session token
           localStorage.setItem(`visit_session_${visitId}`, sessionData.sessionToken);
@@ -75,16 +71,14 @@ export const useVisitSession = (visitId?: string) => {
             description: "Visit session has been restored successfully.",
             variant: "default"
           });
-          console.log('✅ Session created and restored successfully');
+          
           return;
         }
       } catch (visitError) {
-        console.log('❌ Could not find or restore visit:', visitError);
         setError('Could not find or restore visit session');
       }
 
       // If all recovery attempts fail, show error
-      console.log('❌ All recovery attempts failed');
       const errorMessage = "Could not restore visit session. The visit may have expired or been completed.";
       setError(errorMessage);
       toast({
@@ -189,11 +183,8 @@ export const useVisitSession = (visitId?: string) => {
 
   // Initialize session on mount
   useEffect(() => {
-    console.log('🔍 useVisitSession effect triggered with visitId:', visitId);
     if (visitId) {
       initializeSession(visitId);
-    } else {
-      console.log('❌ No visitId provided');
     }
   }, [visitId, initializeSession]);
 

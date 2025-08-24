@@ -353,13 +353,11 @@ const csvFiles = [customerFile, taskFile, toolFile, sopFile];
 // Run complete migration
 const result = await migrateAMEDataToSupabase(csvFiles, {
   onProgress: (progress) => {
-    console.log(\`\${progress.stage}: \${progress.message} (\${progress.progress}%)\`);
+    
   }
 });
 
 if (result.success) {
-  console.log('Migration completed successfully!');
-  console.log('Summary:', result.summary);
 } else {
   console.error('Migration failed:', result.errors);
 }

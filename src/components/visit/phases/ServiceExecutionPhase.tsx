@@ -181,7 +181,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         throw error;
       }
       
-      console.log('SOP data loaded:', data?.length || 0);
+      
       setSOPData((data || []).map(sop => ({
         ...sop,
         steps: Array.isArray(sop.steps) ? sop.steps : [],
@@ -299,7 +299,6 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
     }
 
     try {
-      console.log('🚀 Starting task:', task.task_name, 'task_id:', task.task_id, 'visitId:', visitId);
       
       // First verify the visit exists and user has access
       const { data: visitData, error: visitError } = await supabase
@@ -309,21 +308,17 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         .single();
 
       if (visitError) {
-        console.error('❌ Visit verification error:', visitError);
         throw new Error('Visit not found or access denied');
       }
 
       if (!visitData) {
         throw new Error('Visit not found');
       }
-
-      console.log('✅ Visit verified:', visitData);
       
       // Check if visit task exists, create if not - use task.task_id instead of task.id
       let visitTask = visitTasks.find(vt => vt.task_id === task.task_id);
       
       if (!visitTask) {
-        console.log('📝 Creating new visit task entry');
         const { data: newVisitTask, error: insertError } = await supabase
           .from('visit_tasks')
           .insert({
@@ -336,21 +331,12 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
           .single();
 
         if (insertError) {
-          console.error('❌ Insert error:', insertError);
-          console.error('❌ Insert error details:', {
-            code: insertError.code,
-            message: insertError.message,
-            details: insertError.details,
-            hint: insertError.hint
-          });
           throw insertError;
         }
         
         visitTask = newVisitTask;
         setVisitTasks(prev => [...prev, newVisitTask as VisitTask]);
-        console.log('✅ New visit task created:', newVisitTask);
       } else {
-        console.log('📝 Updating existing visit task');
         // Update existing task
         const { error: updateError } = await supabase
           .from('visit_tasks')
@@ -361,7 +347,6 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
           .eq('id', visitTask.id);
 
         if (updateError) {
-          console.error('❌ Update error:', updateError);
           throw updateError;
         }
         
@@ -370,7 +355,6 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
             ? { ...vt, status: 'in_progress', start_time: new Date().toISOString() } as VisitTask
             : vt
         ));
-        console.log('✅ Visit task updated');
       }
 
       // Start timer
@@ -380,8 +364,6 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         title: 'Task Started',
         description: `Started ${task.task_name} - Follow the step-by-step guide`
       });
-      
-      console.log('✅ Task started successfully');
     } catch (error) {
       console.error('❌ Error starting task:', error);
       let errorMessage = 'Failed to start task';
@@ -406,58 +388,6 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
     if (!visitId) return;
 
     try {
-      console.log('🎯 Completing task:', task.task_name, 'task_id:', task.task_id);
-      
-      const visitTask = visitTasks.find(vt => vt.task_id === task.task_id);
-      if (!visitTask) {
-        console.error('❌ Visit task not found for task_id:', task.task_id);
-        return;
-      }
-
-      const startTime = taskTimers[task.id];
-      const actualDuration = startTime ? Math.round((Date.now() - startTime) / (1000 * 60)) : null;
-
-      const { error } = await supabase
-        .from('visit_tasks')
-        .update({
-          status: 'completed',
-          completion_time: new Date().toISOString(),
-          actual_duration: actualDuration
-        })
-        .eq('id', visitTask.id);
-
-      if (error) {
-        console.error('❌ Update error:', error);
-        throw error;
-      }
-
-      setVisitTasks(prev => prev.map(vt => 
-        vt.id === visitTask.id 
-          ? { 
-              ...vt, 
-              status: 'completed', 
-              completion_time: new Date().toISOString(),
-              actual_duration: actualDuration 
-            } as VisitTask
-          : vt
-      ));
-
-      // Stop timer
-      setTaskTimers(prev => {
-        const updated = { ...prev };
-        delete updated[task.id];
-        return updated;
-      });
-
-      // Close step viewer
-      setShowStepViewer(false);
-
-      toast({
-        title: 'Task Completed',
-        description: `Completed ${task.task_name}`
-      });
-
-      console.log('✅ Task completed successfully');
 
       // Check if all required tasks are completed
       const stats = getTaskStats();

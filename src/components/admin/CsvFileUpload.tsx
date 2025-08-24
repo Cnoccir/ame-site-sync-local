@@ -34,7 +34,7 @@ export const CsvFileUpload = ({ onFileData, accept = ".csv", disabled = false, l
     setUploading(true);
     try {
       const text = await file.text();
-      console.log(`Successfully read ${text.length} characters from ${file.name}`);
+      
       onFileData(text);
       
       toast({
