@@ -20,6 +20,9 @@ interface ImportResults {
   tasks: ImportResult;
   tools: ImportResult;
   sops: ImportResult;
+  serviceTierTasks: ImportResult;
+  taskProcedures: ImportResult;
+  visitTasks: ImportResult;
 }
 
 export const DataImportPanel = () => {
@@ -28,7 +31,7 @@ export const DataImportPanel = () => {
   const [results, setResults] = useState<ImportResults | null>(null);
   const { toast } = useToast();
 
-  const importFromCsvData = async (csvData: string, type: 'customers' | 'tasks' | 'tools' | 'sops') => {
+  const importFromCsvData = async (csvData: string, type: 'customers' | 'tasks' | 'tools' | 'sops' | 'serviceTierTasks' | 'taskProcedures' | 'visitTasks') => {
     setImportingItem(type);
     try {
       let result: ImportResult;
@@ -45,6 +48,15 @@ export const DataImportPanel = () => {
           break;
         case 'sops':
           result = await CSVImportService.importSOPsFromCsv(csvData);
+          break;
+        case 'serviceTierTasks':
+          result = await CSVImportService.importServiceTierTasksFromCsv(csvData);
+          break;
+        case 'taskProcedures':
+          result = await CSVImportService.importTaskProceduresFromCsv(csvData);
+          break;
+        case 'visitTasks':
+          result = await CSVImportService.importVisitTasksFromCsv(csvData);
           break;
       }
 
@@ -69,7 +81,7 @@ export const DataImportPanel = () => {
     }
   };
 
-  const importSingleDataset = async (type: 'customers' | 'tasks' | 'tools' | 'sops') => {
+  const importSingleDataset = async (type: 'customers' | 'tasks' | 'tools' | 'sops' | 'serviceTierTasks' | 'taskProcedures' | 'visitTasks') => {
     setImportingItem(type);
     try {
       let result: ImportResult;
@@ -89,6 +101,12 @@ export const DataImportPanel = () => {
           case 'sops':
             result = await CSVImportService.importSOPs();
             break;
+          case 'serviceTierTasks':
+          case 'taskProcedures':
+          case 'visitTasks':
+            // These don't have Google Sheets sources yet
+            throw new Error('No Google Sheets source available for this data type');
+            break;
         }
       } catch (csvError) {
         console.warn(`CSV import failed for ${type}, using sample data:`, csvError);
@@ -106,6 +124,12 @@ export const DataImportPanel = () => {
             break;
           case 'sops':
             result = await SampleDataImportService.importSampleSOPs();
+            break;
+          case 'serviceTierTasks':
+          case 'taskProcedures':
+          case 'visitTasks':
+            // These are already populated by migration sample data
+            result = { success: 0, errors: ['Data already populated by migration - use CSV upload to add more'] };
             break;
         }
         
@@ -154,7 +178,13 @@ export const DataImportPanel = () => {
         allResults = await CSVImportService.importAllData();
       } catch (csvError) {
         console.warn('CSV import failed, using sample data:', csvError);
-        allResults = await SampleDataImportService.importAllSampleData();
+        const sampleResults = await SampleDataImportService.importAllSampleData();
+        allResults = {
+          ...sampleResults,
+          serviceTierTasks: { success: 0, errors: ['Data already populated by migration'] },
+          taskProcedures: { success: 0, errors: ['Data already populated by migration'] },
+          visitTasks: { success: 0, errors: ['Data already populated by migration'] }
+        };
         
         toast({
           title: 'Data Import Complete - Sample Data',
@@ -228,6 +258,27 @@ export const DataImportPanel = () => {
       description: 'Import SOP library from CSV file or Google Sheets',
       icon: BookOpen,
       color: 'text-blue-600'
+    },
+    {
+      key: 'serviceTierTasks' as const,
+      name: 'Service Tier Tasks',
+      description: 'Import service tier specific tasks from CSV file',
+      icon: FileText,
+      color: 'text-indigo-600'
+    },
+    {
+      key: 'taskProcedures' as const,
+      name: 'Task Procedures',
+      description: 'Import detailed task procedures and SOPs from CSV file',
+      icon: BookOpen,
+      color: 'text-cyan-600'
+    },
+    {
+      key: 'visitTasks' as const,
+      name: 'Visit Tasks',
+      description: 'Import visit-specific task records from CSV file',
+      icon: FileText,
+      color: 'text-rose-600'
     }
   ];
 
