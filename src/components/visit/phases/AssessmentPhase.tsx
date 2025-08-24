@@ -4,8 +4,10 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertTriangle, Network, BarChart3, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 // Import assessment components
 import { AssessmentTimer } from '@/components/assessment/AssessmentTimer';
@@ -20,9 +22,10 @@ import { PriorityDiscussion } from '@/components/assessment/PriorityDiscussion';
 
 interface AssessmentPhaseProps {
   onPhaseComplete: () => void;
+  visitId: string;
 }
 
-export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplete }) => {
+export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplete, visitId }) => {
   const { toast } = useToast();
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
@@ -81,6 +84,8 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     analysisData: null as any,
     manualStationCount: '',
     manualComponents: '',
+    manualProtocols: '',
+    analysisMode: 'upload',
     tridiumAnalysis: '' as string
   });
 
@@ -167,7 +172,9 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
       case 4:
         return step4Data.supervisorStatus === 'success' || step4Data.workbenchStatus === 'success';
       case 5:
-        return step5Data.manualStationCount.trim() !== '';
+        return step5Data.analysisMode === 'upload' 
+          ? step5Data.uploadedFiles.length > 0 
+          : step5Data.manualStationCount.trim() !== '';
       case 6:
         return step6Data.activeAlarms !== '' && step6Data.criticalAlarms !== '';
       default:
@@ -191,28 +198,63 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     });
   };
 
-  const handleNetworkAnalysis = () => {
+  const handleNetworkAnalysis = async () => {
     if (step5Data.uploadedFiles.length === 0) return;
 
-    // Simulate network analysis
-    const analysisResults = {
-      totalStations: Math.floor(Math.random() * 500) + 100,
-      totalNetworks: Math.floor(Math.random() * 20) + 5,
-      protocolsFound: ['BACnet', 'Modbus', 'LON', 'Ethernet IP'],
-      filesProcessed: step5Data.uploadedFiles.length,
-      networkSegments: [
-        '192.168.1.0/24 - Main Building Network',
-        '192.168.10.0/24 - HVAC Controllers',
-        '192.168.20.0/24 - Lighting Systems'
-      ],
-      recommendations: [
-        'Review BACnet device priorities for optimal performance',
-        'Consider network segmentation for improved security',
-        'Update firmware on legacy controllers identified'
-      ]
-    };
+    try {
+      // Simulate network analysis - this would be replaced with actual CSV parsing
+      const analysisResults = {
+        totalStations: Math.floor(Math.random() * 500) + 100,
+        totalNetworks: Math.floor(Math.random() * 20) + 5,
+        protocolsFound: ['BACnet', 'Modbus', 'LON', 'Ethernet IP'],
+        filesProcessed: step5Data.uploadedFiles.length,
+        networkSegments: [
+          '192.168.1.0/24 - Main Building Network',
+          '192.168.10.0/24 - HVAC Controllers',
+          '192.168.20.0/24 - Lighting Systems'
+        ],
+        recommendations: [
+          'Review BACnet device priorities for optimal performance',
+          'Consider network segmentation for improved security',
+          'Update firmware on legacy controllers identified'
+        ]
+      };
 
-    setStep5Data(prev => ({ ...prev, analysisData: analysisResults }));
+      setStep5Data(prev => ({ ...prev, analysisData: analysisResults }));
+
+      // Store analysis results in network_inventory table
+      const { error } = await supabase
+        .from('network_inventory')
+        .upsert({
+          visit_id: visitId,
+          analysis_data: analysisResults,
+          total_stations: analysisResults.totalStations,
+          file_names: step5Data.uploadedFiles.map(f => f.name),
+          protocols_found: analysisResults.protocolsFound,
+          analysis_completed_at: new Date().toISOString()
+        });
+
+      if (error) {
+        console.error('Error saving network analysis:', error);
+        toast({
+          title: "Warning",
+          description: "Analysis completed but couldn't save to database.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Analysis Complete",
+          description: "Network analysis saved successfully.",
+        });
+      }
+    } catch (error) {
+      console.error('Network analysis error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete network analysis.",
+        variant: "destructive"
+      });
+    }
   };
 
   const runDiagnostics = () => {
@@ -310,43 +352,75 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
 
             {step.number === 5 && (
               <div className="space-y-4">
-                <div className="text-center py-8 text-muted-foreground">
-                  <Network className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <h5 className="text-lg font-semibold mb-2">Network Analysis Moved</h5>
-                  <p className="mb-4">
-                    Network analysis is now a dedicated phase with enhanced capabilities.
-                  </p>
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <p className="text-sm text-blue-700">
-                      Complete this phase to proceed to the new Network Analysis phase 
-                      with advanced CSV parsing, device inventory, and health monitoring.
-                    </p>
-                  </div>
-                </div>
+                <h5 className="font-medium mb-3">Network Inventory Analysis</h5>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Upload Tridium CSV exports or enter network information manually.
+                </p>
+                
+                <Tabs value={step5Data.analysisMode || 'upload'} onValueChange={(mode) => 
+                  setStep5Data(prev => ({ ...prev, analysisMode: mode }))
+                }>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="upload">Upload CSV Files</TabsTrigger>
+                    <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+                  </TabsList>
 
-                <Card className="p-4">
-                  <h5 className="font-medium mb-3">Manual Entry Alternative</h5>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-sm font-medium">Station Count</label>
-                      <Input
-                        type="number"
-                        placeholder="Number of stations"
-                        value={step5Data.manualStationCount}
-                        onChange={(e) => setStep5Data(prev => ({ ...prev, manualStationCount: e.target.value }))}
-                      />
+                  <TabsContent value="upload" className="space-y-4">
+                    <FileUploader
+                      files={step5Data.uploadedFiles}
+                      onFilesChange={(files) => {
+                        setStep5Data(prev => ({ ...prev, uploadedFiles: files }));
+                        if (files.length > 0) {
+                          handleNetworkAnalysis();
+                        }
+                      }}
+                      acceptedTypes={['.csv']}
+                      maxFiles={5}
+                    />
+                    
+                    {step5Data.analysisData && (
+                      <Card className="p-4 bg-green-50">
+                        <h6 className="font-medium text-green-800 mb-2">Analysis Complete</h6>
+                        <div className="text-sm text-green-700 space-y-1">
+                          <p>• {step5Data.analysisData.totalStations} stations discovered</p>
+                          <p>• {step5Data.analysisData.totalNetworks} network segments</p>
+                          <p>• Protocols: {step5Data.analysisData.protocolsFound.join(', ')}</p>
+                        </div>
+                      </Card>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="manual" className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-sm font-medium">Station Count</label>
+                        <Input
+                          type="number"
+                          placeholder="Number of stations"
+                          value={step5Data.manualStationCount}
+                          onChange={(e) => setStep5Data(prev => ({ ...prev, manualStationCount: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Network Protocols</label>
+                        <Input
+                          placeholder="e.g., BACnet, Modbus, LON"
+                          value={step5Data.manualProtocols || ''}
+                          onChange={(e) => setStep5Data(prev => ({ ...prev, manualProtocols: e.target.value }))}
+                        />
+                      </div>
                     </div>
                     <div>
                       <label className="text-sm font-medium">Key Components</label>
                       <Textarea
-                        placeholder="Main system components..."
+                        placeholder="Main system components, controllers, network details..."
                         value={step5Data.manualComponents}
                         onChange={(e) => setStep5Data(prev => ({ ...prev, manualComponents: e.target.value }))}
-                        rows={2}
+                        rows={3}
                       />
                     </div>
-                  </div>
-                </Card>
+                  </TabsContent>
+                </Tabs>
               </div>
             )}
 

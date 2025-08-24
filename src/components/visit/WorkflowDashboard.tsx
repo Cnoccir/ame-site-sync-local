@@ -434,6 +434,7 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
             <TabsContent value="phase-2" className="space-y-6">
               <AssessmentPhase 
                 onPhaseComplete={() => handlePhaseComplete(2)}
+                visitId={visitId}
               />
             </TabsContent>
             
