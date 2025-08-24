@@ -6,13 +6,13 @@ import { supabase } from '@/integrations/supabase/client';
  */
 export class CSVImportService {
   /**
-   * Parse CSV text into array of objects
+   * Parse CSV text into array of objects with proper quoted field handling
    */
   static parseCSV(csvText: string): Record<string, any>[] {
     const lines = csvText.trim().split('\n');
     if (lines.length < 2) return [];
     
-    // Handle quoted fields properly
+    // Handle quoted fields properly including fields with commas inside quotes
     const parseCSVLine = (line: string): string[] => {
       const result: string[] = [];
       let current = '';
@@ -20,7 +20,13 @@ export class CSVImportService {
       
       for (let i = 0; i < line.length; i++) {
         const char = line[i];
-        if (char === '"') {
+        const nextChar = line[i + 1];
+        
+        if (char === '"' && nextChar === '"') {
+          // Handle escaped quotes
+          current += '"';
+          i++; // Skip next quote
+        } else if (char === '"') {
           inQuotes = !inQuotes;
         } else if (char === ',' && !inQuotes) {
           result.push(current.trim());
@@ -33,27 +39,19 @@ export class CSVImportService {
       return result;
     };
     
-    const headers = parseCSVLine(lines[0]).map(h => h.replace(/"/g, '').trim());
+    const headers = parseCSVLine(lines[0]).map(h => h.replace(/^"|"$/g, '').trim());
     const rows: Record<string, any>[] = [];
     
     for (let i = 1; i < lines.length; i++) {
       if (!lines[i].trim()) continue; // Skip empty lines
       
-      const values = parseCSVLine(lines[i]).map(v => v.replace(/"/g, '').trim());
+      const values = parseCSVLine(lines[i]).map(v => v.replace(/^"|"$/g, '').trim());
       const row: Record<string, any> = {};
       
       headers.forEach((header, index) => {
         const value = values[index] || '';
-        // Convert common data types
-        if (value === 'TRUE' || value === 'true' || value === '1') {
-          row[header] = true;
-        } else if (value === 'FALSE' || value === 'false' || value === '0') {
-          row[header] = false;
-        } else if (value && !isNaN(Number(value)) && value !== '') {
-          row[header] = Number(value);
-        } else {
-          row[header] = value || null;
-        }
+        // Keep as string for now, we'll handle type conversion in import functions
+        row[header] = value || null;
       });
       
       if (Object.values(row).some(v => v !== null && v !== '')) {
@@ -65,7 +63,7 @@ export class CSVImportService {
   }
 
   /**
-   * Import tasks data from CSV text
+   * Import tasks data from CSV text with relationship handling
    */
   static async importTasksFromCsv(csvData: string): Promise<{ success: number; errors: string[] }> {
     try {
@@ -76,9 +74,23 @@ export class CSVImportService {
       
       for (const task of tasks) {
         try {
+          // First, get the category_id from the Category field
+          const { data: categoryData, error: categoryError } = await supabase
+            .from('task_categories')
+            .select('id')
+            .eq('category_name', task.Category)
+            .single();
+
+          if (categoryError && categoryError.code !== 'PGRST116') {
+            errors.push(`Task ${task.Task_ID}: Category lookup error - ${categoryError.message}`);
+            continue;
+          }
+
+          // Insert the main task record
           const taskData = {
             task_id: task.Task_ID,
             task_name: task.Task_Name,
+            category_id: categoryData?.id || null,
             navigation_path: task.Navigation_Path,
             sop_steps: task.SOP_Steps,
             sop_template_sheet: task.SOP_Template_Sheet,
@@ -93,15 +105,94 @@ export class CSVImportService {
             version: task.Version || '1.0'
           };
 
-          const { error } = await supabase
+          const { data: insertedTask, error: taskError } = await supabase
             .from('ame_tasks_normalized')
-            .upsert(taskData, { onConflict: 'task_id' });
+            .upsert(taskData, { onConflict: 'task_id' })
+            .select('id')
+            .single();
           
-          if (error) {
-            errors.push(`Task ${taskData.task_id}: ${error.message}`);
-          } else {
-            success++;
+          if (taskError) {
+            errors.push(`Task ${taskData.task_id}: ${taskError.message}`);
+            continue;
           }
+
+          // Handle Service_Tiers relationships
+          if (task.Service_Tiers && insertedTask) {
+            const serviceTiers = task.Service_Tiers.split(',').map(tier => tier.trim());
+            
+            for (const tierCode of serviceTiers) {
+              if (tierCode) {
+                const { data: tierData, error: tierError } = await supabase
+                  .from('service_tiers')
+                  .select('id')
+                  .eq('tier_code', tierCode)
+                  .single();
+
+                if (tierData) {
+                  await supabase
+                    .from('task_service_tiers')
+                    .upsert({
+                      task_id: insertedTask.id,
+                      service_tier_id: tierData.id,
+                      is_required: true
+                    }, { onConflict: 'task_id,service_tier_id' });
+                }
+              }
+            }
+          }
+
+          // Handle Tools_Required relationships
+          if (task.Tools_Required && insertedTask) {
+            const tools = task.Tools_Required.split(',').map(tool => tool.trim());
+            
+            for (const toolName of tools) {
+              if (toolName) {
+                // First check if tool exists in ame_tools_normalized
+                const { data: toolData, error: toolError } = await supabase
+                  .from('ame_tools_normalized')
+                  .select('id')
+                  .eq('tool_name', toolName)
+                  .single();
+
+                if (toolData) {
+                  await supabase
+                    .from('task_tools')
+                    .upsert({
+                      task_id: insertedTask.id,
+                      tool_id: toolData.id,
+                      is_required: true,
+                      quantity: 1
+                    }, { onConflict: 'task_id,tool_id' });
+                } else {
+                  // Create the tool if it doesn't exist
+                  const { data: newTool, error: newToolError } = await supabase
+                    .from('ame_tools_normalized')
+                    .upsert({
+                      tool_id: `TOOL_${toolName.replace(/[^A-Z0-9]/gi, '_').toUpperCase()}`,
+                      tool_name: toolName,
+                      description: `Tool imported from task ${task.Task_ID}`,
+                      safety_category: 'standard',
+                      status: 'active'
+                    }, { onConflict: 'tool_id' })
+                    .select('id')
+                    .single();
+
+                  if (newTool) {
+                    await supabase
+                      .from('task_tools')
+                      .upsert({
+                        task_id: insertedTask.id,
+                        tool_id: newTool.id,
+                        is_required: true,
+                        quantity: 1
+                      }, { onConflict: 'task_id,tool_id' });
+                  }
+                }
+              }
+            }
+          }
+
+          success++;
         } catch (error) {
           errors.push(`Task processing error: ${error}`);
         }
