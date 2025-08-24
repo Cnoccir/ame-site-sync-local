@@ -289,6 +289,65 @@ export class AMEService {
     if (error) throw error;
     return data as Visit;
   }
+
+  static async endVisit(visitId: string): Promise<void> {
+    const { error } = await supabase
+      .from('ame_visits')
+      .update({
+        visit_status: 'Abandoned',
+        is_active: false,
+        completion_date: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', visitId);
+    
+    if (error) throw error;
+
+    // Deactivate associated sessions
+    const { error: sessionError } = await supabase
+      .from('ame_visit_sessions')
+      .update({
+        is_active: false,
+        last_activity: new Date().toISOString()
+      })
+      .eq('visit_id', visitId);
+    
+    if (sessionError) throw sessionError;
+  }
+
+  static async resetVisitProgress(visitId: string): Promise<void> {
+    const { error } = await supabase
+      .from('ame_visits')
+      .update({
+        current_phase: 1,
+        phase_1_completed_at: null,
+        phase_2_completed_at: null,
+        phase_3_completed_at: null,
+        phase_4_completed_at: null,
+        auto_save_data: {},
+        total_duration: 0,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', visitId);
+    
+    if (error) throw error;
+
+    // Clear visit tasks
+    const { error: tasksError } = await supabase
+      .from('visit_tasks')
+      .delete()
+      .eq('visit_id', visitId);
+    
+    if (tasksError) throw tasksError;
+
+    // Reset assessment steps
+    const { error: assessmentError } = await supabase
+      .from('assessment_steps')
+      .delete()
+      .eq('visit_id', visitId);
+    
+    if (assessmentError) throw assessmentError;
+  }
   
   // Task operations
   static async getTasks(): Promise<any[]> {

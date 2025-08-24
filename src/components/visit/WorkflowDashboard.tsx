@@ -10,7 +10,18 @@ import { PostVisitPhase } from './phases/PostVisitPhase';
 import { useVisitSession } from '@/hooks/useVisitSession';
 import { Customer } from '@/types';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Loader2 } from 'lucide-react';
+import { Clock, Loader2, X, RefreshCw } from 'lucide-react';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { AMEService } from '@/services/ameService';
 import { Button } from '@/components/ui/button';
@@ -33,7 +44,9 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
     isAutoSaving, 
     saveProgress, 
     completePhase, 
-    updateAutoSaveData 
+    updateAutoSaveData,
+    endVisit,
+    resetVisit
   } = useVisitSession(visitId || undefined);
 
   const [currentPhase, setCurrentPhase] = useState(1);
@@ -299,9 +312,85 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
             <Badge variant="outline">Visit ID: {sessionData.visitId}</Badge>
             <Badge variant="secondary">Phase {currentPhase}/4</Badge>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="w-4 h-4" />
-            {isAutoSaving ? 'Saving...' : `Last saved: ${sessionData.lastSaved.toLocaleTimeString()}`}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock className="w-4 h-4" />
+              {isAutoSaving ? 'Saving...' : `Last saved: ${sessionData.lastSaved.toLocaleTimeString()}`}
+            </div>
+            
+            {/* Visit Controls */}
+            <div className="flex items-center gap-2">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="bg-orange-500/10 text-orange-600 border-orange-200 hover:bg-orange-500/20"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Reset Visit
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Reset Visit Progress?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will clear all progress and restart the visit from Phase 1. 
+                      All completed tasks and assessment data will be lost. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={() => {
+                        resetVisit();
+                        setCurrentPhase(1);
+                        setCompletedPhases([]);
+                      }}
+                      className="bg-orange-600 hover:bg-orange-700"
+                    >
+                      Reset Visit
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="bg-red-500/10 text-red-600 border-red-200 hover:bg-red-500/20"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    End Visit
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>End Visit?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently end the current visit and mark it as abandoned. 
+                      All progress will be lost and you'll be returned to the customers page. 
+                      This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={() => {
+                        endVisit().then(() => {
+                          window.location.href = '/customers';
+                        });
+                      }}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      End Visit
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
         </div>
       </div>

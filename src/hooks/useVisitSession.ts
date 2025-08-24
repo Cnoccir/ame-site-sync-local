@@ -197,6 +197,62 @@ export const useVisitSession = (visitId?: string) => {
     }
   }, [visitId, initializeSession]);
 
+  const endVisit = useCallback(async () => {
+    if (!sessionData) return;
+
+    try {
+      await AMEService.endVisit(sessionData.visitId);
+      
+      // Clear session data
+      localStorage.removeItem(`visit_session_${sessionData.visitId}`);
+      setSessionData(null);
+
+      toast({
+        title: "Visit Ended",
+        description: "The visit has been ended and all progress cleared.",
+        variant: "default"
+      });
+
+    } catch (error) {
+      console.error('Failed to end visit:', error);
+      toast({
+        title: "Error",
+        description: "Failed to end visit. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }, [sessionData, toast]);
+
+  const resetVisit = useCallback(async () => {
+    if (!sessionData) return;
+
+    try {
+      await AMEService.resetVisitProgress(sessionData.visitId);
+      
+      // Reset local session data
+      setSessionData(prev => prev ? {
+        ...prev,
+        currentPhase: 1,
+        autoSaveData: {},
+        lastSaved: new Date()
+      } : null);
+
+      toast({
+        title: "Visit Reset",
+        description: "All visit progress has been cleared. Starting from Phase 1.",
+        variant: "default"
+      });
+
+    } catch (error) {
+      console.error('Failed to reset visit:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reset visit progress. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }, [sessionData, toast]);
+
   return {
     sessionData,
     isAutoSaving,
@@ -204,6 +260,8 @@ export const useVisitSession = (visitId?: string) => {
     error,
     saveProgress,
     completePhase,
+    endVisit,
+    resetVisit,
     updateAutoSaveData: (data: any) => {
       setSessionData(prev => prev ? {
         ...prev,
