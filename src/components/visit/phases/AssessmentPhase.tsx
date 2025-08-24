@@ -15,7 +15,6 @@ import { LocationMapping } from '@/components/assessment/LocationMapping';
 import { ConnectionTester } from '@/components/assessment/ConnectionTester';
 import { FileUploader } from '@/components/assessment/FileUploader';
 import { NetworkAnalysisResults } from '@/components/assessment/NetworkAnalysisResults';
-import { TridiumDataImporter } from '@/components/assessment/TridiumDataImporter';
 import { SystemStatusCard } from '@/components/assessment/SystemStatusCard';
 import { PriorityDiscussion } from '@/components/assessment/PriorityDiscussion';
 
@@ -168,7 +167,7 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
       case 4:
         return step4Data.supervisorStatus === 'success' || step4Data.workbenchStatus === 'success';
       case 5:
-        return step5Data.uploadedFiles.length > 0 || step5Data.manualStationCount.trim() !== '' || step5Data.tridiumAnalysis.trim() !== '';
+        return step5Data.manualStationCount.trim() !== '';
       case 6:
         return step6Data.activeAlarms !== '' && step6Data.criticalAlarms !== '';
       default:
@@ -310,37 +309,20 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
             )}
 
             {step.number === 5 && (
-              <div className="space-y-6">
-                <TridiumDataImporter
-                  onDataSelected={(summaryText) => setStep5Data(prev => ({ ...prev, tridiumAnalysis: summaryText }))}
-                />
-                
-                {step5Data.tridiumAnalysis && (
-                  <Card className="p-4">
-                    <h5 className="font-medium mb-3">Generated Analysis Summary</h5>
-                    <div className="bg-muted p-3 rounded-md text-sm whitespace-pre-wrap max-h-60 overflow-y-auto">
-                      {step5Data.tridiumAnalysis}
-                    </div>
-                  </Card>
-                )}
-
-                  <Card className="p-4">
-                    <h5 className="font-medium mb-3">Network Analysis (Optional)</h5>
-                  <FileUploader
-                    files={step5Data.uploadedFiles}
-                    onFilesChange={(files) => setStep5Data(prev => ({ ...prev, uploadedFiles: files }))}
-                  />
-                  
-                  {step5Data.uploadedFiles.length > 0 && (
-                    <Button onClick={handleNetworkAnalysis} className="w-full mt-3">
-                      Analyze Network Files
-                    </Button>
-                  )}
-
-                  {step5Data.analysisData && (
-                    <NetworkAnalysisResults data={step5Data.analysisData} />
-                  )}
-                </Card>
+              <div className="space-y-4">
+                <div className="text-center py-8 text-muted-foreground">
+                  <Network className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <h5 className="text-lg font-semibold mb-2">Network Analysis Moved</h5>
+                  <p className="mb-4">
+                    Network analysis is now a dedicated phase with enhanced capabilities.
+                  </p>
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <p className="text-sm text-blue-700">
+                      Complete this phase to proceed to the new Network Analysis phase 
+                      with advanced CSV parsing, device inventory, and health monitoring.
+                    </p>
+                  </div>
+                </div>
 
                 <Card className="p-4">
                   <h5 className="font-medium mb-3">Manual Entry Alternative</h5>
