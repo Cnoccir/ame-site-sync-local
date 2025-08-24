@@ -77,20 +77,20 @@ export class CSVImportService {
       for (const task of tasks) {
         try {
           const taskData = {
-            task_id: task.task_id || task.Task_ID || task.ID,
-            task_name: task.task_name || task.Task_Name || task.Name,
-            navigation_path: task.navigation_path || task.Navigation_Path || task.Path,
-            sop_steps: task.sop_steps || task.SOP_Steps || task.Steps,
-            sop_template_sheet: task.sop_template_sheet || task.SOP_Template_Sheet,
-            quality_checks: task.quality_checks || task.Quality_Checks || task.QC,
-            prerequisites: task.prerequisites || task.Prerequisites,
-            skills_required: task.skills_required || task.Skills_Required || task.Skills,
-            safety_notes: task.safety_notes || task.Safety_Notes || task.Safety,
-            duration_minutes: task.duration_minutes || task.Duration || task.Time || 30,
-            phase: task.phase || task.Phase || 1,
-            task_order: task.task_order || task.Order || 1,
-            is_mandatory: task.is_mandatory !== undefined ? task.is_mandatory : (task.Mandatory !== undefined ? task.Mandatory : true),
-            version: task.version || task.Version || '1.0'
+            task_id: task.Task_ID || task.task_id || task.ID,
+            task_name: task.Task_Name || task.task_name || task.Name,
+            navigation_path: task.Navigation || task.navigation_path || task.Navigation_Path,
+            sop_steps: task.SOP_Steps || task.sop_steps || task.Steps,
+            sop_template_sheet: task.SOP_Template || task.sop_template_sheet || task.Template,
+            quality_checks: task.Quality_Checks || task.quality_checks || task.QC,
+            prerequisites: task.Prerequisites || task.prerequisites,
+            skills_required: task.Skills_Required || task.skills_required || task.Skills,
+            safety_notes: task.Safety_Notes || task.safety_notes || task.Safety,
+            duration_minutes: parseInt(task.Duration || task.duration_minutes || task.Time || '30') || 30,
+            phase: parseInt(task.Phase || task.phase || '1') || 1,
+            task_order: parseInt(task.Order || task.task_order || '1') || 1,
+            is_mandatory: task.Mandatory === 'TRUE' || task.is_mandatory === true || task.Required === 'TRUE' || true,
+            version: task.Version || task.version || '1.0'
           };
 
           const { error } = await supabase
@@ -138,19 +138,19 @@ export class CSVImportService {
       for (const tool of tools) {
         try {
           const toolData = {
-            tool_id: tool.tool_id || tool.Tool_ID || tool.ID,
-            tool_name: tool.tool_name || tool.Tool_Name || tool.Name,
-            description: tool.description || tool.Description,
-            safety_category: tool.safety_category || tool.Safety_Category || 'standard',
-            vendor_link: tool.vendor_link || tool.Vendor_Link,
-            request_method: tool.request_method || tool.Request_Method,
-            alternative_tools: tool.alternative_tools || tool.Alternative_Tools,
-            maintenance_notes: tool.maintenance_notes || tool.Maintenance_Notes,
-            calibration_required: tool.calibration_required !== undefined ? tool.calibration_required : (tool.Calibration_Required !== undefined ? tool.Calibration_Required : false),
-            cost_estimate: tool.cost_estimate || tool.Cost_Estimate,
-            current_stock: tool.current_stock || tool.Stock || 0,
-            minimum_stock: tool.minimum_stock || tool.Min_Stock || 0,
-            status: tool.status || tool.Status || 'active'
+            tool_id: tool.Tool_ID || tool.tool_id || tool.ID,
+            tool_name: tool.Tool_Name || tool.tool_name || tool.Name,
+            description: tool.Description || tool.description || tool.Notes,
+            safety_category: tool.Safety_Category || tool.safety_category || tool.Safety || 'standard',
+            vendor_link: tool.Vendor_Link || tool.vendor_link || tool.Link,
+            request_method: tool.Request_Method || tool.request_method || tool.Method,
+            alternative_tools: tool.Alternative_Tools || tool.alternative_tools || tool.Alternatives,
+            maintenance_notes: tool.Maintenance_Notes || tool.maintenance_notes || tool.Maintenance,
+            calibration_required: tool.Calibration_Required === 'TRUE' || tool.calibration_required === true || false,
+            cost_estimate: parseFloat(tool.Cost_Estimate || tool.cost_estimate || tool.Cost || '0') || null,
+            current_stock: parseInt(tool.Current_Stock || tool.current_stock || tool.Stock || '0') || 0,
+            minimum_stock: parseInt(tool.Min_Stock || tool.minimum_stock || tool.Minimum || '0') || 0,
+            status: tool.Status || tool.status || tool.Tool_Status || 'active'
           };
 
           const { error } = await supabase
@@ -198,15 +198,15 @@ export class CSVImportService {
       for (const sop of sops) {
         try {
           const sopData = {
-            sop_id: sop.sop_id || sop.SOP_ID || sop.ID,
-            title: sop.title || sop.Title || sop.SOP_Name || sop.Name,
-            goal: sop.goal || sop.Goal || sop.description || sop.Description,
-            steps: this.parseJSON(sop.steps || sop.Steps || sop.procedure_steps),
-            best_practices: sop.best_practices || sop.Best_Practices,
-            tools_required: this.parseJSON(sop.tools_required || sop.Tools_Required || sop.Tools),
-            hyperlinks: this.parseJSON(sop.hyperlinks || sop.Hyperlinks),
-            version: sop.version || sop.Version || '1.0',
-            estimated_duration_minutes: sop.estimated_duration_minutes || sop.estimated_duration || sop.Duration || 30
+            sop_id: sop.SOP_ID || sop.sop_id || sop.ID,
+            title: sop.SOP_Name || sop.Title || sop.title || sop.Name,
+            goal: sop.Goal || sop.goal || sop.Description || sop.description,
+            steps: this.parseJSON(sop.Steps || sop.steps || sop.Procedure_Steps || sop.SOP_Steps),
+            best_practices: sop.Best_Practices || sop.best_practices || sop.Tips,
+            tools_required: this.parseJSON(sop.Tools_Required || sop.tools_required || sop.Tools),
+            hyperlinks: this.parseJSON(sop.Hyperlinks || sop.hyperlinks || sop.Links),
+            version: sop.Version || sop.version || '1.0',
+            estimated_duration_minutes: parseInt(sop.Duration || sop.estimated_duration_minutes || sop.Time || '30') || 30
           };
 
           const { error } = await supabase
