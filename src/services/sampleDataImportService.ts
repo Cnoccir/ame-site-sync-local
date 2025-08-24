@@ -174,7 +174,7 @@ export class SampleDataImportService {
     for (const task of sampleTasks) {
       try {
         const { error } = await supabase
-          .from('ame_tasks')
+          .from('ame_tasks_normalized')
           .upsert(task, { onConflict: 'task_id' });
         
         if (error) {
@@ -262,7 +262,7 @@ export class SampleDataImportService {
     for (const tool of sampleTools) {
       try {
         const { error } = await supabase
-          .from('ame_tools')
+          .from('ame_tools_normalized')
           .upsert(tool, { onConflict: 'tool_id' });
         
         if (error) {
@@ -285,16 +285,12 @@ export class SampleDataImportService {
     const sampleSOPs = [
       {
         sop_id: 'SOP_001',
-        sop_name: 'System Backup Procedure',
-        category: 'System Maintenance',
-        system_type: 'Niagara N4',
-        description: 'Standard procedure for backing up BMS platform and station data',
+        title: 'System Backup Procedure',
+        category_id: null,
+        goal: 'Standard procedure for backing up BMS platform and station data',
         version: '2.1',
-        revision_number: '2.1',
-        estimated_duration: 45,
-        safety_requirements: ['Power backup device required'],
-        tools_required: ['Laptop', 'External storage device', 'Ethernet cable'],
-        procedure_steps: [
+        estimated_duration_minutes: 45,
+        steps: [
           'Connect to BMS network',
           'Access Platform Administration',
           'Navigate to Backup/Restore section',
@@ -303,21 +299,17 @@ export class SampleDataImportService {
           'Verify backup completion',
           'Test restore capability'
         ],
-        compliance_standard: 'ASHRAE 135',
-        risk_level: 'low'
+        tools_required: ['Laptop', 'External storage device', 'Ethernet cable'],
+        best_practices: 'Always verify backup integrity before concluding process'
       },
       {
         sop_id: 'SOP_002',
-        sop_name: 'Sensor Calibration Protocol',
-        category: 'Calibration',
-        system_type: 'Universal',
-        description: 'Procedure for calibrating temperature, humidity, and pressure sensors',
+        title: 'Sensor Calibration Protocol',
+        category_id: null,
+        goal: 'Procedure for calibrating temperature, humidity, and pressure sensors',
         version: '3.0',
-        revision_number: '3.0',
-        estimated_duration: 60,
-        safety_requirements: ['LOTO procedures', 'PPE required'],
-        tools_required: ['Calibrated reference instruments', 'Multimeter', 'Safety equipment'],
-        procedure_steps: [
+        estimated_duration_minutes: 60,
+        steps: [
           'Verify sensor specifications',
           'Implement LOTO procedures',
           'Connect reference instruments',
@@ -326,10 +318,8 @@ export class SampleDataImportService {
           'Verify accuracy within tolerance',
           'Document results'
         ],
-        compliance_standard: 'NIST',
-        training_required: true,
-        certification_level: 'Level 2',
-        risk_level: 'medium'
+        tools_required: ['Calibrated reference instruments', 'Multimeter', 'Safety equipment'],
+        best_practices: 'Always follow LOTO procedures and use proper PPE'
       }
     ];
 
@@ -339,7 +329,7 @@ export class SampleDataImportService {
     for (const sop of sampleSOPs) {
       try {
         const { error } = await supabase
-          .from('ame_sops')
+          .from('ame_sops_normalized')
           .upsert(sop, { onConflict: 'sop_id' });
         
         if (error) {

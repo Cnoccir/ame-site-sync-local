@@ -207,7 +207,7 @@ export class CSVImportService {
           };
 
           const { error } = await supabase
-            .from('ame_tasks')
+            .from('ame_tasks_normalized')
             .upsert(taskData, { onConflict: 'task_id' });
           
           if (error) {
@@ -275,7 +275,7 @@ export class CSVImportService {
           };
 
           const { error } = await supabase
-            .from('ame_tools')
+            .from('ame_tools_normalized')
             .upsert(toolData, { onConflict: 'tool_id' });
           
           if (error) {
@@ -320,29 +320,19 @@ export class CSVImportService {
         try {
           const sopData = {
             sop_id: sop.sop_id || sop.SOP_ID || sop.ID,
-            sop_name: sop.sop_name || sop.SOP_Name || sop.Name,
-            category: sop.category || sop.Category || 'General',
-            system_type: sop.system_type || sop.System_Type || sop.System,
-            description: sop.description || sop.Description,
+            title: sop.sop_name || sop.SOP_Name || sop.Name || sop.title,
+            category_id: sop.category || sop.Category || null,
+            goal: sop.description || sop.Description,
+            steps: this.parseJSON(sop.procedure_steps || sop.Steps),
+            best_practices: sop.best_practices || sop.Best_Practices,
+            tools_required: this.parseJSON(sop.tools_required || sop.Tools_Required || sop.Tools),
+            hyperlinks: this.parseJSON(sop.hyperlinks || sop.Hyperlinks),
             version: sop.version || sop.Version || '1.0',
-            revision_number: sop.revision_number || sop.Revision || '1.0',
-            estimated_duration: sop.estimated_duration || sop.Duration,
-            safety_requirements: this.parseArray(sop.safety_requirements || sop.Safety_Requirements),
-            tools_required: this.parseArray(sop.tools_required || sop.Tools_Required || sop.Tools),
-            procedure_steps: this.parseJSON(sop.procedure_steps || sop.Steps),
-            compliance_standard: sop.compliance_standard || sop.Standard,
-            training_required: sop.training_required || sop.Training_Required || false,
-            certification_level: sop.certification_level || sop.Certification_Level,
-            risk_level: sop.risk_level || sop.Risk_Level || 'low',
-            environmental_conditions: sop.environmental_conditions || sop.Environmental_Conditions,
-            frequency_of_use: sop.frequency_of_use || sop.Frequency,
-            document_path: sop.document_path || sop.Document_Path,
-            video_url: sop.video_url || sop.Video_URL,
-            prerequisites: this.parseArray(sop.prerequisites || sop.Prerequisites)
+            estimated_duration_minutes: sop.estimated_duration || sop.Duration
           };
 
           const { error } = await supabase
-            .from('ame_sops')
+            .from('ame_sops_normalized')
             .upsert(sopData, { onConflict: 'sop_id' });
           
           if (error) {
