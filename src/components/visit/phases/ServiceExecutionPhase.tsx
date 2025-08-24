@@ -310,10 +310,36 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
   };
 
   const handleTaskStart = async (task: TaskData) => {
-    if (!visitId) return;
+    if (!visitId) {
+      console.error('❌ No visitId available');
+      toast({
+        title: 'Error',
+        description: 'No visit ID found',
+        variant: 'destructive'
+      });
+      return;
+    }
 
     try {
-      console.log('🚀 Starting task:', task.task_name, 'task_id:', task.task_id);
+      console.log('🚀 Starting task:', task.task_name, 'task_id:', task.task_id, 'visitId:', visitId);
+      
+      // First verify the visit exists and user has access
+      const { data: visitData, error: visitError } = await supabase
+        .from('ame_visits')
+        .select('id, visit_id, technician_id')
+        .eq('visit_id', visitId)
+        .single();
+
+      if (visitError) {
+        console.error('❌ Visit verification error:', visitError);
+        throw new Error('Visit not found or access denied');
+      }
+
+      if (!visitData) {
+        throw new Error('Visit not found');
+      }
+
+      console.log('✅ Visit verified:', visitData);
       
       // Check if visit task exists, create if not - use task.task_id instead of task.id
       let visitTask = visitTasks.find(vt => vt.task_id === task.task_id);
@@ -333,12 +359,18 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
 
         if (insertError) {
           console.error('❌ Insert error:', insertError);
+          console.error('❌ Insert error details:', {
+            code: insertError.code,
+            message: insertError.message,
+            details: insertError.details,
+            hint: insertError.hint
+          });
           throw insertError;
         }
         
         visitTask = newVisitTask;
         setVisitTasks(prev => [...prev, newVisitTask as VisitTask]);
-        console.log('✅ New visit task created');
+        console.log('✅ New visit task created:', newVisitTask);
       } else {
         console.log('📝 Updating existing visit task');
         // Update existing task
@@ -374,9 +406,19 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
       console.log('✅ Task started successfully');
     } catch (error) {
       console.error('❌ Error starting task:', error);
+      let errorMessage = 'Failed to start task';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('access denied') || error.message.includes('not found')) {
+          errorMessage = 'Access denied or visit not found';
+        } else if (error.message.includes('row-level security')) {
+          errorMessage = 'Permission denied - please check your access rights';
+        }
+      }
+      
       toast({
         title: 'Error',
-        description: 'Failed to start task',
+        description: errorMessage,
         variant: 'destructive'
       });
     }
