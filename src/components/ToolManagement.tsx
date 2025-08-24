@@ -59,15 +59,7 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
 
   const loadToolsAndCategories = async () => {
     try {
-      // Load categories
-      const { data: categoriesData, error: categoriesError } = await supabase
-        .from('tool_categories')
-        .select('*')
-        .order('category_name');
-
-      if (categoriesError) throw categoriesError;
-
-      // Load tools
+      // Load tools from the normalized table
       const { data: toolsData, error: toolsError } = await supabase
         .from('ame_tools_normalized')
         .select('*')
@@ -75,12 +67,19 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
 
       if (toolsError) throw toolsError;
 
-      setCategories(categoriesData || []);
       setTools(toolsData || []);
 
+      // Create categories from tools' safety_category field
+      const safetyCategories = [
+        { id: 'standard', category_name: 'Standard Tools', description: 'General purpose tools', safety_level: 'standard', created_at: new Date().toISOString() },
+        { id: 'high', category_name: 'High Safety Tools', description: 'Tools requiring special safety precautions', safety_level: 'high', created_at: new Date().toISOString() },
+        { id: 'critical', category_name: 'Critical Safety Tools', description: 'Mission critical safety tools', safety_level: 'critical', created_at: new Date().toISOString() }
+      ];
+      
+      setCategories(safetyCategories);
+
       // Auto-expand high safety level categories
-      const importantCategories = categoriesData?.filter(cat => cat.safety_level === 'high').map(cat => cat.id) || [];
-      setExpandedCategories(new Set(importantCategories));
+      setExpandedCategories(new Set(['high', 'critical']));
 
       setLoading(false);
     } catch (error) {
@@ -115,7 +114,7 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
   };
 
   const getToolsByCategory = (categoryId: string) => {
-    return tools.filter(tool => tool.category_id === categoryId);
+    return tools.filter(tool => tool.safety_category === categoryId);
   };
 
   const getToolStats = () => {

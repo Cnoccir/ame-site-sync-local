@@ -79,14 +79,37 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
 
   const loadServiceTierTasks = async () => {
     try {
+      // Use the proper relationship tables to get tasks by service tier
       const { data, error } = await supabase
-        .from('service_tier_tasks')
-        .select('*')
-        .eq('service_tier', 'CORE') // Default to CORE for now
-        .order('sort_order');
+        .from('ame_tasks_normalized')
+        .select(`
+          *,
+          task_service_tiers!inner(
+            service_tier_id,
+            service_tiers!inner(tier_code)
+          )
+        `)
+        .eq('task_service_tiers.service_tiers.tier_code', customer?.service_tier || 'CORE')
+        .order('task_id');
 
       if (error) throw error;
-      setServiceTierTasks(data || []);
+      
+      // Transform the data to match expected interface
+      const transformedTasks = (data || []).map(task => ({
+        id: task.id,
+        task_id: task.task_id,
+        service_tier: customer?.service_tier || 'CORE',
+        category: task.category_id || 'General',
+        task_name: task.task_name,
+        description: task.sop_steps || 'No description available',
+        estimated_duration: task.duration_minutes || 30,
+        is_required: task.is_mandatory || true,
+        prerequisites: task.prerequisites ? [task.prerequisites] : [],
+        tools_required: [], // Will be populated from relationship table
+        sort_order: task.task_order || 1
+      }));
+      
+      setServiceTierTasks(transformedTasks);
     } catch (error) {
       console.error('Error loading service tier tasks:', error);
       toast({
@@ -312,11 +335,11 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         <div>
           <h2 className="text-2xl font-semibold">Service Execution</h2>
           <p className="text-muted-foreground">
-            Execute CORE tier maintenance tasks
+            Execute {customer?.service_tier || 'CORE'} tier maintenance tasks
           </p>
         </div>
         <Badge variant="outline" className="text-lg px-4 py-2">
-          CORE Service Tier
+          {customer?.service_tier || 'CORE'} Service Tier
         </Badge>
       </div>
 

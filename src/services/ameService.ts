@@ -310,13 +310,20 @@ export class AMEService {
         task_service_tiers!inner(
           service_tier_id,
           service_tiers!inner(tier_code)
-        )
+        ),
+        task_categories(category_name)
       `)
       .eq('task_service_tiers.service_tiers.tier_code', serviceTier)
-      .order('task_id');
+      .order('task_order', { ascending: true });
     
     if (error) throw error;
-    return data || [];
+    
+    // Transform to include proper relationships
+    return (data || []).map(task => ({
+      ...task,
+      service_tier: serviceTier,
+      category_name: task.task_categories?.category_name || 'General'
+    }));
   }
   
   static async createTask(task: any): Promise<any> {
