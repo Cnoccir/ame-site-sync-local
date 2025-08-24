@@ -7,19 +7,16 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 export const MainLayout = () => {
   const isMobile = useIsMobile();
-  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
 
   return (
     <SidebarProvider 
       defaultOpen={!isMobile}
-      open={sidebarOpen}
-      onOpenChange={setSidebarOpen}
     >
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         
         <div className="flex-1 flex flex-col">
-          <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+          <Header />
           
           <main className="flex-1 overflow-auto" style={{ background: 'hsl(var(--ame-light))' }}>
             <Outlet />

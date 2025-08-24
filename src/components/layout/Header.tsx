@@ -11,11 +11,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
-interface HeaderProps {
-  onMenuToggle: () => void;
-}
-
-export const Header = ({ onMenuToggle }: HeaderProps) => {
+export const Header = () => {
   const location = useLocation();
   const { user, userRole, signOut } = useAuth();
 

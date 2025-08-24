@@ -148,10 +148,24 @@
 
   /* Sidebar Styling */
   .ame-sidebar {
-    width: 280px;
     background: hsl(var(--ame-primary));
     color: white;
-    @apply flex flex-col fixed h-screen overflow-y-auto z-50 transition-transform duration-300;
+    @apply flex flex-col h-screen overflow-y-auto transition-transform duration-300;
+  }
+  
+  /* Mobile sidebar overlay */
+  @media (max-width: 767px) {
+    .ame-sidebar {
+      @apply fixed z-50;
+      width: 280px;
+    }
+  }
+  
+  /* Desktop sidebar */
+  @media (min-width: 768px) {
+    .ame-sidebar {
+      width: 280px;
+    }
   }
 
   .ame-sidebar-header {

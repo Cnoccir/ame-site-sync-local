@@ -47,14 +47,18 @@ const navigationItems = [
 
 export function AppSidebar() {
   const location = useLocation();
-  const { state } = useSidebar();
+  const { state, isMobile } = useSidebar();
 
   return (
-    <Sidebar className="ame-sidebar border-r border-border">
+    <Sidebar 
+      className="ame-sidebar border-r border-border" 
+      collapsible="icon"
+      variant={isMobile ? "floating" : "sidebar"}
+    >
       <SidebarHeader className="ame-sidebar-header">
         <div className="ame-logo">
           <div className="ame-logo-text">AME INC.</div>
-          {state === 'expanded' && (
+          {state === 'expanded' && !isMobile && (
             <>
               <div className="ame-tagline">A PART OF NORDAMATIC GROUP</div>
               <div className="ame-system-title">Maintenance Management</div>
