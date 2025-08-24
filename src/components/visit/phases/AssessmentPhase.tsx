@@ -19,6 +19,9 @@ import { FileUploader } from '@/components/assessment/FileUploader';
 import { NetworkAnalysisResults } from '@/components/assessment/NetworkAnalysisResults';
 import { SystemStatusCard } from '@/components/assessment/SystemStatusCard';
 import { PriorityDiscussion } from '@/components/assessment/PriorityDiscussion';
+import { NetworkHealthDashboard } from '@/components/assessment/NetworkHealthDashboard';
+import { DeviceInventoryTable } from '@/components/assessment/DeviceInventoryTable';
+import { NetworkSummaryGenerator } from '@/components/assessment/NetworkSummaryGenerator';
 
 interface AssessmentPhaseProps {
   onPhaseComplete: () => void;
@@ -198,26 +201,101 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     });
   };
 
+  const parseCSVFile = async (file: File) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const text = e.target?.result as string;
+          const lines = text.split('\n').filter(line => line.trim());
+          const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+          
+          // Detect format
+          let format = 'unknown';
+          if (headers.includes('Controller Type')) format = 'n2Export';
+          else if (headers.includes('Device ID') && headers.includes('Vendor')) format = 'bacnetExport';
+          else if (headers.length === 2 && headers.includes('Name') && headers.includes('Value')) format = 'resourceExport';
+          else if (headers.includes('Fox Port')) format = 'niagaraNetExport';
+          
+          const devices = lines.slice(1).map((line, index) => {
+            const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+            const device: any = { id: `${file.name}-${index}`, sourceFile: file.name, format };
+            
+            headers.forEach((header, i) => {
+              device[header] = values[i] || '';
+            });
+            
+            // Parse status for different formats
+            if (format === 'n2Export' && device.Status) {
+              const statusMatch = device.Status.match(/\{([^}]+)\}/);
+              if (statusMatch) {
+                const statuses = statusMatch[1].split(',');
+                device.isOnline = statuses.includes('ok');
+                device.isDown = statuses.includes('down');
+                device.hasAlarm = statuses.includes('alarm') || statuses.includes('unackedAlarm');
+                device.statusBadge = device.isDown ? 'error' : device.hasAlarm ? 'warning' : 'success';
+              }
+            }
+            
+            return device;
+          });
+          
+          resolve({ format, devices, fileName: file.name });
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsText(file);
+    });
+  };
+
   const handleNetworkAnalysis = async () => {
     if (step5Data.uploadedFiles.length === 0) return;
 
     try {
-      // Simulate network analysis - this would be replaced with actual CSV parsing
+      toast({
+        title: "Processing Files",
+        description: "Analyzing CSV files...",
+      });
+
+      const parseResults = await Promise.all(
+        step5Data.uploadedFiles.map(file => parseCSVFile(file))
+      );
+
+      const allDevices = parseResults.flatMap((result: any) => result.devices);
+      const formats = [...new Set(parseResults.map((result: any) => result.format))];
+      const protocols = [...new Set(allDevices.map(device => {
+        if (device.format === 'bacnetExport') return 'BACnet';
+        if (device.format === 'n2Export') return 'N2';
+        if (device.format === 'niagaraNetExport') return 'Niagara';
+        return 'Unknown';
+      }))];
+
+      const onlineDevices = allDevices.filter(d => d.isOnline);
+      const downDevices = allDevices.filter(d => d.isDown);
+      const alarmDevices = allDevices.filter(d => d.hasAlarm);
+
       const analysisResults = {
-        totalStations: Math.floor(Math.random() * 500) + 100,
-        totalNetworks: Math.floor(Math.random() * 20) + 5,
-        protocolsFound: ['BACnet', 'Modbus', 'LON', 'Ethernet IP'],
+        totalStations: allDevices.length,
+        totalNetworks: formats.length,
+        protocolsFound: protocols,
         filesProcessed: step5Data.uploadedFiles.length,
+        onlineCount: onlineDevices.length,
+        downCount: downDevices.length,
+        alarmCount: alarmDevices.length,
+        devices: allDevices,
         networkSegments: [
           '192.168.1.0/24 - Main Building Network',
-          '192.168.10.0/24 - HVAC Controllers',
+          '192.168.10.0/24 - HVAC Controllers', 
           '192.168.20.0/24 - Lighting Systems'
         ],
         recommendations: [
+          downDevices.length > 0 ? `${downDevices.length} devices are offline - check network connectivity` : null,
+          alarmDevices.length > 0 ? `${alarmDevices.length} devices have active alarms - review system status` : null,
           'Review BACnet device priorities for optimal performance',
-          'Consider network segmentation for improved security',
-          'Update firmware on legacy controllers identified'
-        ]
+          'Consider network segmentation for improved security'
+        ].filter(Boolean)
       };
 
       setStep5Data(prev => ({ ...prev, analysisData: analysisResults }));
@@ -235,7 +313,6 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
         });
 
       if (error) {
-        console.error('Error saving network analysis:', error);
         toast({
           title: "Warning",
           description: "Analysis completed but couldn't save to database.",
@@ -244,14 +321,13 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
       } else {
         toast({
           title: "Analysis Complete",
-          description: "Network analysis saved successfully.",
+          description: `Processed ${allDevices.length} devices from ${step5Data.uploadedFiles.length} files.`,
         });
       }
     } catch (error) {
-      console.error('Network analysis error:', error);
       toast({
-        title: "Error",
-        description: "Failed to complete network analysis.",
+        title: "Error", 
+        description: "Failed to parse CSV files.",
         variant: "destructive"
       });
     }
@@ -379,14 +455,54 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
                     />
                     
                     {step5Data.analysisData && (
-                      <Card className="p-4 bg-green-50">
-                        <h6 className="font-medium text-green-800 mb-2">Analysis Complete</h6>
-                        <div className="text-sm text-green-700 space-y-1">
-                          <p>• {step5Data.analysisData.totalStations} stations discovered</p>
-                          <p>• {step5Data.analysisData.totalNetworks} network segments</p>
-                          <p>• Protocols: {step5Data.analysisData.protocolsFound.join(', ')}</p>
-                        </div>
-                      </Card>
+                      <div className="space-y-4">
+                        <Card className="p-4 bg-green-50">
+                          <h6 className="font-medium text-green-800 mb-2">Analysis Complete</h6>
+                          <div className="text-sm text-green-700 space-y-1">
+                            <p>• {step5Data.analysisData.totalStations} devices discovered</p>
+                            <p>• {step5Data.analysisData.onlineCount} online, {step5Data.analysisData.downCount} offline</p>
+                            <p>• {step5Data.analysisData.alarmCount} devices with alarms</p>
+                            <p>• Protocols: {step5Data.analysisData.protocolsFound.join(', ')}</p>
+                          </div>
+                        </Card>
+                        
+                        {step5Data.analysisData.devices && step5Data.analysisData.devices.length > 0 && (
+                          <Card className="p-4">
+                            <h6 className="font-medium mb-3">Device Inventory</h6>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="border-b">
+                                    <th className="text-left p-2">Device Name</th>
+                                    <th className="text-left p-2">Status</th>
+                                    <th className="text-left p-2">Type</th>
+                                    <th className="text-left p-2">Source File</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {step5Data.analysisData.devices.slice(0, 10).map((device: any, index: number) => (
+                                    <tr key={index} className="border-b">
+                                      <td className="p-2">{device.Name || device.name || `Device ${index + 1}`}</td>
+                                      <td className="p-2">
+                                        <Badge variant={device.statusBadge || 'secondary'}>
+                                          {device.Status || device.status || 'Unknown'}
+                                        </Badge>
+                                      </td>
+                                      <td className="p-2">{device['Controller Type'] || device.Type || device.format}</td>
+                                      <td className="p-2">{device.sourceFile}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                              {step5Data.analysisData.devices.length > 10 && (
+                                <p className="text-xs text-muted-foreground mt-2">
+                                  Showing 10 of {step5Data.analysisData.devices.length} devices
+                                </p>
+                              )}
+                            </div>
+                          </Card>
+                        )}
+                      </div>
                     )}
                   </TabsContent>
 
