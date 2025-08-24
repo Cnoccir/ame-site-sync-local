@@ -2170,48 +2170,40 @@ export type Database = {
         Row: {
           actual_duration: number | null
           completion_time: string | null
-          created_at: string | null
+          created_at: string
           id: string
           notes: string | null
           start_time: string | null
-          status: string | null
-          task_id: string | null
-          updated_at: string | null
+          status: string
+          task_id: string
+          updated_at: string
           visit_id: string
         }
         Insert: {
           actual_duration?: number | null
           completion_time?: string | null
-          created_at?: string | null
+          created_at?: string
           id?: string
           notes?: string | null
           start_time?: string | null
-          status?: string | null
-          task_id?: string | null
-          updated_at?: string | null
+          status?: string
+          task_id: string
+          updated_at?: string
           visit_id: string
         }
         Update: {
           actual_duration?: number | null
           completion_time?: string | null
-          created_at?: string | null
+          created_at?: string
           id?: string
           notes?: string | null
           start_time?: string | null
-          status?: string | null
-          task_id?: string | null
-          updated_at?: string | null
+          status?: string
+          task_id?: string
+          updated_at?: string
           visit_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "visit_tasks_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "service_tier_tasks"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {

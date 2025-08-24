@@ -237,7 +237,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
   };
 
   const getTaskStatus = (task: TaskData): string => {
-    const visitTask = visitTasks.find(vt => vt.task_id === task.id);
+    const visitTask = visitTasks.find(vt => vt.task_id === task.task_id);
     return visitTask?.status || 'not_started';
   };
 
@@ -313,25 +313,34 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
     if (!visitId) return;
 
     try {
-      // Check if visit task exists, create if not
-      let visitTask = visitTasks.find(vt => vt.task_id === task.id);
+      console.log('🚀 Starting task:', task.task_name, 'task_id:', task.task_id);
+      
+      // Check if visit task exists, create if not - use task.task_id instead of task.id
+      let visitTask = visitTasks.find(vt => vt.task_id === task.task_id);
       
       if (!visitTask) {
+        console.log('📝 Creating new visit task entry');
         const { data: newVisitTask, error: insertError } = await supabase
           .from('visit_tasks')
           .insert({
             visit_id: visitId,
-            task_id: task.id,
+            task_id: task.task_id, // Use task.task_id (string) not task.id (uuid)
             status: 'in_progress',
             start_time: new Date().toISOString()
           })
           .select()
           .single();
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error('❌ Insert error:', insertError);
+          throw insertError;
+        }
+        
         visitTask = newVisitTask;
         setVisitTasks(prev => [...prev, newVisitTask as VisitTask]);
+        console.log('✅ New visit task created');
       } else {
+        console.log('📝 Updating existing visit task');
         // Update existing task
         const { error: updateError } = await supabase
           .from('visit_tasks')
@@ -341,13 +350,17 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
           })
           .eq('id', visitTask.id);
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('❌ Update error:', updateError);
+          throw updateError;
+        }
         
         setVisitTasks(prev => prev.map(vt => 
           vt.id === visitTask!.id 
             ? { ...vt, status: 'in_progress', start_time: new Date().toISOString() } as VisitTask
             : vt
         ));
+        console.log('✅ Visit task updated');
       }
 
       // Start timer
@@ -355,10 +368,12 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
       
       toast({
         title: 'Task Started',
-        description: `Started ${task.task_name}`
+        description: `Started ${task.task_name} - Follow the step-by-step guide`
       });
+      
+      console.log('✅ Task started successfully');
     } catch (error) {
-      console.error('Error starting task:', error);
+      console.error('❌ Error starting task:', error);
       toast({
         title: 'Error',
         description: 'Failed to start task',
@@ -371,8 +386,13 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
     if (!visitId) return;
 
     try {
-      const visitTask = visitTasks.find(vt => vt.task_id === task.id);
-      if (!visitTask) return;
+      console.log('🎯 Completing task:', task.task_name, 'task_id:', task.task_id);
+      
+      const visitTask = visitTasks.find(vt => vt.task_id === task.task_id);
+      if (!visitTask) {
+        console.error('❌ Visit task not found for task_id:', task.task_id);
+        return;
+      }
 
       const startTime = taskTimers[task.id];
       const actualDuration = startTime ? Math.round((Date.now() - startTime) / (1000 * 60)) : null;
@@ -386,7 +406,10 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         })
         .eq('id', visitTask.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Update error:', error);
+        throw error;
+      }
 
       setVisitTasks(prev => prev.map(vt => 
         vt.id === visitTask.id 
@@ -406,10 +429,15 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         return updated;
       });
 
+      // Close step viewer
+      setShowStepViewer(false);
+
       toast({
         title: 'Task Completed',
         description: `Completed ${task.task_name}`
       });
+
+      console.log('✅ Task completed successfully');
 
       // Check if all required tasks are completed
       const stats = getTaskStats();
@@ -423,7 +451,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         }, 1000);
       }
     } catch (error) {
-      console.error('Error completing task:', error);
+      console.error('❌ Error completing task:', error);
       toast({
         title: 'Error',
         description: 'Failed to complete task',
