@@ -114,6 +114,11 @@
     --table-header: 210 30% 10%;
     --table-row-hover: 210 30% 12%;
     --table-border: 210 30% 15%;
+    
+    /* Service tier colors */
+    --tier-core: 134 61% 40%; /* Green */
+    --tier-assure: 38 92% 62%; /* Orange */
+    --tier-guardian: 209 44% 52%; /* Blue */
   }
 }
 
