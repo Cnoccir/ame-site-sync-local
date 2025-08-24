@@ -99,13 +99,27 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
 
   const loadServiceTierTasks = async () => {
     try {
-      console.log('Loading service tier tasks for phase 2...');
+      console.log('Loading service tier tasks...');
       
-      // Load tasks directly from ame_tasks_normalized filtered by phase (Service Execution = phase 2)
+      // Get customer service tier
+      const customerTier = customer?.service_tier || 'CORE';
+      console.log('Customer service tier:', customerTier);
+      
+      // Map service tier to task prefix and determine phase
+      const tierMapping = {
+        'CORE': { prefix: 'C', phase: 1 }, // CORE tasks are in phase 1
+        'ASSURE': { prefix: 'A', phase: 2 }, // ASSURE tasks are in phase 2  
+        'GUARDIAN': { prefix: 'G', phase: 2 } // GUARDIAN tasks are in phase 2
+      };
+      
+      const tierConfig = tierMapping[customerTier as keyof typeof tierMapping] || tierMapping.CORE;
+      console.log('Using tier config:', tierConfig);
+      
+      // Load tasks from the appropriate phase for this service tier
       const { data, error } = await supabase
         .from('ame_tasks_normalized')
         .select('*')
-        .eq('phase', 2) // Service execution phase
+        .eq('phase', tierConfig.phase)
         .order('task_order');
 
       if (error) {
@@ -115,22 +129,9 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
       
       console.log('Raw tasks loaded:', data?.length || 0);
       
-      // For debugging - show what tier we're looking for
-      const customerTier = customer?.service_tier || 'CORE';
-      console.log('Customer service tier:', customerTier);
-      
       // Filter by customer service tier based on task_id prefix
-      const tierPrefix = customerTier === 'CORE' ? 'C' : 
-                        customerTier === 'ASSURE' ? 'A' : 
-                        customerTier === 'GUARDIAN' ? 'G' : 'C';
-      
-      console.log('Looking for tasks with prefix:', tierPrefix);
-      
-      // Show available task_ids for debugging
-      console.log('Available task_ids:', data?.map(t => t.task_id) || []);
-      
       const filteredTasks = (data || []).filter(task => 
-        task.task_id.startsWith(tierPrefix)
+        task.task_id.startsWith(tierConfig.prefix)
       );
       
       console.log('Filtered tasks count:', filteredTasks.length);
@@ -242,10 +243,8 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
     return formatTime(elapsed);
   };
 
-  // Filter tasks by tier
-  const filteredTasks = tierFilter === 'all' 
-    ? serviceTierTasks 
-    : serviceTierTasks.filter(task => task.task_id.startsWith(tierFilter));
+  // Show all tasks for the customer's service tier (no additional filtering)
+  const filteredTasks = serviceTierTasks;
 
   const getTaskStats = () => {
     const total = serviceTierTasks.length;
@@ -483,38 +482,19 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
           </div>
         </div>
 
-        {/* Service Tier Filter */}
+        {/* Service Tier Filter - Only show customer's tier */}
         <div className="tier-filter mb-6 flex gap-3 items-center">
-          <span className="font-semibold text-muted-foreground">Filter by Tier:</span>
-          <div className="flex gap-1">
-            <Button
-              size="sm"
-              variant={tierFilter === 'all' ? "default" : "outline"}
-              onClick={() => setTierFilter('all')}
-            >
-              All
-            </Button>
-            <Button
-              size="sm"
-              variant={tierFilter === 'C' ? "default" : "outline"}
-              onClick={() => setTierFilter('C')}
-            >
-              CORE
-            </Button>
-            <Button
-              size="sm"
-              variant={tierFilter === 'A' ? "default" : "outline"}
-              onClick={() => setTierFilter('A')}
-            >
-              ASSURE
-            </Button>
-            <Button
-              size="sm"
-              variant={tierFilter === 'G' ? "default" : "outline"}
-              onClick={() => setTierFilter('G')}
-            >
-              GUARDIAN
-            </Button>
+          <span className="font-semibold text-muted-foreground">Current Service Tier:</span>
+          <Badge 
+            variant="default"
+            className={`${customer?.service_tier === 'CORE' ? 'bg-tier-core text-white' : 
+                       customer?.service_tier === 'ASSURE' ? 'bg-tier-assure text-white' : 
+                       'bg-tier-guardian text-white'}`}
+          >
+            {customer?.service_tier || 'CORE'}
+          </Badge>
+          <div className="text-sm text-muted-foreground">
+            Showing {filteredTasks.length} tasks for this tier
           </div>
         </div>
 
@@ -541,7 +521,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
                     No tasks found for selected tier. Try selecting "All" or check your service tier.
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {filteredTasks.map((task) => {
                       const status = getTaskStatus(task);
                       const isSelected = selectedTask?.id === task.id;
@@ -549,98 +529,154 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
                       const steps = parseSteps(task.sop_steps);
                       
                       return (
-                        <div
+                        <Card
                           key={task.id}
-                          onClick={() => setSelectedTask(task)}
                           className={cn(
-                            'p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:bg-muted/50',
-                            isSelected && 'bg-primary/5 border-primary',
+                            'cursor-pointer transition-all duration-200 hover:shadow-md',
+                            isSelected && 'ring-2 ring-primary',
                             status === 'completed' && 'bg-success/5 border-success/20'
                           )}
                         >
-                          <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 mt-1">
-                              {getStatusIcon(status, isRunning)}
-                            </div>
-                            
-                            <div className="flex-1 space-y-2">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className={cn(
-                                  "font-medium",
-                                  status === 'completed' && 'line-through text-muted-foreground'
-                                )}>
-                                  {task.task_name}
-                                </span>
-                                <Badge variant="outline" className="text-xs">
-                                  {task.task_id}
-                                </Badge>
-                                {task.is_mandatory && (
-                                  <Badge variant="destructive" className="text-xs">
-                                    MANDATORY
-                                  </Badge>
-                                )}
-                              </div>
-                              
-                              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                  <Clock className="w-3 h-3" />
-                                  {task.duration_minutes}m
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Target className="w-3 h-3" />
-                                  {steps.length} steps
-                                </span>
-                                {isRunning && (
-                                  <span className="text-info font-medium">
-                                    Running: {getTaskTimer(task)}
-                                  </span>
-                                )}
+                          <CardContent className="p-4">
+                            <div 
+                              onClick={() => setSelectedTask(task)}
+                              className="space-y-3"
+                            >
+                              {/* Task Header */}
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-start gap-3 flex-1">
+                                  <div className="flex-shrink-0 mt-1">
+                                    {getStatusIcon(status, isRunning)}
+                                  </div>
+                                  
+                                  <div className="flex-1 space-y-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <h3 className={cn(
+                                        "font-semibold text-base",
+                                        status === 'completed' && 'line-through text-muted-foreground'
+                                      )}>
+                                        {task.task_name}
+                                      </h3>
+                                      <Badge variant="outline" className="text-xs">
+                                        {task.task_id}
+                                      </Badge>
+                                      {task.is_mandatory && (
+                                        <Badge variant="destructive" className="text-xs">
+                                          MANDATORY
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="w-4 h-4" />
+                                        {task.duration_minutes}min
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <Target className="w-4 h-4" />
+                                        {steps.length} steps
+                                      </span>
+                                      {task.skills_required && (
+                                        <span>{task.skills_required}</span>
+                                      )}
+                                      {isRunning && (
+                                        <Badge variant="secondary" className="animate-pulse">
+                                          Running: {getTaskTimer(task)}
+                                        </Badge>
+                                      )}
+                                    </div>
+
+                                    {/* Navigation Path */}
+                                    {task.navigation_path && (
+                                      <div className="text-sm bg-info/10 text-info px-3 py-2 rounded border-l-2 border-info">
+                                        <strong>Navigation:</strong> {task.navigation_path}
+                                      </div>
+                                    )}
+
+                                    {/* Safety Notes */}
+                                    {task.safety_notes && (
+                                      <div className="text-sm bg-warning/10 text-warning px-3 py-2 rounded border-l-2 border-warning">
+                                        <div className="flex items-start gap-2">
+                                          <span className="text-warning">⚠️</span>
+                                          <div>
+                                            <strong>Safety:</strong> {task.safety_notes}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
 
+                              {/* Expanded Actions for Selected Task */}
                               {isSelected && (
-                                <div className="flex gap-2 pt-2">
-                                  {status === 'not_started' && (
+                                <div className="border-t pt-3 mt-3">
+                                  <div className="flex gap-2 flex-wrap">
+                                    {status === 'not_started' && (
+                                      <Button 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleStartStepViewer(task);
+                                        }}
+                                        className="flex-1 sm:flex-none"
+                                      >
+                                        <Play className="w-4 h-4 mr-2" />
+                                        Start Task
+                                      </Button>
+                                    )}
+                                    
+                                    {status === 'in_progress' && (
+                                      <Button 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleTaskComplete(task);
+                                        }}
+                                        className="flex-1 sm:flex-none"
+                                      >
+                                        <CheckCircle className="w-4 h-4 mr-2" />
+                                        Mark Complete
+                                      </Button>
+                                    )}
+                                    
                                     <Button 
-                                      size="sm" 
+                                      variant="outline"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleStartStepViewer(task);
+                                        handleViewSOP(task);
                                       }}
+                                      className="flex-1 sm:flex-none"
                                     >
-                                      <Play className="w-3 h-3 mr-1" />
-                                      Start Task
+                                      <Eye className="w-4 h-4 mr-2" />
+                                      View Full SOP
                                     </Button>
+                                  </div>
+
+                                  {/* Show Steps Preview */}
+                                  {steps.length > 0 && (
+                                    <div className="mt-4 p-3 bg-muted/30 rounded">
+                                      <h4 className="font-medium text-sm mb-2">Task Steps Preview:</h4>
+                                      <div className="space-y-1 text-sm">
+                                        {steps.slice(0, 3).map((step, index) => (
+                                          <div key={index} className="flex items-start gap-2">
+                                            <span className="flex-shrink-0 w-5 h-5 bg-primary/10 text-primary rounded-full text-xs flex items-center justify-center">
+                                              {index + 1}
+                                            </span>
+                                            <span className="text-muted-foreground">{step}</span>
+                                          </div>
+                                        ))}
+                                        {steps.length > 3 && (
+                                          <div className="text-xs text-muted-foreground ml-7">
+                                            +{steps.length - 3} more steps...
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
                                   )}
-                                  
-                                  {status === 'in_progress' && (
-                                    <Button 
-                                      size="sm" 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleTaskComplete(task);
-                                      }}
-                                    >
-                                      <CheckCircle className="w-3 h-3 mr-1" />
-                                      Complete
-                                    </Button>
-                                  )}
-                                  
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleViewSOP(task);
-                                    }}
-                                  >
-                                    <Eye className="w-3 h-3 mr-1" />
-                                    View SOP
-                                  </Button>
                                 </div>
                               )}
                             </div>
-                          </div>
-                        </div>
+                          </CardContent>
+                        </Card>
                       );
                     })}
                   </div>
