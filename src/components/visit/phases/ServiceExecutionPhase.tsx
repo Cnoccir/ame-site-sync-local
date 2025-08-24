@@ -3,9 +3,9 @@ import { Clock, Play, CheckCircle, Eye, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { TaskListPanel } from '../task-execution/TaskListPanel';
+import { ModernTaskList } from '../task-execution/ModernTaskList';
 import { TaskDetailsPanel } from '../task-execution/TaskDetailsPanel';
-import { SOPModal } from '../task-execution/SOPModal';
+import { ModernSOPModal } from '../task-execution/ModernSOPModal';
 import { TaskTimer } from '../task-execution/TaskTimer';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -343,21 +343,24 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         </Badge>
       </div>
 
-      {/* Split Screen Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[600px]">
-        {/* Left Panel - Task List */}
-        <div className="lg:col-span-1">
-          <TaskListPanel
+      {/* Modern Task Management Interface */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Task List - Takes more space */}
+        <div className="lg:col-span-3">
+          <ModernTaskList
             tasks={serviceTierTasks}
             visitTasks={visitTasks}
             stats={stats}
             onTaskSelect={setSelectedTask}
+            onTaskStart={handleTaskStart}
+            onTaskComplete={handleTaskComplete}
+            onViewSOP={handleViewSOP}
             selectedTaskId={selectedTask?.id}
             taskTimers={taskTimers}
           />
         </div>
 
-        {/* Right Panel - Task Details */}
+        {/* Task Details - Compact sidebar */}
         <div className="lg:col-span-2">
           <TaskDetailsPanel
             task={selectedTask}
@@ -370,9 +373,9 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         </div>
       </div>
 
-      {/* SOP Modal */}
+      {/* Modern SOP Modal */}
       {showSOPModal && selectedProcedure && (
-        <SOPModal
+        <ModernSOPModal
           procedure={selectedProcedure}
           onClose={() => {
             setShowSOPModal(false);
