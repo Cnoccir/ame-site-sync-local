@@ -81,11 +81,21 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
   const visitId = new URLSearchParams(window.location.search).get('visitId');
 
   useEffect(() => {
-    loadServiceTierTasks();
-    loadVisitTasks();
-    loadSOPData();
-    startOverallTimer();
-  }, []);
+    const loadData = async () => {
+      console.log('🚀 Starting data load sequence...');
+      setLoading(true);
+      
+      // Load data sequentially to avoid race conditions
+      await loadServiceTierTasks();
+      await loadVisitTasks();
+      await loadSOPData();
+      
+      console.log('✅ All data loaded, starting timer');
+      startOverallTimer();
+    };
+    
+    loadData();
+  }, [customer]);
 
   // Overall timer effect
   useEffect(() => {
@@ -129,6 +139,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
       }
       
       console.log('Raw tasks loaded:', data?.length || 0);
+      console.log('Raw task data:', data);
       
       // Filter by customer service tier based on task_id prefix
       const filteredTasks = (data || []).filter(task => 
@@ -139,8 +150,14 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
       console.log('Filtered task_ids:', filteredTasks.map(t => t.task_id));
       
       setServiceTierTasks(filteredTasks);
+      
+      // Mark loading as complete
+      setLoading(false);
+      
+      console.log('✅ Service tier tasks loaded successfully');
     } catch (error) {
-      console.error('Error loading service tier tasks:', error);
+      console.error('❌ Error loading service tier tasks:', error);
+      setLoading(false);
       toast({
         title: 'Error',
         description: 'Failed to load service tier tasks',
@@ -150,30 +167,43 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
   };
 
   const loadVisitTasks = async () => {
-    if (!visitId) return;
+    if (!visitId) {
+      console.log('⚠️ No visitId provided, skipping visit tasks load');
+      return;
+    }
 
     try {
+      console.log('Loading visit tasks for visitId:', visitId);
       const { data, error } = await supabase
         .from('visit_tasks')
         .select('*')
         .eq('visit_id', visitId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading visit tasks:', error);
+        throw error;
+      }
+      
+      console.log('Visit tasks loaded:', data?.length || 0);
       setVisitTasks(data || []);
     } catch (error) {
       console.error('Error loading visit tasks:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
   const loadSOPData = async () => {
     try {
+      console.log('Loading SOP data...');
       const { data, error } = await supabase
         .from('ame_sops_normalized')
         .select('*');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading SOP data:', error);
+        throw error;
+      }
+      
+      console.log('SOP data loaded:', data?.length || 0);
       setSOPData((data || []).map(sop => ({
         ...sop,
         steps: Array.isArray(sop.steps) ? sop.steps : [],
@@ -182,8 +212,6 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
       })));
     } catch (error) {
       console.error('Error loading SOP data:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
