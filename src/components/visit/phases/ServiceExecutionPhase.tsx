@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Play, CheckCircle, Eye, ChevronRight } from 'lucide-react';
+import { Clock, Play, CheckCircle, Eye, ChevronRight, Target, Pause, RotateCcw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { EnhancedTaskList } from '../task-execution/EnhancedTaskList';
 import { StepByStepViewer } from '../task-execution/StepByStepViewer';
 import { EnhancedSOPModal } from '../task-execution/EnhancedSOPModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Customer } from '@/types';
+import { cn } from '@/lib/utils';
 
 interface ServiceExecutionPhaseProps {
   customer: Customer;
@@ -74,6 +74,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
   const [isPaused, setIsPaused] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [tierFilter, setTierFilter] = useState<string>('all');
 
   // Get current visit ID from URL params
   const visitId = new URLSearchParams(window.location.search).get('visitId');
@@ -209,6 +210,42 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
     const visitTask = visitTasks.find(vt => vt.task_id === task.id);
     return visitTask?.status || 'not_started';
   };
+
+  const formatTime = (milliseconds: number): string => {
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const parseSteps = (stepString: string): string[] => {
+    if (!stepString) return [];
+    return stepString.split('|').map(step => step.trim()).filter(Boolean);
+  };
+
+  const getStatusIcon = (status: string, isRunning: boolean = false) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircle className="w-5 h-5 text-success" />;
+      case 'in_progress':
+        return <Play className={cn("w-5 h-5 text-info", isRunning && "animate-pulse")} />;
+      default:
+        return <div className="w-5 h-5 rounded-full border-2 border-muted-foreground" />;
+    }
+  };
+
+  const getTaskTimer = (task: TaskData): string => {
+    const startTime = taskTimers[task.id];
+    if (!startTime) return '00:00:00';
+    const elapsed = isPaused ? 0 : Date.now() - startTime;
+    return formatTime(elapsed);
+  };
+
+  // Filter tasks by tier
+  const filteredTasks = tierFilter === 'all' 
+    ? serviceTierTasks 
+    : serviceTierTasks.filter(task => task.task_id.startsWith(tierFilter));
 
   const getTaskStats = () => {
     const total = serviceTierTasks.length;
@@ -389,63 +426,251 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
   const stats = getTaskStats();
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold">Service Execution</h2>
-          <p className="text-muted-foreground">
-            Execute {customer?.service_tier || 'CORE'} tier maintenance tasks
-          </p>
-        </div>
-        <Badge variant="outline" className="text-lg px-4 py-2">
-          {customer?.service_tier || 'CORE'} Service Tier
-        </Badge>
-      </div>
-
-      {/* Enhanced Task Management Interface */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Enhanced Task List */}
-        <div className="lg:col-span-2">
-          <EnhancedTaskList
-            tasks={serviceTierTasks}
-            visitTasks={visitTasks}
-            stats={stats}
-            serviceTier={customer?.service_tier || 'CORE'}
-            onTaskSelect={setSelectedTask}
-            onTaskStart={handleStartStepViewer}
-            onTaskComplete={handleTaskComplete}
-            onViewSOP={handleViewSOP}
-            selectedTaskId={selectedTask?.id}
-            taskTimers={taskTimers}
-            overallTimer={overallTimer}
-            isPaused={isPaused}
-            onPauseToggle={togglePause}
-            onTimerReset={resetTimer}
-          />
+    <div className="workflow-content space-y-6">
+      {/* Enhanced Service Execution Panel */}
+      <div className="workflow-panel">
+        <div className="panel-header border-b pb-4 mb-6">
+          <div className="panel-title flex items-center gap-2 text-xl font-semibold mb-2">
+            <span className="text-2xl">⚙️</span> Service Tier Execution
+          </div>
+          <div className="panel-description text-muted-foreground">
+            Execute comprehensive maintenance tasks with integrated visual step-by-step guidance. 
+            Each task includes detailed SOPs, quality checks, and safety protocols.
+          </div>
         </div>
 
-        {/* Step-by-Step Viewer */}
-        <div className="lg:col-span-1">
-          {selectedTask && showStepViewer ? (
-            <StepByStepViewer
-              task={selectedTask}
-              onStepComplete={handleStepComplete}
-              onAllStepsComplete={handleAllStepsComplete}
-              completedSteps={completedSteps}
-            />
-          ) : (
-            <Card>
-              <CardContent className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <Play className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
-                  <p className="text-muted-foreground">
-                    Select a task to begin step-by-step guidance
-                  </p>
+        {/* Enhanced Service Header with Timer */}
+        <div className="service-header bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="service-info">
+              <h2 className="text-lg font-semibold mb-2">
+                <Badge variant="outline" className={`mr-2 ${customer?.service_tier === 'CORE' ? 'bg-tier-core text-white' : customer?.service_tier === 'ASSURE' ? 'bg-tier-assure text-white' : 'bg-tier-guardian text-white'}`}>
+                  {customer?.service_tier || 'CORE'}
+                </Badge>
+                Service Tasks
+              </h2>
+              <div className="service-progress">
+                <div className="text-sm text-muted-foreground mb-2">
+                  Progress: <span className="font-medium">{stats.completed}</span> of <span className="font-medium">{stats.total}</span> tasks completed
                 </div>
+                <div className="progress-bar bg-muted rounded-full h-2 w-64">
+                  <div 
+                    className="progress-fill bg-primary rounded-full h-2 transition-all duration-300" 
+                    style={{ width: `${stats.percentage}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+            <div className="overall-timer text-right">
+              <div className="timer-label text-xs text-muted-foreground mb-1">Total Service Time</div>
+              <div className="timer-display text-2xl font-mono font-bold text-primary mb-3">
+                {formatTime(overallTimer)}
+              </div>
+              <div className="timer-controls flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant={isPaused ? "default" : "outline"}
+                  onClick={togglePause}
+                >
+                  {isPaused ? <Play className="w-4 h-4 mr-1" /> : <Pause className="w-4 h-4 mr-1" />}
+                  {isPaused ? 'Resume' : 'Pause'}
+                </Button>
+                <Button size="sm" variant="outline" onClick={resetTimer}>
+                  <RotateCcw className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Service Tier Filter */}
+        <div className="tier-filter mb-6 flex gap-3 items-center">
+          <span className="font-semibold text-muted-foreground">Filter by Tier:</span>
+          <div className="flex gap-1">
+            <Button
+              size="sm"
+              variant={tierFilter === 'all' ? "default" : "outline"}
+              onClick={() => setTierFilter('all')}
+            >
+              All
+            </Button>
+            <Button
+              size="sm"
+              variant={tierFilter === 'C' ? "default" : "outline"}
+              onClick={() => setTierFilter('C')}
+            >
+              CORE
+            </Button>
+            <Button
+              size="sm"
+              variant={tierFilter === 'A' ? "default" : "outline"}
+              onClick={() => setTierFilter('A')}
+            >
+              ASSURE
+            </Button>
+            <Button
+              size="sm"
+              variant={tierFilter === 'G' ? "default" : "outline"}
+              onClick={() => setTierFilter('G')}
+            >
+              GUARDIAN
+            </Button>
+          </div>
+        </div>
+
+        {/* Task List and Step Viewer Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Enhanced Service Task List */}
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="w-5 h-5" />
+                  Service Tasks
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="space-y-4">
+                    <div className="loading-skeleton h-24 bg-muted rounded-lg"></div>
+                    <div className="loading-skeleton h-24 bg-muted rounded-lg"></div>
+                    <div className="loading-skeleton h-24 bg-muted rounded-lg"></div>
+                  </div>
+                ) : filteredTasks.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No tasks found for selected tier. Try selecting "All" or check your service tier.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredTasks.map((task) => {
+                      const status = getTaskStatus(task);
+                      const isSelected = selectedTask?.id === task.id;
+                      const isRunning = !!taskTimers[task.id];
+                      const steps = parseSteps(task.sop_steps);
+                      
+                      return (
+                        <div
+                          key={task.id}
+                          onClick={() => setSelectedTask(task)}
+                          className={cn(
+                            'p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:bg-muted/50',
+                            isSelected && 'bg-primary/5 border-primary',
+                            status === 'completed' && 'bg-success/5 border-success/20'
+                          )}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 mt-1">
+                              {getStatusIcon(status, isRunning)}
+                            </div>
+                            
+                            <div className="flex-1 space-y-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={cn(
+                                  "font-medium",
+                                  status === 'completed' && 'line-through text-muted-foreground'
+                                )}>
+                                  {task.task_name}
+                                </span>
+                                <Badge variant="outline" className="text-xs">
+                                  {task.task_id}
+                                </Badge>
+                                {task.is_mandatory && (
+                                  <Badge variant="destructive" className="text-xs">
+                                    MANDATORY
+                                  </Badge>
+                                )}
+                              </div>
+                              
+                              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {task.duration_minutes}m
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Target className="w-3 h-3" />
+                                  {steps.length} steps
+                                </span>
+                                {isRunning && (
+                                  <span className="text-info font-medium">
+                                    Running: {getTaskTimer(task)}
+                                  </span>
+                                )}
+                              </div>
+
+                              {isSelected && (
+                                <div className="flex gap-2 pt-2">
+                                  {status === 'not_started' && (
+                                    <Button 
+                                      size="sm" 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStartStepViewer(task);
+                                      }}
+                                    >
+                                      <Play className="w-3 h-3 mr-1" />
+                                      Start Task
+                                    </Button>
+                                  )}
+                                  
+                                  {status === 'in_progress' && (
+                                    <Button 
+                                      size="sm" 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleTaskComplete(task);
+                                      }}
+                                    >
+                                      <CheckCircle className="w-3 h-3 mr-1" />
+                                      Complete
+                                    </Button>
+                                  )}
+                                  
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleViewSOP(task);
+                                    }}
+                                  >
+                                    <Eye className="w-3 h-3 mr-1" />
+                                    View SOP
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
-          )}
+          </div>
+
+          {/* Enhanced Step Viewer */}
+          <div className="lg:col-span-1">
+            {selectedTask && showStepViewer ? (
+              <StepByStepViewer
+                task={selectedTask}
+                onStepComplete={handleStepComplete}
+                onAllStepsComplete={handleAllStepsComplete}
+                completedSteps={completedSteps}
+              />
+            ) : (
+              <Card>
+                <CardContent className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <Play className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
+                    <p className="text-muted-foreground">
+                      Select a task to begin step-by-step guidance
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </div>
       </div>
 
