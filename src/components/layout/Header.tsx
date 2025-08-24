@@ -8,12 +8,30 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useState } from 'react';
 
 export const Header = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, userRole, signOut } = useAuth();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    
+    try {
+      // Force a re-render of the current route by navigating to the same path
+      const currentPath = location.pathname + location.search;
+      navigate(currentPath, { replace: true });
+      
+      // Also trigger a page reload event for components that listen to it
+      window.dispatchEvent(new Event('refresh-page'));
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -69,9 +87,11 @@ export const Header = () => {
         <Button 
           variant="outline" 
           size="sm" 
+          onClick={handleRefresh}
+          disabled={isRefreshing}
           className="bg-primary hover:bg-primary-hover text-primary-foreground border-primary"
         >
-          <RefreshCw className="w-4 h-4 mr-2" />
+          <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
 
