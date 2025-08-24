@@ -1,374 +1,310 @@
 import React, { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Switch } from '@/components/ui/switch';
-import { Search, Filter, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react';
-import { TridiumDataset, TridiumDataRow, CSVColumn } from '@/types/tridium';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Filter, Download, CheckSquare } from 'lucide-react';
+
+interface Device {
+  id: string;
+  Name?: string;
+  name?: string;
+  Status?: string;
+  status?: string;
+  Type?: string;
+  type?: string;
+  Address?: string;
+  address?: string;
+  'Controller Type'?: string;
+  'Device ID'?: string;
+  Model?: string;
+  Vendor?: string;
+  isOnline?: boolean;
+  isDown?: boolean;
+  hasAlarm?: boolean;
+  statusBadge?: string;
+  sourceFile?: string;
+  format?: string;
+  [key: string]: any;
+}
 
 interface TridiumDataTableProps {
-  dataset: TridiumDataset;
-  onDatasetUpdate: (dataset: TridiumDataset) => void;
+  devices: Device[];
+  onSelectionChange: (selectedDevices: Device[]) => void;
 }
 
 export const TridiumDataTable: React.FC<TridiumDataTableProps> = ({
-  dataset,
-  onDatasetUpdate
+  devices,
+  onSelectionChange
 }) => {
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [showColumnControls, setShowColumnControls] = useState(false);
 
-  // Get unique status and type values for filters
-  const { uniqueStatuses, uniqueTypes } = useMemo(() => {
-    const statuses = new Set<string>();
-    const types = new Set<string>();
-    
-    dataset.rows.forEach(row => {
-      if (row.parsedStatus) {
-        statuses.add(row.parsedStatus.status);
-      }
-      const type = row.data['Type'] || row.data['Controller Type'] || 'Unknown';
-      types.add(type);
-    });
-    
-    return {
-      uniqueStatuses: Array.from(statuses),
-      uniqueTypes: Array.from(types)
-    };
-  }, [dataset.rows]);
-
-  // Filter and sort data
-  const filteredAndSortedRows = useMemo(() => {
-    let filtered = dataset.rows.filter(row => {
-      // Search filter
-      if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase();
-        const matches = Object.values(row.data).some(value => 
-          String(value).toLowerCase().includes(searchLower)
-        );
-        if (!matches) return false;
-      }
+  // Filter devices
+  const filteredDevices = useMemo(() => {
+    let filtered = devices.filter(device => {
+      const deviceName = device.Name || device.name || '';
+      const matchesSearch = deviceName.toLowerCase().includes(searchTerm.toLowerCase());
       
-      // Status filter
-      if (statusFilter !== 'all' && row.parsedStatus) {
-        if (row.parsedStatus.status !== statusFilter) return false;
-      }
+      const matchesStatus = statusFilter === 'all' || 
+        (statusFilter === 'online' && device.isOnline) ||
+        (statusFilter === 'offline' && device.isDown) ||
+        (statusFilter === 'alarm' && device.hasAlarm);
+        
+      const deviceType = device.format || device.Type || device['Controller Type'] || '';
+      const matchesType = typeFilter === 'all' || deviceType === typeFilter;
       
-      // Type filter
-      if (typeFilter !== 'all') {
-        const rowType = row.data['Type'] || row.data['Controller Type'] || 'Unknown';
-        if (rowType !== typeFilter) return false;
-      }
-      
-      return true;
+      return matchesSearch && matchesStatus && matchesType;
     });
 
-    // Sort data
-    if (sortColumn) {
-      filtered.sort((a, b) => {
-        const aVal = a.data[sortColumn];
-        const bVal = b.data[sortColumn];
-        
-        // Handle different data types
-        let comparison = 0;
-        if (typeof aVal === 'number' && typeof bVal === 'number') {
-          comparison = aVal - bVal;
-        } else {
-          comparison = String(aVal).localeCompare(String(bVal));
-        }
-        
-        return sortDirection === 'asc' ? comparison : -comparison;
-      });
-    }
+    // Sort devices - problems first, then alphabetically
+    filtered.sort((a, b) => {
+      const priorityA = a.isDown ? 1 : a.hasAlarm ? 2 : 3;
+      const priorityB = b.isDown ? 1 : b.hasAlarm ? 2 : 3;
+      if (priorityA !== priorityB) return priorityA - priorityB;
+      
+      const nameA = (a.Name || a.name || '').toLowerCase();
+      const nameB = (b.Name || b.name || '').toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
 
     return filtered;
-  }, [dataset.rows, searchTerm, statusFilter, typeFilter, sortColumn, sortDirection]);
+  }, [devices, searchTerm, statusFilter, typeFilter]);
 
-  const handleSort = (columnKey: string) => {
-    if (sortColumn === columnKey) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+  // Quick selection functions
+  const selectAll = () => {
+    const allIds = new Set(filteredDevices.map(d => d.id));
+    setSelectedIds(allIds);
+    onSelectionChange(filteredDevices);
+  };
+
+  const selectNone = () => {
+    setSelectedIds(new Set());
+    onSelectionChange([]);
+  };
+
+  const selectCritical = () => {
+    const criticalDevices = filteredDevices.filter(d => d.isDown || d.hasAlarm);
+    const criticalIds = new Set(criticalDevices.map(d => d.id));
+    setSelectedIds(criticalIds);
+    onSelectionChange(criticalDevices);
+  };
+
+  const selectControllers = () => {
+    const controllers = filteredDevices.filter(d => 
+      (d['Controller Type'] && d['Controller Type'].match(/UNT|VMA|DX/i)) ||
+      (d.Type && d.Type.toLowerCase().includes('controller')) ||
+      (d.format === 'n2Export')
+    );
+    const controllerIds = new Set(controllers.map(d => d.id));
+    setSelectedIds(controllerIds);
+    onSelectionChange(controllers);
+  };
+
+  const handleDeviceSelection = (deviceId: string, checked: boolean) => {
+    const newSelectedIds = new Set(selectedIds);
+    if (checked) {
+      newSelectedIds.add(deviceId);
     } else {
-      setSortColumn(columnKey);
-      setSortDirection('asc');
+      newSelectedIds.delete(deviceId);
+    }
+    setSelectedIds(newSelectedIds);
+    
+    const selectedDevices = filteredDevices.filter(d => newSelectedIds.has(d.id));
+    onSelectionChange(selectedDevices);
+  };
+
+  const getStatusBadge = (device: Device) => {
+    if (device.isDown) {
+      return <Badge variant="destructive">Offline</Badge>;
+    }
+    if (device.hasAlarm) {
+      return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300">Alarm</Badge>;
+    }
+    if (device.isOnline) {
+      return <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300">Online</Badge>;
+    }
+    return <Badge variant="outline">Unknown</Badge>;
+  };
+
+  const getFormatName = (format: string) => {
+    switch (format) {
+      case 'n2Export': return 'N2 Network';
+      case 'bacnetExport': return 'BACnet';
+      case 'resourceExport': return 'Resources';
+      case 'niagaraNetExport': return 'Niagara Network';
+      default: return format;
     }
   };
 
-  const handleRowSelect = (rowId: string, selected: boolean) => {
-    const updatedDataset = {
-      ...dataset,
-      rows: dataset.rows.map(row => 
-        row.id === rowId ? { ...row, selected } : row
-      )
-    };
-    onDatasetUpdate(updatedDataset);
-  };
+  // Get unique device types for filter
+  const deviceTypes = [...new Set(devices.map(d => 
+    d.format || d.Type || d['Controller Type']
+  ).filter(Boolean))];
 
-  const handleSelectAll = (selected: boolean) => {
-    const visibleRowIds = new Set(filteredAndSortedRows.map(row => row.id));
-    const updatedDataset = {
-      ...dataset,
-      rows: dataset.rows.map(row => 
-        visibleRowIds.has(row.id) ? { ...row, selected } : row
-      )
-    };
-    onDatasetUpdate(updatedDataset);
-  };
-
-  const handleColumnVisibilityToggle = (columnKey: string, visible: boolean) => {
-    const updatedDataset = {
-      ...dataset,
-      columns: dataset.columns.map(col => 
-        col.key === columnKey ? { ...col, visible } : col
-      )
-    };
-    onDatasetUpdate(updatedDataset);
-  };
-
-  const handleBulkStatusSelect = (status: string) => {
-    const targetRows = filteredAndSortedRows.filter(row => 
-      row.parsedStatus?.status === status
-    );
-    
-    const targetRowIds = new Set(targetRows.map(row => row.id));
-    const updatedDataset = {
-      ...dataset,
-      rows: dataset.rows.map(row => 
-        targetRowIds.has(row.id) ? { ...row, selected: true } : row
-      )
-    };
-    onDatasetUpdate(updatedDataset);
-  };
-
-  const selectedCount = dataset.rows.filter(row => row.selected).length;
-  const visibleSelectedCount = filteredAndSortedRows.filter(row => row.selected).length;
-  const visibleColumns = dataset.columns.filter(col => col.visible);
-
-  const renderStatusBadge = (row: TridiumDataRow) => {
-    if (!row.parsedStatus) return null;
-    
-    const variant = row.parsedStatus.badge.variant === 'warning' ? 'secondary' : 
-                   row.parsedStatus.badge.variant === 'success' ? 'default' : 
-                   row.parsedStatus.badge.variant;
-    
+  if (devices.length === 0) {
     return (
-      <Badge variant={variant}>
-        {row.parsedStatus.badge.text}
-      </Badge>
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          No device data available. Upload CSV files to analyze network inventory.
+        </CardContent>
+      </Card>
     );
-  };
-
-  const renderValue = (row: TridiumDataRow, column: CSVColumn) => {
-    const value = row.data[column.key];
-    
-    if (column.type === 'status') {
-      return renderStatusBadge(row);
-    }
-    
-    if (column.type === 'value' && row.parsedValues?.[column.key]) {
-      const parsedValue = row.parsedValues[column.key];
-      return (
-        <span title={parsedValue.formatted}>
-          {parsedValue.formatted}
-        </span>
-      );
-    }
-    
-    if (column.type === 'date' && value instanceof Date) {
-      return value.toLocaleDateString();
-    }
-    
-    return String(value || '');
-  };
+  }
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            {dataset.filename}
-            <Badge variant="outline">{dataset.type}</Badge>
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              {selectedCount} of {dataset.rows.length} selected
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowColumnControls(!showColumnControls)}
-            >
-              {showColumnControls ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              Columns
-            </Button>
+        <CardTitle className="flex items-center gap-2">
+          <CheckSquare className="w-5 h-5" />
+          Network Device Review
+        </CardTitle>
+        <CardDescription>
+          {filteredDevices.length} of {devices.length} devices shown • {selectedIds.size} selected for report
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Search and Filters */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search device names..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
           </div>
-        </div>
-        
-        {/* Filters and Search */}
-        <div className="flex gap-4 flex-wrap">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search all columns..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Status filter" />
+              <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
-              {uniqueStatuses.map(status => (
-                <SelectItem key={status} value={status}>
-                  {status.toUpperCase()}
-                </SelectItem>
-              ))}
+              <SelectItem value="online">Online Only</SelectItem>
+              <SelectItem value="offline">Offline Only</SelectItem>
+              <SelectItem value="alarm">Has Alarms</SelectItem>
             </SelectContent>
           </Select>
-          
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Type filter" />
+              <SelectValue placeholder="Filter by type" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
-              {uniqueTypes.map(type => (
+              {deviceTypes.map(type => (
                 <SelectItem key={type} value={type}>
-                  {type}
+                  {getFormatName(type)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        {/* Bulk Selection Controls */}
-        <div className="flex gap-2 flex-wrap">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleSelectAll(true)}
-          >
-            Select All Visible ({filteredAndSortedRows.length})
+        {/* Quick Selection Buttons */}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={selectAll}>
+            Select All ({filteredDevices.length})
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleSelectAll(false)}
-          >
+          <Button variant="outline" size="sm" onClick={selectNone}>
             Clear Selection
           </Button>
-          {uniqueStatuses.map(status => (
-            <Button
-              key={status}
-              variant="outline"
-              size="sm"
-              onClick={() => handleBulkStatusSelect(status)}
-            >
-              Select All {status.toUpperCase()}
-            </Button>
-          ))}
+          <Button variant="outline" size="sm" onClick={selectCritical}>
+            Critical Issues ({filteredDevices.filter(d => d.isDown || d.hasAlarm).length})
+          </Button>
+          <Button variant="outline" size="sm" onClick={selectControllers}>
+            Controllers ({filteredDevices.filter(d => 
+              (d['Controller Type'] && d['Controller Type'].match(/UNT|VMA|DX/i)) ||
+              (d.Type && d.Type.toLowerCase().includes('controller')) ||
+              d.format === 'n2Export'
+            ).length})
+          </Button>
         </div>
 
-        {/* Column Visibility Controls */}
-        {showColumnControls && (
-          <Card className="p-4">
-            <h4 className="font-medium mb-3">Column Visibility</h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {dataset.columns.map(column => (
-                <div key={column.key} className="flex items-center space-x-2">
-                  <Switch
-                    checked={column.visible}
-                    onCheckedChange={(checked) => handleColumnVisibilityToggle(column.key, checked)}
-                  />
-                  <label className="text-sm">{column.label}</label>
-                </div>
-              ))}
+        {/* Selection Summary */}
+        {selectedIds.size > 0 && (
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+            <div className="text-sm font-medium text-primary mb-1">
+              {selectedIds.size} devices selected for report inclusion
             </div>
-          </Card>
+            <div className="flex flex-wrap gap-4 text-xs text-primary/70">
+              <span>Offline: {filteredDevices.filter(d => selectedIds.has(d.id) && d.isDown).length}</span>
+              <span>With Alarms: {filteredDevices.filter(d => selectedIds.has(d.id) && d.hasAlarm).length}</span>
+              <span>Online: {filteredDevices.filter(d => selectedIds.has(d.id) && d.isOnline).length}</span>
+            </div>
+          </div>
         )}
-      </CardHeader>
-      
-      <CardContent>
-        <div className="rounded-md border">
+
+        {/* Device Table */}
+        <div className="border rounded-lg overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12">
                   <Checkbox
-                    checked={visibleSelectedCount === filteredAndSortedRows.length && filteredAndSortedRows.length > 0}
-                    onCheckedChange={handleSelectAll}
+                    checked={selectedIds.size === filteredDevices.length && filteredDevices.length > 0}
+                    onCheckedChange={(checked) => checked ? selectAll() : selectNone()}
                   />
                 </TableHead>
-                {visibleColumns.map(column => (
-                  <TableHead 
-                    key={column.key}
-                    className={column.sortable ? "cursor-pointer hover:bg-muted/50" : ""}
-                    onClick={column.sortable ? () => handleSort(column.key) : undefined}
-                    style={{ width: column.width }}
-                  >
-                    <div className="flex items-center gap-2">
-                      {column.label}
-                      {column.sortable && (
-                        <div className="flex flex-col">
-                          <ChevronUp 
-                            className={`w-3 h-3 ${
-                              sortColumn === column.key && sortDirection === 'asc' 
-                                ? 'text-primary' 
-                                : 'text-muted-foreground'
-                            }`} 
-                          />
-                          <ChevronDown 
-                            className={`w-3 h-3 -mt-1 ${
-                              sortColumn === column.key && sortDirection === 'desc' 
-                                ? 'text-primary' 
-                                : 'text-muted-foreground'
-                            }`} 
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </TableHead>
-                ))}
+                <TableHead className="min-w-[200px]">Device Name</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Type/Format</TableHead>
+                <TableHead>Address/ID</TableHead>
+                <TableHead>Source File</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAndSortedRows.map(row => (
-                <TableRow key={row.id} className={row.selected ? "bg-muted/30" : ""}>
-                  <TableCell>
-                    <Checkbox
-                      checked={row.selected}
-                      onCheckedChange={(checked) => handleRowSelect(row.id, checked as boolean)}
-                    />
+              {filteredDevices.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    No devices found matching current filters
                   </TableCell>
-                  {visibleColumns.map(column => (
-                    <TableCell key={column.key}>
-                      {renderValue(row, column)}
-                    </TableCell>
-                  ))}
                 </TableRow>
-              ))}
+              ) : (
+                filteredDevices.map((device) => (
+                  <TableRow key={device.id} className="hover:bg-muted/50">
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(device.id)}
+                        onCheckedChange={(checked) => handleDeviceSelection(device.id, checked as boolean)}
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {device.Name || device.name || `Device ${device.id}`}
+                    </TableCell>
+                    <TableCell>
+                      {getStatusBadge(device)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="text-sm">
+                          {device['Controller Type'] || device.Type || 'Unknown'}
+                        </div>
+                        {device.format && (
+                          <Badge variant="outline" className="text-xs">
+                            {getFormatName(device.format)}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {device.Address || device.address || device['Device ID'] || '-'}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {device.sourceFile || 'Unknown'}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
-        </div>
-        
-        <div className="flex items-center justify-between pt-4 text-sm text-muted-foreground">
-          <span>
-            Showing {filteredAndSortedRows.length} of {dataset.rows.length} records
-          </span>
-          <span>
-            {visibleSelectedCount} selected in current view
-          </span>
         </div>
       </CardContent>
     </Card>

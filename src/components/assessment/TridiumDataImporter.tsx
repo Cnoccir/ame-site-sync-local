@@ -246,8 +246,18 @@ export const TridiumDataImporter: React.FC<TridiumDataImporterProps> = ({
       {activeDatasetData && (
         <>
           <TridiumDataTable
-            dataset={activeDatasetData}
-            onDatasetUpdate={(updatedDataset) => handleDatasetUpdate(activeDatasetData.id, updatedDataset)}
+            devices={activeDatasetData.rows.map(row => ({ 
+              id: row.id, 
+              ...row.data,
+              isOnline: row.parsedStatus?.status === 'ok',
+              isDown: row.parsedStatus?.status === 'down',
+              hasAlarm: row.parsedStatus?.status === 'alarm',
+              sourceFile: activeDatasetData.filename,
+              format: activeDatasetData.type
+            }))}
+            onSelectionChange={(selectedDevices) => {
+              // Handle selection change if needed
+            }}
           />
           
           <TridiumSummaryGenerator

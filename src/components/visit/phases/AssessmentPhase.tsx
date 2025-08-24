@@ -298,7 +298,11 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
         ].filter(Boolean)
       };
 
-      setStep5Data(prev => ({ ...prev, analysisData: analysisResults }));
+      setStep5Data(prev => ({ 
+        ...prev, 
+        analysisData: analysisResults,
+        currentTask: 2 
+      }));
 
       // Store analysis results in network_inventory table
       const { error } = await supabase
@@ -313,6 +317,7 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
         });
 
       if (error) {
+        console.error('Database save error:', error);
         toast({
           title: "Warning",
           description: "Analysis completed but couldn't save to database.",
@@ -321,10 +326,11 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
       } else {
         toast({
           title: "Analysis Complete",
-          description: `Processed ${allDevices.length} devices from ${step5Data.uploadedFiles.length} files.`,
+          description: `Processed ${allDevices.length} devices from ${step5Data.uploadedFiles.length} files. Continue to review data.`,
         });
       }
     } catch (error) {
+      console.error('Analysis error:', error);
       toast({
         title: "Error", 
         description: "Failed to parse CSV files.",
