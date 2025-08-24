@@ -98,6 +98,8 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
 
   const loadServiceTierTasks = async () => {
     try {
+      console.log('Loading service tier tasks for phase 2...');
+      
       // Load tasks directly from ame_tasks_normalized filtered by phase (Service Execution = phase 2)
       const { data, error } = await supabase
         .from('ame_tasks_normalized')
@@ -105,16 +107,33 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         .eq('phase', 2) // Service execution phase
         .order('task_order');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Raw tasks loaded:', data?.length || 0);
+      
+      // For debugging - show what tier we're looking for
+      const customerTier = customer?.service_tier || 'CORE';
+      console.log('Customer service tier:', customerTier);
       
       // Filter by customer service tier based on task_id prefix
-      const tierPrefix = customer?.service_tier === 'CORE' ? 'C' : 
-                        customer?.service_tier === 'ASSURE' ? 'A' : 
-                        customer?.service_tier === 'GUARDIAN' ? 'G' : 'C';
+      const tierPrefix = customerTier === 'CORE' ? 'C' : 
+                        customerTier === 'ASSURE' ? 'A' : 
+                        customerTier === 'GUARDIAN' ? 'G' : 'C';
+      
+      console.log('Looking for tasks with prefix:', tierPrefix);
+      
+      // Show available task_ids for debugging
+      console.log('Available task_ids:', data?.map(t => t.task_id) || []);
       
       const filteredTasks = (data || []).filter(task => 
-        task.task_id.startsWith(tierPrefix) || task.task_id.startsWith('CORE')
+        task.task_id.startsWith(tierPrefix)
       );
+      
+      console.log('Filtered tasks count:', filteredTasks.length);
+      console.log('Filtered task_ids:', filteredTasks.map(t => t.task_id));
       
       setServiceTierTasks(filteredTasks);
     } catch (error) {
