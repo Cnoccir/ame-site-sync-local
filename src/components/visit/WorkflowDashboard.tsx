@@ -37,8 +37,6 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
   const [searchParams] = useSearchParams();
   const visitId = searchParams.get('visitId');
   const { user, isAuthenticated } = useAuth();
-  console.log('🔍 WorkflowDashboard - visitId from URL params:', visitId);
-  console.log('🔍 WorkflowDashboard - customer ID:', customer.id);
   
   const { 
     sessionData, 
@@ -63,7 +61,7 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
   useEffect(() => {
     const checkForActiveVisits = async () => {
       if (!visitId && technicianId) {
-        console.log('🔍 No visitId in URL, checking for active visits for customer');
+        
         setLoading(true);
         try {
           // Get all active visits for this customer
@@ -77,7 +75,7 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
 
           if (error) throw error;
 
-          console.log('🔍 Found active visits:', data?.length || 0);
+          
           
           if (data && data.length > 0) {
             setActiveVisits(data);
@@ -85,7 +83,7 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
             setNoActiveVisit(true);
           }
         } catch (error) {
-          console.error('Error checking for active visits:', error);
+          
           setNoActiveVisit(true);
         } finally {
           setLoading(false);

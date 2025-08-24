@@ -82,7 +82,6 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
 
   useEffect(() => {
     const loadData = async () => {
-      console.log('🚀 Starting data load sequence...');
       setLoading(true);
       
       // Load data sequentially to avoid race conditions
@@ -90,7 +89,6 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
       await loadVisitTasks();
       await loadSOPData();
       
-      console.log('✅ All data loaded, starting timer');
       startOverallTimer();
     };
     
@@ -110,21 +108,17 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
 
   const loadServiceTierTasks = async () => {
     try {
-      console.log('Loading service tier tasks...');
-      
       // Get customer service tier
       const customerTier = customer?.service_tier || 'CORE';
-      console.log('Customer service tier:', customerTier);
       
       // Map service tier to task prefix and determine phase
       const tierMapping = {
-        'CORE': { prefix: 'C', phase: 1 }, // CORE tasks are in phase 1
-        'ASSURE': { prefix: 'A', phase: 2 }, // ASSURE tasks are in phase 2  
-        'GUARDIAN': { prefix: 'G', phase: 2 } // GUARDIAN tasks are in phase 2
+        'CORE': { prefix: 'C', phase: 1 },
+        'ASSURE': { prefix: 'A', phase: 2 },  
+        'GUARDIAN': { prefix: 'G', phase: 2 }
       };
       
       const tierConfig = tierMapping[customerTier as keyof typeof tierMapping] || tierMapping.CORE;
-      console.log('Using tier config:', tierConfig);
       
       // Load tasks from the appropriate phase for this service tier
       const { data, error } = await supabase
@@ -134,29 +128,18 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         .order('task_order');
 
       if (error) {
-        console.error('Supabase error:', error);
         throw error;
       }
-      
-      console.log('Raw tasks loaded:', data?.length || 0);
-      console.log('Raw task data:', data);
       
       // Filter by customer service tier based on task_id prefix
       const filteredTasks = (data || []).filter(task => 
         task.task_id.startsWith(tierConfig.prefix)
       );
       
-      console.log('Filtered tasks count:', filteredTasks.length);
-      console.log('Filtered task_ids:', filteredTasks.map(t => t.task_id));
-      
       setServiceTierTasks(filteredTasks);
-      
-      // Mark loading as complete
       setLoading(false);
-      
-      console.log('✅ Service tier tasks loaded successfully');
     } catch (error) {
-      console.error('❌ Error loading service tier tasks:', error);
+      console.error('Error loading service tier tasks:', error);
       setLoading(false);
       toast({
         title: 'Error',
@@ -168,23 +151,19 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
 
   const loadVisitTasks = async () => {
     if (!visitId) {
-      console.log('⚠️ No visitId provided, skipping visit tasks load');
       return;
     }
 
     try {
-      console.log('Loading visit tasks for visitId:', visitId);
       const { data, error } = await supabase
         .from('visit_tasks')
         .select('*')
         .eq('visit_id', visitId);
 
       if (error) {
-        console.error('Error loading visit tasks:', error);
         throw error;
       }
       
-      console.log('Visit tasks loaded:', data?.length || 0);
       setVisitTasks(data || []);
     } catch (error) {
       console.error('Error loading visit tasks:', error);
@@ -193,7 +172,6 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
 
   const loadSOPData = async () => {
     try {
-      console.log('Loading SOP data...');
       const { data, error } = await supabase
         .from('ame_sops_normalized')
         .select('*');

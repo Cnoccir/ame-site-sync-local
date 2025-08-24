@@ -1,14 +1,6 @@
-// Google Drive Configuration
-export const GOOGLE_DRIVE_CONFIG = {
-  masterFolder: '17vkTZ2Szm2pADLmFGEHEMuCetigYoTna',
-  serviceToolDataFolder: '1H9yPV-UUXqaxHVoOmX0s9YsKEtpVQ5cs',
-  files: {
-    customers: '1yO_zJx1_gyaLwhb-ZzUajksKptDaweOV',
-    sopLibrary: '16ygykcrkxukqQDKsrA37u-nrhvoC2jj0',
-    taskLibrary: '16rZ0_e23h7e2UmyRrwjPvJlisWXST2A3',
-    toolLibrary: '11HevKmr6_YmYg54TGbFcaIpvF8Bto-CT'
-  }
-};
+// Import constants from centralized location
+import { GOOGLE_DRIVE_CONFIG } from '@/utils/constants';
+export { GOOGLE_DRIVE_CONFIG };
 
 export interface Customer {
   id: string;
@@ -208,12 +200,5 @@ export interface ActivityItem {
   user: string;
 }
 
-export interface ServiceTierConfig {
-  name: 'CORE' | 'ASSURE' | 'GUARDIAN';
-  min_tasks: number;
-  max_tasks: number;
-  color: string;
-  description: string;
-  includedTiers: string[];
-  taskCount: number;
-}
+// Service tier types are now centralized in serviceTiers.ts
+export type { ServiceTierConfig } from './serviceTiers';

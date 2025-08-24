@@ -1,5 +1,10 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Customer, Visit, Task, VisitTask, Tool, SOP, Report } from '@/types';
+import { logger } from '@/utils/logger';
+import { errorHandler } from '@/utils/errorHandler';
+import { getCurrentISODate, getCurrentDateString, generateVisitExpiration } from '@/utils/dateHelpers';
+import { generateUUID, generateSessionToken } from '@/utils/idGenerators';
+import { VISIT_STATUS, PHASE_STATUS } from '@/utils/constants';
 
 /**
  * Service for AME maintenance system database operations
@@ -8,45 +13,53 @@ export class AMEService {
   
   // Customer operations
   static async getCustomers(): Promise<Customer[]> {
-    const { data, error } = await supabase
-      .from('ame_customers')
-      .select('*')
-      .order('company_name');
-    
-    if (error) throw error;
-    return (data || []) as Customer[];
+    return errorHandler.withErrorHandling(async () => {
+      const { data, error } = await supabase
+        .from('ame_customers')
+        .select('*')
+        .order('company_name');
+      
+      if (error) throw errorHandler.handleSupabaseError(error, 'getCustomers');
+      return (data || []) as Customer[];
+    }, 'getCustomers');
   }
   
   static async getCustomer(id: string): Promise<Customer | null> {
-    const { data, error } = await supabase
-      .from('ame_customers')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return data as Customer;
+    return errorHandler.withErrorHandling(async () => {
+      const { data, error } = await supabase
+        .from('ame_customers')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw errorHandler.handleSupabaseError(error, 'getCustomer');
+      return data as Customer;
+    }, 'getCustomer', { additionalData: { customerId: id } });
   }
   
   static async createCustomer(customer: Omit<Customer, 'id' | 'created_at' | 'updated_at'>): Promise<Customer> {
-    const { data, error } = await supabase
-      .from('ame_customers')
-      .insert(customer)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    
-    // Create Google Drive project folder after customer creation
-    try {
-      const { GoogleDriveFolderService } = await import('./googleDriveFolderService');
-      await GoogleDriveFolderService.ensureProjectFolderExists(data);
-    } catch (folderError) {
-      console.warn('Failed to create Google Drive folder for customer:', folderError);
-      // Don't fail customer creation if folder creation fails
-    }
-    
-    return data as Customer;
+    return errorHandler.withErrorHandling(async () => {
+      const { data, error } = await supabase
+        .from('ame_customers')
+        .insert(customer)
+        .select()
+        .single();
+      
+      if (error) throw errorHandler.handleSupabaseError(error, 'createCustomer');
+      
+      // Create Google Drive project folder after customer creation
+      try {
+        const { GoogleDriveFolderService } = await import('./googleDriveFolderService');
+        await GoogleDriveFolderService.ensureProjectFolderExists(data);
+      } catch (folderError) {
+        logger.warn('Failed to create Google Drive folder for customer', folderError, {
+          customerId: data.id,
+          companyName: data.company_name
+        });
+      }
+      
+      return data as Customer;
+    }, 'createCustomer');
   }
   
   static async updateCustomer(id: string, updates: Partial<Customer>): Promise<Customer> {
@@ -113,97 +126,117 @@ export class AMEService {
   }
 
   static async createVisitWithSession(customerId: string, technicianId: string): Promise<{ visit: Visit; sessionToken: string }> {
-    // Generate unique visit ID
-    const { data: visitIdData, error: visitIdError } = await supabase.rpc('generate_visit_id');
-    if (visitIdError) throw visitIdError;
-    
-    const visitId = visitIdData as string;
-    const sessionToken = crypto.randomUUID();
-    
-    // Create visit record
-    const visitData = {
-      visit_id: visitId,
-      customer_id: customerId,
-      technician_id: technicianId,
-      visit_date: new Date().toISOString().split('T')[0],
-      visit_status: 'In Progress',
-      current_phase: 1,
-      started_at: new Date().toISOString(),
-      is_active: true
-    };
+    return errorHandler.withErrorHandling(async () => {
+      // Generate unique visit ID
+      const { data: visitIdData, error: visitIdError } = await supabase.rpc('generate_visit_id');
+      if (visitIdError) throw errorHandler.handleSupabaseError(visitIdError, 'generateVisitId');
+      
+      const visitId = visitIdData as string;
+      const sessionToken = generateSessionToken();
+      
+      // Create visit record
+      const visitData = {
+        visit_id: visitId,
+        customer_id: customerId,
+        technician_id: technicianId,
+        visit_date: getCurrentDateString(),
+        visit_status: VISIT_STATUS.IN_PROGRESS,
+        current_phase: 1,
+        started_at: getCurrentISODate(),
+        expires_at: generateVisitExpiration(),
+        is_active: true
+      };
 
-    const { data: visit, error: visitError } = await supabase
-      .from('ame_visits')
-      .insert(visitData)
-      .select()
-      .single();
-    
-    if (visitError) throw visitError;
+      const { data: visit, error: visitError } = await supabase
+        .from('ame_visits')
+        .insert(visitData)
+        .select()
+        .single();
+      
+      if (visitError) throw errorHandler.handleSupabaseError(visitError, 'createVisit');
 
-    // Create session record
-    const sessionData = {
-      visit_id: visit.id,
-      technician_id: technicianId,
-      session_token: sessionToken,
-      auto_save_data: {}
-    };
+      // Create session record
+      const sessionData = {
+        visit_id: visit.id,
+        technician_id: technicianId,
+        session_token: sessionToken,
+        auto_save_data: {}
+      };
 
-    const { error: sessionError } = await supabase
-      .from('ame_visit_sessions')
-      .insert(sessionData);
-    
-    if (sessionError) throw sessionError;
+      const { error: sessionError } = await supabase
+        .from('ame_visit_sessions')
+        .insert(sessionData);
+      
+      if (sessionError) throw errorHandler.handleSupabaseError(sessionError, 'createSession');
 
-    return { visit: visit as Visit, sessionToken };
+      logger.info('Visit and session created successfully', {
+        visitId: visit.id,
+        customerId,
+        technicianId
+      });
+
+      return { visit: visit as Visit, sessionToken };
+    }, 'createVisitWithSession', { additionalData: { customerId, technicianId } });
   }
 
   static async saveVisitProgress(visitId: string, sessionToken: string, progressData: any): Promise<void> {
-    // Update visit record
-    const { error: visitError } = await supabase
-      .from('ame_visits')
-      .update({
-        current_phase: progressData.currentPhase,
-        auto_save_data: progressData.autoSaveData,
-        last_activity: new Date().toISOString()
-      })
-      .eq('id', visitId);
-    
-    if (visitError) throw visitError;
+    return errorHandler.withErrorHandling(async () => {
+      const timestamp = getCurrentISODate();
+      
+      // Update visit record
+      const { error: visitError } = await supabase
+        .from('ame_visits')
+        .update({
+          current_phase: progressData.currentPhase,
+          auto_save_data: progressData.autoSaveData,
+          last_activity: timestamp
+        })
+        .eq('id', visitId);
+      
+      if (visitError) throw errorHandler.handleSupabaseError(visitError, 'updateVisitProgress');
 
-    // Update session record
-    const { error: sessionError } = await supabase
-      .from('ame_visit_sessions')
-      .update({
-        auto_save_data: progressData.autoSaveData,
-        last_activity: new Date().toISOString()
-      })
-      .eq('session_token', sessionToken);
-    
-    if (sessionError) throw sessionError;
+      // Update session record
+      const { error: sessionError } = await supabase
+        .from('ame_visit_sessions')
+        .update({
+          auto_save_data: progressData.autoSaveData,
+          last_activity: timestamp
+        })
+        .eq('session_token', sessionToken);
+      
+      if (sessionError) throw errorHandler.handleSupabaseError(sessionError, 'updateSessionProgress');
+      
+      logger.debug('Visit progress saved', { visitId, currentPhase: progressData.currentPhase });
+    }, 'saveVisitProgress', { additionalData: { visitId, sessionToken } });
   }
 
   static async completeVisitPhase(visitId: string, phase: number): Promise<void> {
-    const updateData: any = {
-      [`phase_${phase}_completed_at`]: new Date().toISOString(),
-      [`phase_${phase}_status`]: 'Completed',
-      last_activity: new Date().toISOString()
-    };
+    return errorHandler.withErrorHandling(async () => {
+      const timestamp = getCurrentISODate();
+      const updateData: any = {
+        [`phase_${phase}_completed_at`]: timestamp,
+        [`phase_${phase}_status`]: PHASE_STATUS.COMPLETED,
+        last_activity: timestamp
+      };
 
-    // If completing final phase, mark visit as complete
-    if (phase === 4) {
-      updateData.visit_status = 'Completed';
-      updateData.completion_date = new Date().toISOString();
-      updateData.is_active = false;
-    } else {
-      updateData.current_phase = phase + 1;
-    }
+      // If completing final phase, mark visit as complete
+      if (phase === 4) {
+        updateData.visit_status = VISIT_STATUS.COMPLETED;
+        updateData.completion_date = timestamp;
+        updateData.is_active = false;
+      } else {
+        updateData.current_phase = phase + 1;
+      }
 
-    const { error } = await supabase
-      .from('ame_visits')
-      .update(updateData)
-      .eq('id', visitId);
-    
-    if (error) throw error;
+      const { error } = await supabase
+        .from('ame_visits')
+        .update(updateData)
+        .eq('id', visitId);
+      
+      if (error) throw errorHandler.handleSupabaseError(error, 'completeVisitPhase');
+      
+      logger.info('Visit phase completed', { visitId, phase, isLastPhase: phase === 4 });
+    }, 'completeVisitPhase', { additionalData: { visitId, phase } });
   }
 
   static async getVisitSession(sessionToken: string): Promise<any> {
@@ -222,38 +255,42 @@ export class AMEService {
   }
 
   static async createSessionForVisit(visitId: string): Promise<{ visit: any; sessionToken: string } | null> {
-    // First check if visit exists and is active
-    const { data: visit, error: visitError } = await supabase
-      .from('ame_visits')
-      .select('*')
-      .eq('id', visitId)
-      .eq('is_active', true)
-      .single();
+    return errorHandler.withErrorHandling(async () => {
+      // First check if visit exists and is active
+      const { data: visit, error: visitError } = await supabase
+        .from('ame_visits')
+        .select('*')
+        .eq('id', visitId)
+        .eq('is_active', true)
+        .single();
 
-    if (visitError || !visit) {
-      return null;
-    }
+      if (visitError || !visit) {
+        logger.warn('Visit not found or inactive', undefined, { visitId });
+        return null;
+      }
 
-    // Generate new session token
-    const sessionToken = crypto.randomUUID();
-    
-    // Create new session record
-    const sessionData = {
-      visit_id: visit.id,
-      technician_id: visit.technician_id,
-      session_token: sessionToken,
-      auto_save_data: visit.auto_save_data || {}
-    };
+      // Generate new session token
+      const sessionToken = generateSessionToken();
+      
+      // Create new session record
+      const sessionData = {
+        visit_id: visit.id,
+        technician_id: visit.technician_id,
+        session_token: sessionToken,
+        auto_save_data: visit.auto_save_data || {}
+      };
 
-    const { error: sessionError } = await supabase
-      .from('ame_visit_sessions')
-      .insert(sessionData);
-    
-    if (sessionError) {
-      throw sessionError;
-    }
+      const { error: sessionError } = await supabase
+        .from('ame_visit_sessions')
+        .insert(sessionData);
+      
+      if (sessionError) {
+        throw errorHandler.handleSupabaseError(sessionError, 'createSessionForVisit');
+      }
 
-    return { visit, sessionToken };
+      logger.info('Session created for existing visit', { visitId, sessionToken });
+      return { visit, sessionToken };
+    }, 'createSessionForVisit', { additionalData: { visitId } });
   }
   
   static async getVisit(id: string): Promise<Visit | null> {
