@@ -13,6 +13,8 @@ interface VisitSessionData {
 export const useVisitSession = (visitId?: string) => {
   const [sessionData, setSessionData] = useState<VisitSessionData | null>(null);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Auto-save interval (30 seconds)
@@ -20,6 +22,9 @@ export const useVisitSession = (visitId?: string) => {
 
   const initializeSession = useCallback(async (visitId: string) => {
     console.log('🔍 Initializing session for visitId:', visitId);
+    setIsLoading(true);
+    setError(null);
+    
     try {
       // Try to get session token from localStorage first
       const storedToken = localStorage.getItem(`visit_session_${visitId}`);
@@ -43,6 +48,8 @@ export const useVisitSession = (visitId?: string) => {
           }
         } catch (sessionError) {
           console.log('❌ Stored session invalid, will try to recover visit:', sessionError);
+          // Clear invalid token
+          localStorage.removeItem(`visit_session_${visitId}`);
         }
       }
 
@@ -73,23 +80,30 @@ export const useVisitSession = (visitId?: string) => {
         }
       } catch (visitError) {
         console.log('❌ Could not find or restore visit:', visitError);
+        setError('Could not find or restore visit session');
       }
 
       // If all recovery attempts fail, show error
       console.log('❌ All recovery attempts failed');
+      const errorMessage = "Could not restore visit session. The visit may have expired or been completed.";
+      setError(errorMessage);
       toast({
         title: "Session Error",
-        description: "Could not restore visit session. The visit may have expired or been completed.",
+        description: errorMessage,
         variant: "destructive"
       });
 
     } catch (error) {
       console.error('❌ Failed to initialize session:', error);
+      const errorMessage = "Could not restore previous session. Please try starting a new visit.";
+      setError(errorMessage);
       toast({
         title: "Session Error",
-        description: "Could not restore previous session. Please try starting a new visit.",
+        description: errorMessage,
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   }, [toast]);
 
@@ -186,6 +200,8 @@ export const useVisitSession = (visitId?: string) => {
   return {
     sessionData,
     isAutoSaving,
+    isLoading,
+    error,
     saveProgress,
     completePhase,
     updateAutoSaveData: (data: any) => {
@@ -193,6 +209,7 @@ export const useVisitSession = (visitId?: string) => {
         ...prev,
         autoSaveData: { ...prev.autoSaveData, ...data }
       } : null);
-    }
+    },
+    clearError: () => setError(null)
   };
 };
