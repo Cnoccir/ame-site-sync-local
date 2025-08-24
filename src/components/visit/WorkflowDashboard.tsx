@@ -6,6 +6,7 @@ import { CustomerInfoCard } from './CustomerInfoCard';
 import { PreVisitPhase } from './phases/PreVisitPhase';
 import { AssessmentPhase } from './phases/AssessmentPhase';
 import { ServiceExecutionPhase } from './phases/ServiceExecutionPhase';
+import { PostVisitPhase } from './phases/PostVisitPhase';
 import { useVisitSession } from '@/hooks/useVisitSession';
 import { Customer } from '@/types';
 import { Badge } from '@/components/ui/badge';
@@ -348,10 +349,11 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
             </TabsContent>
             
             <TabsContent value="phase-4" className="space-y-6">
-              <div className="text-center py-12">
-                <h3 className="text-lg font-semibold mb-2">Phase 4: Post-Visit Activities</h3>
-                <p className="text-muted-foreground">Coming soon...</p>
-              </div>
+              <PostVisitPhase 
+                customer={customer}
+                visitId={sessionData.visitId}
+                onPhaseComplete={() => handlePhaseComplete(4)}
+              />
             </TabsContent>
           </Tabs>
         </div>

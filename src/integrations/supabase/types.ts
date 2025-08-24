@@ -1338,6 +1338,42 @@ export type Database = {
           },
         ]
       }
+      customer_feedback: {
+        Row: {
+          comments: string | null
+          contact_name: string
+          created_at: string | null
+          follow_up_reason: string | null
+          follow_up_required: boolean | null
+          id: string
+          satisfaction_rating: number | null
+          updated_at: string | null
+          visit_id: string
+        }
+        Insert: {
+          comments?: string | null
+          contact_name: string
+          created_at?: string | null
+          follow_up_reason?: string | null
+          follow_up_required?: boolean | null
+          id?: string
+          satisfaction_rating?: number | null
+          updated_at?: string | null
+          visit_id: string
+        }
+        Update: {
+          comments?: string | null
+          contact_name?: string
+          created_at?: string | null
+          follow_up_reason?: string | null
+          follow_up_required?: boolean | null
+          id?: string
+          satisfaction_rating?: number | null
+          updated_at?: string | null
+          visit_id?: string
+        }
+        Relationships: []
+      }
       document_metadata: {
         Row: {
           created_at: string | null
@@ -2037,6 +2073,96 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      visit_issues: {
+        Row: {
+          action_taken: string | null
+          created_at: string | null
+          description: string
+          id: string
+          issue_type: string
+          severity: string
+          updated_at: string | null
+          visit_id: string
+        }
+        Insert: {
+          action_taken?: string | null
+          created_at?: string | null
+          description: string
+          id?: string
+          issue_type: string
+          severity: string
+          updated_at?: string | null
+          visit_id: string
+        }
+        Update: {
+          action_taken?: string | null
+          created_at?: string | null
+          description?: string
+          id?: string
+          issue_type?: string
+          severity?: string
+          updated_at?: string | null
+          visit_id?: string
+        }
+        Relationships: []
+      }
+      visit_recommendations: {
+        Row: {
+          created_at: string | null
+          id: string
+          priority: string | null
+          recommendation_text: string
+          recommendation_type: string
+          updated_at: string | null
+          visit_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          priority?: string | null
+          recommendation_text: string
+          recommendation_type: string
+          updated_at?: string | null
+          visit_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          priority?: string | null
+          recommendation_text?: string
+          recommendation_type?: string
+          updated_at?: string | null
+          visit_id?: string
+        }
+        Relationships: []
+      }
+      visit_reports: {
+        Row: {
+          generated_at: string | null
+          id: string
+          report_data: Json
+          report_url: string | null
+          technician_email: string
+          visit_id: string
+        }
+        Insert: {
+          generated_at?: string | null
+          id?: string
+          report_data: Json
+          report_url?: string | null
+          technician_email: string
+          visit_id: string
+        }
+        Update: {
+          generated_at?: string | null
+          id?: string
+          report_data?: Json
+          report_url?: string | null
+          technician_email?: string
+          visit_id?: string
         }
         Relationships: []
       }
