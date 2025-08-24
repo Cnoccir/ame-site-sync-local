@@ -361,28 +361,57 @@ export class AMEService {
   }
   
   static async getTasksByServiceTier(serviceTier: string): Promise<any[]> {
-    // Use junction table to find tasks by service tier
+    // Get inherited tiers for this service level
+    const inheritedTiers = this.getInheritedTiers(serviceTier);
+    
+    // Query tasks that are available to any of the inherited tiers
     const { data, error } = await supabase
       .from('ame_tasks_normalized')
-      .select(`
-        *,
-        task_service_tiers!inner(
-          service_tier_id,
-          service_tiers!inner(tier_code)
-        ),
-        task_categories(category_name)
-      `)
-      .eq('task_service_tiers.service_tiers.tier_code', serviceTier)
+      .select('*')
+      .overlaps('service_tiers', inheritedTiers)
+      .order('tier_order', { ascending: true })
       .order('task_order', { ascending: true });
     
     if (error) throw error;
     
-    // Transform to include proper relationships
     return (data || []).map(task => ({
       ...task,
       service_tier: serviceTier,
-      category_name: task.task_categories?.category_name || 'General'
+      category_name: task.task_name || 'General'
     }));
+  }
+
+  static getInheritedTiers(tier: string): string[] {
+    switch (tier) {
+      case 'CORE': return ['CORE'];
+      case 'ASSURE': return ['CORE', 'ASSURE'];
+      case 'GUARDIAN': return ['CORE', 'ASSURE', 'GUARDIAN'];
+      default: return ['CORE'];
+    }
+  }
+
+  static async getToolsByServiceTier(serviceTier: string): Promise<any[]> {
+    const inheritedTiers = this.getInheritedTiers(serviceTier);
+    
+    const { data, error } = await supabase
+      .from('ame_tools_normalized')
+      .select('*')
+      .overlaps('service_tiers', inheritedTiers)
+      .order('tool_name');
+    
+    if (error) throw error;
+    return data || [];
+  }
+
+  static async getSOPsByServiceTier(serviceTier: string): Promise<any[]> {
+    // For now, return all SOPs until we have proper tier data
+    const { data, error } = await supabase
+      .from('ame_sops_normalized')
+      .select('*')
+      .order('title');
+    
+    if (error) throw error;
+    return data || [];
   }
   
   static async createTask(task: any): Promise<any> {

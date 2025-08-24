@@ -214,4 +214,6 @@ export interface ServiceTierConfig {
   max_tasks: number;
   color: string;
   description: string;
+  includedTiers: string[];
+  taskCount: number;
 }

@@ -27,6 +27,7 @@ import { AMEService } from '@/services/ameService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
+import { ServiceTierBadge } from '@/components/ui/service-tier-badge';
 
 interface WorkflowDashboardProps {
   customer: Customer;
@@ -302,8 +303,16 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Customer Info Card */}
-      <CustomerInfoCard customer={customer} />
+      {/* Customer Header with Service Tier */}
+      <div className="bg-card border-b px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">{customer.company_name}</h1>
+            <p className="text-muted-foreground">{customer.site_name}</p>
+          </div>
+          <ServiceTierBadge tier={customer.service_tier} size="md" />
+        </div>
+      </div>
       
       {/* Visit Status Bar */}
       <div className="bg-muted/50 border-b px-6 py-3">
