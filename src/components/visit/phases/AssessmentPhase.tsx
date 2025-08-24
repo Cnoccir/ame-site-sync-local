@@ -15,6 +15,7 @@ import { LocationMapping } from '@/components/assessment/LocationMapping';
 import { ConnectionTester } from '@/components/assessment/ConnectionTester';
 import { FileUploader } from '@/components/assessment/FileUploader';
 import { NetworkAnalysisResults } from '@/components/assessment/NetworkAnalysisResults';
+import { TridiumDataImporter } from '@/components/assessment/TridiumDataImporter';
 import { SystemStatusCard } from '@/components/assessment/SystemStatusCard';
 import { PriorityDiscussion } from '@/components/assessment/PriorityDiscussion';
 
@@ -80,7 +81,8 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     uploadedFiles: [] as File[],
     analysisData: null as any,
     manualStationCount: '',
-    manualComponents: ''
+    manualComponents: '',
+    tridiumAnalysis: '' as string
   });
 
   const [step6Data, setStep6Data] = useState({
@@ -166,7 +168,7 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
       case 4:
         return step4Data.supervisorStatus === 'success' || step4Data.workbenchStatus === 'success';
       case 5:
-        return step5Data.uploadedFiles.length > 0 || step5Data.manualStationCount.trim() !== '';
+        return step5Data.uploadedFiles.length > 0 || step5Data.manualStationCount.trim() !== '' || step5Data.tridiumAnalysis.trim() !== '';
       case 6:
         return step6Data.activeAlarms !== '' && step6Data.criticalAlarms !== '';
       default:
@@ -309,20 +311,36 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
 
             {step.number === 5 && (
               <div className="space-y-6">
-                <FileUploader
-                  files={step5Data.uploadedFiles}
-                  onFilesChange={(files) => setStep5Data(prev => ({ ...prev, uploadedFiles: files }))}
+                <TridiumDataImporter
+                  onDataSelected={(summaryText) => setStep5Data(prev => ({ ...prev, tridiumAnalysis: summaryText }))}
                 />
                 
-                {step5Data.uploadedFiles.length > 0 && (
-                  <Button onClick={handleNetworkAnalysis} className="w-full">
-                    Analyze Network Files
-                  </Button>
+                {step5Data.tridiumAnalysis && (
+                  <Card className="p-4">
+                    <h5 className="font-medium mb-3">Generated Analysis Summary</h5>
+                    <div className="bg-muted p-3 rounded-md text-sm whitespace-pre-wrap max-h-60 overflow-y-auto">
+                      {step5Data.tridiumAnalysis}
+                    </div>
+                  </Card>
                 )}
 
-                {step5Data.analysisData && (
-                  <NetworkAnalysisResults data={step5Data.analysisData} />
-                )}
+                <Card className="p-4">
+                  <h5 className="font-medium mb-3">Legacy Network Analysis (Optional)</h5>
+                  <FileUploader
+                    files={step5Data.uploadedFiles}
+                    onFilesChange={(files) => setStep5Data(prev => ({ ...prev, uploadedFiles: files }))}
+                  />
+                  
+                  {step5Data.uploadedFiles.length > 0 && (
+                    <Button onClick={handleNetworkAnalysis} className="w-full mt-3">
+                      Analyze Network Files
+                    </Button>
+                  )}
+
+                  {step5Data.analysisData && (
+                    <NetworkAnalysisResults data={step5Data.analysisData} />
+                  )}
+                </Card>
 
                 <Card className="p-4">
                   <h5 className="font-medium mb-3">Manual Entry Alternative</h5>

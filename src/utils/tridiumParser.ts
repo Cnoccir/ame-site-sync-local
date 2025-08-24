@@ -1,0 +1,373 @@
+import { TridiumDataset, TridiumDataRow, CSVColumn, ParsedStatus, ParsedValue, DatasetSummary, TridiumDataTypes } from '@/types/tridium';
+import { logger } from '@/utils/logger';
+
+export class TridiumCSVParser {
+  private static supportedFormats = {
+    'N2Export': {
+      identifier: ['Name', 'Status', 'Address', 'Controller Type'],
+      statusColumn: 'Status',
+      keyColumn: 'Name',
+      type: 'networkDevices' as keyof TridiumDataTypes
+    },
+    'ResourceExport': {
+      identifier: ['Name', 'Value'],
+      keyColumn: 'Name',
+      valueParser: true,
+      type: 'resourceMetrics' as keyof TridiumDataTypes
+    },
+    'BacnetExport': {
+      identifier: ['Name', 'Type', 'Device ID', 'Status'],
+      statusColumn: 'Status',
+      keyColumn: 'Name',
+      complexColumns: ['Exts', 'Protocol Rev'],
+      type: 'bacnetDevices' as keyof TridiumDataTypes
+    },
+    'NiagaraNetExport': {
+      identifier: ['Path', 'Name', 'Type', 'Status'],
+      statusColumn: 'Status',
+      keyColumn: 'Name',
+      hierarchical: true,
+      type: 'niagaraStations' as keyof TridiumDataTypes
+    }
+  };
+
+  static parseCSVContent(csvContent: string, filename: string): TridiumDataset {
+    try {
+      logger.info('Starting CSV parse', { filename });
+      
+      const lines = this.splitLines(csvContent);
+      if (lines.length < 2) {
+        throw new Error('CSV file must have at least a header and one data row');
+      }
+
+      const headers = this.parseCSVLine(lines[0]);
+      const format = this.detectFormat(headers);
+      
+      logger.info('Detected format', { format: format?.type });
+
+      const columns = this.createColumns(headers);
+      const rows: TridiumDataRow[] = [];
+      const parseErrors: string[] = [];
+
+      // Parse data rows
+      for (let i = 1; i < lines.length; i++) {
+        try {
+          const rowData = this.parseCSVLine(lines[i]);
+          if (rowData.length === headers.length) {
+            const dataObj: Record<string, any> = {};
+            headers.forEach((header, index) => {
+              dataObj[header] = this.convertValue(rowData[index], columns[index].type);
+            });
+
+            const row: TridiumDataRow = {
+              id: `row-${i}`,
+              selected: false,
+              data: dataObj,
+            };
+
+            // Parse status if format has status column
+            if (format && 'statusColumn' in format && format.statusColumn && dataObj[format.statusColumn]) {
+              row.parsedStatus = this.parseStatus(dataObj[format.statusColumn]);
+            }
+
+            // Parse values for resource metrics
+            if (format && 'valueParser' in format && format.valueParser) {
+              row.parsedValues = {};
+              Object.entries(dataObj).forEach(([key, value]) => {
+                if (key !== format.keyColumn && value) {
+                  row.parsedValues![key] = this.parseValue(value);
+                }
+              });
+            }
+
+            rows.push(row);
+          }
+        } catch (error) {
+          parseErrors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Parse error'}`);
+        }
+      }
+
+      const summary = this.generateSummary(rows, format);
+
+      return {
+        id: `dataset-${Date.now()}`,
+        filename,
+        type: format?.type || 'networkDevices',
+        columns,
+        rows,
+        summary,
+        metadata: {
+          totalRows: rows.length,
+          parseErrors,
+          uploadedAt: new Date(),
+          fileSize: csvContent.length
+        }
+      };
+    } catch (error) {
+      logger.error('CSV parse failed', { filename, error });
+      throw error;
+    }
+  }
+
+  private static splitLines(csvContent: string): string[] {
+    return csvContent.split(/\r?\n/).filter(line => line.trim());
+  }
+
+  private static parseCSVLine(line: string): string[] {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    let i = 0;
+
+    while (i < line.length) {
+      const char = line[i];
+      
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i += 2;
+        } else {
+          inQuotes = !inQuotes;
+          i++;
+        }
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+        i++;
+      } else {
+        current += char;
+        i++;
+      }
+    }
+    
+    result.push(current.trim());
+    return result;
+  }
+
+  private static detectFormat(headers: string[]) {
+    for (const [formatName, config] of Object.entries(this.supportedFormats)) {
+      const matches = config.identifier.filter(col => headers.includes(col));
+      if (matches.length >= config.identifier.length * 0.75) {
+        return { ...config, name: formatName };
+      }
+    }
+    return null;
+  }
+
+  private static createColumns(headers: string[]): CSVColumn[] {
+    return headers.map((header, index) => ({
+      key: header,
+      label: header,
+      type: this.detectColumnType(header),
+      visible: true,
+      sortable: true,
+      width: this.calculateColumnWidth(header)
+    }));
+  }
+
+  private static detectColumnType(header: string): CSVColumn['type'] {
+    const lowerHeader = header.toLowerCase();
+    
+    if (lowerHeader.includes('status') || lowerHeader.includes('health')) {
+      return 'status';
+    }
+    if (lowerHeader.includes('value') || lowerHeader.includes('usage') || lowerHeader.includes('%')) {
+      return 'value';
+    }
+    if (lowerHeader.includes('date') || lowerHeader.includes('time')) {
+      return 'date';
+    }
+    if (lowerHeader.includes('id') || lowerHeader.includes('count') || lowerHeader.includes('number')) {
+      return 'number';
+    }
+    
+    return 'text';
+  }
+
+  private static calculateColumnWidth(header: string): number {
+    const baseWidth = Math.max(header.length * 8, 100);
+    return Math.min(baseWidth, 300);
+  }
+
+  private static convertValue(value: string, type: CSVColumn['type']): any {
+    if (!value || value.trim() === '') return '';
+    
+    switch (type) {
+      case 'number':
+        const num = parseFloat(value.replace(/[^0-9.-]/g, ''));
+        return isNaN(num) ? value : num;
+      case 'date':
+        const date = new Date(value);
+        return isNaN(date.getTime()) ? value : date.toISOString();
+      default:
+        return value.trim();
+    }
+  }
+
+  static parseStatus(statusValue: string): ParsedStatus {
+    const status = statusValue.toLowerCase();
+    
+    if (status.includes('{ok}')) {
+      return {
+        status: 'ok',
+        severity: 'normal',
+        details: ['System operational'],
+        badge: { text: 'OK', variant: 'success' }
+      };
+    }
+    
+    if (status.includes('{down}')) {
+      const hasAlarm = status.includes('alarm');
+      const hasFault = status.includes('fault');
+      
+      return {
+        status: hasFault ? 'fault' : 'down',
+        severity: 'critical',
+        details: [
+          'Device offline',
+          ...(hasAlarm ? ['Alarm condition present'] : []),
+          ...(hasFault ? ['Fault detected'] : [])
+        ],
+        badge: { text: hasFault ? 'FAULT/DOWN' : 'DOWN', variant: 'destructive' }
+      };
+    }
+    
+    if (status.includes('{unackedalarm}') || status.includes('{alarm}')) {
+      return {
+        status: 'alarm',
+        severity: 'warning',
+        details: ['Unacknowledged alarm'],
+        badge: { text: 'ALARM', variant: 'warning' }
+      };
+    }
+    
+    return {
+      status: 'unknown',
+      severity: 'normal',
+      details: ['Status unclear'],
+      badge: { text: statusValue || 'UNKNOWN', variant: 'default' }
+    };
+  }
+
+  static parseValue(value: any): ParsedValue {
+    const stringValue = String(value).trim();
+    
+    // Percentage
+    if (stringValue.includes('%')) {
+      const num = parseFloat(stringValue.replace('%', ''));
+      return {
+        value: isNaN(num) ? 0 : num,
+        unit: '%',
+        formatted: stringValue,
+        type: 'percentage'
+      };
+    }
+    
+    // Memory with units
+    if (stringValue.match(/\d+\s*(MB|GB|KB|bytes?)/i)) {
+      const match = stringValue.match(/(\d+(?:\.\d+)?)\s*(MB|GB|KB|bytes?)/i);
+      if (match) {
+        return {
+          value: parseFloat(match[1]),
+          unit: match[2],
+          formatted: stringValue,
+          type: 'memory'
+        };
+      }
+    }
+    
+    // Count with limit
+    if (stringValue.match(/\d+.*\(.*limit.*\)/i)) {
+      const match = stringValue.match(/(\d+(?:,\d+)*)/);
+      if (match) {
+        return {
+          value: parseInt(match[1].replace(/,/g, '')),
+          formatted: stringValue,
+          type: 'count'
+        };
+      }
+    }
+    
+    // Duration
+    if (stringValue.match(/\d+\s*(day|hour|minute|second)/i)) {
+      return {
+        value: stringValue,
+        formatted: stringValue,
+        type: 'duration'
+      };
+    }
+    
+    // Timestamp
+    if (stringValue.match(/\d{1,2}-\w{3}-\d{2,4}/)) {
+      const date = new Date(stringValue);
+      return {
+        value: isNaN(date.getTime()) ? stringValue : date.toISOString(),
+        formatted: stringValue,
+        type: 'timestamp'
+      };
+    }
+    
+    // Plain number
+    const num = parseFloat(stringValue.replace(/[^0-9.-]/g, ''));
+    if (!isNaN(num) && stringValue.match(/^\d+(?:\.\d+)?$/)) {
+      return {
+        value: num,
+        formatted: stringValue,
+        type: 'count'
+      };
+    }
+    
+    // Default to text
+    return {
+      value: stringValue,
+      formatted: stringValue,
+      type: 'text'
+    };
+  }
+
+  private static generateSummary(rows: TridiumDataRow[], format: any): DatasetSummary {
+    const summary: DatasetSummary = {
+      totalDevices: rows.length,
+      statusBreakdown: {
+        ok: 0,
+        down: 0,
+        alarm: 0,
+        fault: 0,
+        unknown: 0
+      },
+      typeBreakdown: {},
+      criticalFindings: [],
+      recommendations: []
+    };
+
+    // Analyze rows
+    rows.forEach(row => {
+      // Count status
+      if (row.parsedStatus) {
+        summary.statusBreakdown[row.parsedStatus.status]++;
+        
+        if (row.parsedStatus.severity === 'critical') {
+          const deviceName = row.data[format?.keyColumn || 'Name'] || 'Unknown Device';
+          summary.criticalFindings.push(`${deviceName}: ${row.parsedStatus.details.join(', ')}`);
+        }
+      }
+      
+      // Count types
+      const type = row.data['Type'] || row.data['Controller Type'] || 'Unknown';
+      summary.typeBreakdown[type] = (summary.typeBreakdown[type] || 0) + 1;
+    });
+
+    // Generate recommendations
+    if (summary.statusBreakdown.down > 0) {
+      summary.recommendations.push(`${summary.statusBreakdown.down} devices are offline and require immediate attention`);
+    }
+    if (summary.statusBreakdown.alarm > 0) {
+      summary.recommendations.push(`${summary.statusBreakdown.alarm} devices have unacknowledged alarms`);
+    }
+    if (summary.statusBreakdown.fault > 0) {
+      summary.recommendations.push(`${summary.statusBreakdown.fault} devices show fault conditions`);
+    }
+
+    return summary;
+  }
+}
