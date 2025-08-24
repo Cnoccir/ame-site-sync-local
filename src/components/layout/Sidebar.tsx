@@ -47,9 +47,9 @@ export const Sidebar = ({ isOpen }: SidebarProps) => {
       {/* Logo Section */}
       <div className="ame-sidebar-header">
         <div className="ame-logo">
-          <div className="ame-logo-text">AME</div>
-          <div className="ame-tagline">BUILDING AUTOMATION</div>
-          <div className="ame-system-title">MAINTENANCE SYSTEM</div>
+          <div className="ame-logo-text">AME INC.</div>
+          <div className="ame-tagline">A PART OF NORDAMATIC GROUP</div>
+          <div className="ame-system-title">Maintenance Management</div>
         </div>
       </div>
 
