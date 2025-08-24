@@ -1,23 +1,31 @@
 import { useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
-import { Sidebar } from './Sidebar';
+import { Outlet } from 'react-router-dom';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { AppSidebar } from './AppSidebar';
 import { Header } from './Header';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export const MainLayout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const location = useLocation();
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
 
   return (
-    <div className="ame-container">
-      <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
-      
-      <div className="ame-main-content">
-        <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+    <SidebarProvider 
+      defaultOpen={!isMobile}
+      open={sidebarOpen}
+      onOpenChange={setSidebarOpen}
+    >
+      <div className="min-h-screen flex w-full">
+        <AppSidebar />
         
-        <main className="flex-1 overflow-auto" style={{ background: 'hsl(var(--ame-light))' }}>
-          <Outlet />
-        </main>
+        <div className="flex-1 flex flex-col">
+          <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+          
+          <main className="flex-1 overflow-auto" style={{ background: 'hsl(var(--ame-light))' }}>
+            <Outlet />
+          </main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };

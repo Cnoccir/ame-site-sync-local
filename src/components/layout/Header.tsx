@@ -1,4 +1,4 @@
-import { Bell, Menu, RefreshCw, User, LogOut } from 'lucide-react';
+import { Bell, RefreshCw, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu,
@@ -7,6 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -64,6 +65,7 @@ export const Header = ({ onMenuToggle }: HeaderProps) => {
   return (
     <header className="bg-card border-b border-card-border h-16 flex items-center justify-between px-6">
       <div className="flex items-center space-x-4">
+        <SidebarTrigger className="md:hidden" />
         <h1 className="text-xl font-semibold text-foreground">{getPageTitle()}</h1>
       </div>
 
