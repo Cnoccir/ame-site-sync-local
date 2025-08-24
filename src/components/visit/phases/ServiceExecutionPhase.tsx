@@ -3,10 +3,9 @@ import { Clock, Play, CheckCircle, Eye, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ModernTaskList } from '../task-execution/ModernTaskList';
-import { TaskDetailsPanel } from '../task-execution/TaskDetailsPanel';
-import { ModernSOPModal } from '../task-execution/ModernSOPModal';
-import { TaskTimer } from '../task-execution/TaskTimer';
+import { EnhancedTaskList } from '../task-execution/EnhancedTaskList';
+import { StepByStepViewer } from '../task-execution/StepByStepViewer';
+import { EnhancedSOPModal } from '../task-execution/EnhancedSOPModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Customer } from '@/types';
@@ -16,17 +15,20 @@ interface ServiceExecutionPhaseProps {
   onPhaseComplete: () => void;
 }
 
-interface ServiceTierTask {
+interface TaskData {
   id: string;
-  service_tier: string;
-  category: string;
+  task_id: string;
   task_name: string;
-  description: string;
-  estimated_duration: number;
-  is_required: boolean;
-  prerequisites: string[];
-  tools_required: string[];
-  sort_order: number;
+  category_id: string;
+  duration_minutes: number;
+  navigation_path: string;
+  sop_steps: string;
+  quality_checks: string;
+  skills_required: string;
+  safety_notes: string;
+  is_mandatory: boolean;
+  phase: number;
+  task_order: number;
 }
 
 interface VisitTask {
@@ -42,16 +44,16 @@ interface VisitTask {
   updated_at?: string;
 }
 
-interface TaskProcedure {
+interface SOPData {
   id: string;
-  task_id: string;
-  procedure_title: string;
-  procedure_category: string;
-  procedure_steps: any;
-  visual_guides: any;
-  additional_resources: any;
-  created_at?: string;
-  updated_at?: string;
+  sop_id: string;
+  title: string;
+  goal: string | null;
+  steps: any;
+  best_practices: string | null;
+  tools_required: any;
+  hyperlinks: any;
+  estimated_duration_minutes: number;
 }
 
 export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
@@ -59,13 +61,18 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
   onPhaseComplete
 }) => {
   const { toast } = useToast();
-  const [serviceTierTasks, setServiceTierTasks] = useState<ServiceTierTask[]>([]);
+  const [serviceTierTasks, setServiceTierTasks] = useState<TaskData[]>([]);
   const [visitTasks, setVisitTasks] = useState<VisitTask[]>([]);
-  const [taskProcedures, setTaskProcedures] = useState<TaskProcedure[]>([]);
-  const [selectedTask, setSelectedTask] = useState<ServiceTierTask | null>(null);
-  const [selectedProcedure, setSelectedProcedure] = useState<TaskProcedure | null>(null);
+  const [sopData, setSOPData] = useState<SOPData[]>([]);
+  const [selectedTask, setSelectedTask] = useState<TaskData | null>(null);
+  const [selectedSOP, setSelectedSOP] = useState<SOPData | null>(null);
   const [showSOPModal, setShowSOPModal] = useState(false);
+  const [showStepViewer, setShowStepViewer] = useState(false);
   const [taskTimers, setTaskTimers] = useState<Record<string, number>>({});
+  const [overallTimer, setOverallTimer] = useState(0);
+  const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
 
   // Get current visit ID from URL params
@@ -74,42 +81,42 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
   useEffect(() => {
     loadServiceTierTasks();
     loadVisitTasks();
-    loadTaskProcedures();
+    loadSOPData();
+    startOverallTimer();
   }, []);
+
+  // Overall timer effect
+  useEffect(() => {
+    if (!timerStartTime || isPaused) return;
+    
+    const interval = setInterval(() => {
+      setOverallTimer(Date.now() - timerStartTime);
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [timerStartTime, isPaused]);
 
   const loadServiceTierTasks = async () => {
     try {
-      // Use the proper relationship tables to get tasks by service tier
+      // Load tasks directly from ame_tasks_normalized filtered by phase (Service Execution = phase 2)
       const { data, error } = await supabase
         .from('ame_tasks_normalized')
-        .select(`
-          *,
-          task_service_tiers!inner(
-            service_tier_id,
-            service_tiers!inner(tier_code)
-          )
-        `)
-        .eq('task_service_tiers.service_tiers.tier_code', customer?.service_tier || 'CORE')
-        .order('task_id');
+        .select('*')
+        .eq('phase', 2) // Service execution phase
+        .order('task_order');
 
       if (error) throw error;
       
-      // Transform the data to match expected interface
-      const transformedTasks = (data || []).map(task => ({
-        id: task.id,
-        task_id: task.task_id,
-        service_tier: customer?.service_tier || 'CORE',
-        category: task.category_id || 'General',
-        task_name: task.task_name,
-        description: task.sop_steps || 'No description available',
-        estimated_duration: task.duration_minutes || 30,
-        is_required: task.is_mandatory || true,
-        prerequisites: task.prerequisites ? [task.prerequisites] : [],
-        tools_required: [], // Will be populated from relationship table
-        sort_order: task.task_order || 1
-      }));
+      // Filter by customer service tier based on task_id prefix
+      const tierPrefix = customer?.service_tier === 'CORE' ? 'C' : 
+                        customer?.service_tier === 'ASSURE' ? 'A' : 
+                        customer?.service_tier === 'GUARDIAN' ? 'G' : 'C';
       
-      setServiceTierTasks(transformedTasks);
+      const filteredTasks = (data || []).filter(task => 
+        task.task_id.startsWith(tierPrefix) || task.task_id.startsWith('CORE')
+      );
+      
+      setServiceTierTasks(filteredTasks);
     } catch (error) {
       console.error('Error loading service tier tasks:', error);
       toast({
@@ -138,25 +145,48 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
     }
   };
 
-  const loadTaskProcedures = async () => {
+  const loadSOPData = async () => {
     try {
       const { data, error } = await supabase
-        .from('task_procedures')
+        .from('ame_sops_normalized')
         .select('*');
 
       if (error) throw error;
-      setTaskProcedures((data || []).map(proc => ({
-        ...proc,
-        procedure_steps: Array.isArray(proc.procedure_steps) ? proc.procedure_steps : [],
-        visual_guides: Array.isArray(proc.visual_guides) ? proc.visual_guides : [],
-        additional_resources: Array.isArray(proc.additional_resources) ? proc.additional_resources : []
+      setSOPData((data || []).map(sop => ({
+        ...sop,
+        steps: Array.isArray(sop.steps) ? sop.steps : [],
+        tools_required: Array.isArray(sop.tools_required) ? sop.tools_required : [],
+        hyperlinks: Array.isArray(sop.hyperlinks) ? sop.hyperlinks : []
       })));
     } catch (error) {
-      console.error('Error loading task procedures:', error);
+      console.error('Error loading SOP data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getTaskStatus = (task: ServiceTierTask): string => {
+  const startOverallTimer = () => {
+    setTimerStartTime(Date.now());
+    setIsPaused(false);
+  };
+
+  const togglePause = () => {
+    if (isPaused) {
+      // Resume - adjust start time to account for pause duration
+      const pausedDuration = Date.now() - (timerStartTime || 0) - overallTimer;
+      setTimerStartTime((timerStartTime || 0) + pausedDuration);
+    }
+    setIsPaused(!isPaused);
+  };
+
+  const resetTimer = () => {
+    setOverallTimer(0);
+    setTimerStartTime(Date.now());
+    setIsPaused(false);
+    setTaskTimers({});
+  };
+
+  const getTaskStatus = (task: TaskData): string => {
     const visitTask = visitTasks.find(vt => vt.task_id === task.id);
     return visitTask?.status || 'not_started';
   };
@@ -164,10 +194,10 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
   const getTaskStats = () => {
     const total = serviceTierTasks.length;
     const completed = serviceTierTasks.filter(task => getTaskStatus(task) === 'completed').length;
-    const totalDuration = serviceTierTasks.reduce((sum, task) => sum + task.estimated_duration, 0);
+    const totalDuration = serviceTierTasks.reduce((sum, task) => sum + task.duration_minutes, 0);
     const completedDuration = serviceTierTasks
       .filter(task => getTaskStatus(task) === 'completed')
-      .reduce((sum, task) => sum + task.estimated_duration, 0);
+      .reduce((sum, task) => sum + task.duration_minutes, 0);
 
     return {
       total,
@@ -178,7 +208,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
     };
   };
 
-  const handleTaskStart = async (task: ServiceTierTask) => {
+  const handleTaskStart = async (task: TaskData) => {
     if (!visitId) return;
 
     try {
@@ -236,7 +266,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
     }
   };
 
-  const handleTaskComplete = async (task: ServiceTierTask) => {
+  const handleTaskComplete = async (task: TaskData) => {
     if (!visitId) return;
 
     try {
@@ -301,18 +331,29 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
     }
   };
 
-  const handleViewSOP = (task: ServiceTierTask) => {
-    const procedure = taskProcedures.find(tp => tp.task_id === task.id);
-    if (procedure) {
-      setSelectedProcedure(procedure);
-      setShowSOPModal(true);
-    } else {
-      toast({
-        title: 'SOP Not Available',
-        description: 'No Standard Operating Procedure found for this task',
-        variant: 'destructive'
-      });
+  const handleViewSOP = (task: TaskData) => {
+    const sop = sopData.find(s => s.sop_id === task.task_id);
+    setSelectedSOP(sop || null);
+    setSelectedTask(task);
+    setShowSOPModal(true);
+  };
+
+  const handleStepComplete = (stepNumber: number) => {
+    setCompletedSteps(prev => new Set([...prev, stepNumber]));
+  };
+
+  const handleAllStepsComplete = () => {
+    if (selectedTask) {
+      handleTaskComplete(selectedTask);
+      setShowStepViewer(false);
     }
+  };
+
+  const handleStartStepViewer = (task: TaskData) => {
+    setSelectedTask(task);
+    setCompletedSteps(new Set());
+    setShowStepViewer(true);
+    handleTaskStart(task);
   };
 
   if (loading) {
@@ -343,43 +384,60 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         </Badge>
       </div>
 
-      {/* Modern Task Management Interface */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Task List - Takes more space */}
-        <div className="lg:col-span-3">
-          <ModernTaskList
+      {/* Enhanced Task Management Interface */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Enhanced Task List */}
+        <div className="lg:col-span-2">
+          <EnhancedTaskList
             tasks={serviceTierTasks}
             visitTasks={visitTasks}
             stats={stats}
+            serviceTier={customer?.service_tier || 'CORE'}
             onTaskSelect={setSelectedTask}
-            onTaskStart={handleTaskStart}
+            onTaskStart={handleStartStepViewer}
             onTaskComplete={handleTaskComplete}
             onViewSOP={handleViewSOP}
             selectedTaskId={selectedTask?.id}
             taskTimers={taskTimers}
+            overallTimer={overallTimer}
+            isPaused={isPaused}
+            onPauseToggle={togglePause}
+            onTimerReset={resetTimer}
           />
         </div>
 
-        {/* Task Details - Compact sidebar */}
-        <div className="lg:col-span-2">
-          <TaskDetailsPanel
-            task={selectedTask}
-            taskStatus={selectedTask ? getTaskStatus(selectedTask) : 'not_started'}
-            onTaskStart={handleTaskStart}
-            onTaskComplete={handleTaskComplete}
-            onViewSOP={handleViewSOP}
-            timer={selectedTask ? taskTimers[selectedTask.id] : undefined}
-          />
+        {/* Step-by-Step Viewer */}
+        <div className="lg:col-span-1">
+          {selectedTask && showStepViewer ? (
+            <StepByStepViewer
+              task={selectedTask}
+              onStepComplete={handleStepComplete}
+              onAllStepsComplete={handleAllStepsComplete}
+              completedSteps={completedSteps}
+            />
+          ) : (
+            <Card>
+              <CardContent className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <Play className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
+                  <p className="text-muted-foreground">
+                    Select a task to begin step-by-step guidance
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 
-      {/* Modern SOP Modal */}
-      {showSOPModal && selectedProcedure && (
-        <ModernSOPModal
-          procedure={selectedProcedure}
+      {/* Enhanced SOP Modal */}
+      {showSOPModal && selectedTask && (
+        <EnhancedSOPModal
+          sopData={selectedSOP}
+          taskData={selectedTask}
           onClose={() => {
             setShowSOPModal(false);
-            setSelectedProcedure(null);
+            setSelectedSOP(null);
           }}
         />
       )}
