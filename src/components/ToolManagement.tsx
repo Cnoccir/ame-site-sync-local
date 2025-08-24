@@ -12,18 +12,28 @@ interface Tool {
   id: string;
   tool_id: string;
   tool_name: string;
-  category: string;
-  is_essential: boolean;
-  is_required: boolean;
-  is_safety: boolean;
-  notes?: string;
+  category_id: string;
+  description?: string;
+  status: string;
+  alternative_tools?: string;
+  calibration_required: boolean;
+  cost_estimate?: number;
+  current_stock: number;
+  last_updated: string;
+  maintenance_notes?: string;
+  minimum_stock: number;
+  request_method?: string;
+  safety_category: string;
+  vendor_link?: string;
+  created_at: string;
 }
 
 interface ToolCategory {
   id: string;
   category_name: string;
   description: string;
-  is_essential: boolean;
+  safety_level: string;
+  created_at: string;
 }
 
 interface ToolManagementProps {
@@ -51,7 +61,7 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
     try {
       // Load categories
       const { data: categoriesData, error: categoriesError } = await supabase
-        .from('ame_tool_categories')
+        .from('tool_categories')
         .select('*')
         .order('category_name');
 
@@ -59,7 +69,7 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
 
       // Load tools
       const { data: toolsData, error: toolsError } = await supabase
-        .from('ame_tools')
+        .from('ame_tools_normalized')
         .select('*')
         .order('tool_name');
 
@@ -68,9 +78,9 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
       setCategories(categoriesData || []);
       setTools(toolsData || []);
 
-      // Auto-expand essential categories
-      const essentialCategories = categoriesData?.filter(cat => cat.is_essential).map(cat => cat.id) || [];
-      setExpandedCategories(new Set(essentialCategories));
+      // Auto-expand high safety level categories
+      const importantCategories = categoriesData?.filter(cat => cat.safety_level === 'high').map(cat => cat.id) || [];
+      setExpandedCategories(new Set(importantCategories));
 
       setLoading(false);
     } catch (error) {
@@ -104,8 +114,8 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
     setExpandedCategories(newExpanded);
   };
 
-  const getToolsByCategory = (categoryName: string) => {
-    return tools.filter(tool => tool.category === categoryName);
+  const getToolsByCategory = (categoryId: string) => {
+    return tools.filter(tool => tool.category_id === categoryId);
   };
 
   const getToolStats = () => {
@@ -113,13 +123,13 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
     const selectedToolObjects = tools.filter(tool => selectedToolsArray.includes(tool.id));
     return {
       total: selectedToolsArray.length,
-      required: selectedToolObjects.filter(tool => tool.is_required).length,
-      safety: selectedToolObjects.filter(tool => tool.is_safety).length
+      required: selectedToolObjects.filter(tool => tool.status === 'required').length,
+      safety: selectedToolObjects.filter(tool => tool.safety_category === 'high').length
     };
   };
 
-  const essentialTools = tools.filter(tool => tool.is_essential);
-  const displayedCategories = showFullList ? categories : categories.filter(cat => cat.is_essential);
+  const importantTools = tools.filter(tool => tool.safety_category === 'high' || tool.status === 'required');
+  const displayedCategories = showFullList ? categories : categories.filter(cat => cat.safety_level === 'high');
   const stats = getToolStats();
 
   if (loading) {
@@ -166,9 +176,9 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
       <CardContent className="space-y-4">
         {!showFullList && (
           <div>
-            <h4 className="font-medium text-foreground mb-3">Essential Tools</h4>
+            <h4 className="font-medium text-foreground mb-3">Important Tools</h4>
             <div className="space-y-2">
-              {essentialTools.map((tool) => (
+              {importantTools.map((tool) => (
                 <div key={tool.id} className="flex items-center space-x-3 p-2 rounded border border-border">
                   <Checkbox
                     id={tool.id}
@@ -180,18 +190,18 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
                       <label htmlFor={tool.id} className="text-sm font-medium cursor-pointer">
                         {tool.tool_name}
                       </label>
-                      {tool.is_required && (
+                      {tool.status === 'required' && (
                         <Badge variant="destructive" className="text-xs">Required</Badge>
                       )}
-                      {tool.is_safety && (
+                      {tool.safety_category === 'high' && (
                         <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-800">
                           <Shield className="w-3 h-3 mr-1" />
                           Safety
                         </Badge>
                       )}
                     </div>
-                    {tool.notes && (
-                      <p className="text-xs text-muted-foreground mt-1">{tool.notes}</p>
+                    {tool.description && (
+                      <p className="text-xs text-muted-foreground mt-1">{tool.description}</p>
                     )}
                   </div>
                 </div>
@@ -204,7 +214,7 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
           <div className="space-y-3">
             <h4 className="font-medium text-foreground">All Tool Categories</h4>
             {displayedCategories.map((category) => {
-              const categoryTools = getToolsByCategory(category.category_name);
+              const categoryTools = getToolsByCategory(category.id);
               const isExpanded = expandedCategories.has(category.id);
               
               return (
@@ -226,8 +236,8 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
                         )}
                         <span className="font-medium">{category.category_name}</span>
                         <Badge variant="outline">{categoryTools.length} tools</Badge>
-                        {category.is_essential && (
-                          <Badge variant="default" className="bg-green-100 text-green-800">Essential</Badge>
+                        {category.safety_level === 'high' && (
+                          <Badge variant="default" className="bg-orange-100 text-orange-800">High Safety</Badge>
                         )}
                       </div>
                     </Button>
@@ -246,18 +256,18 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
                               <label htmlFor={tool.id} className="text-sm font-medium cursor-pointer">
                                 {tool.tool_name}
                               </label>
-                              {tool.is_required && (
+                              {tool.status === 'required' && (
                                 <Badge variant="destructive" className="text-xs">Required</Badge>
                               )}
-                              {tool.is_safety && (
+                              {tool.safety_category === 'high' && (
                                 <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-800">
                                   <Shield className="w-3 h-3 mr-1" />
                                   Safety
                                 </Badge>
                               )}
                             </div>
-                            {tool.notes && (
-                              <p className="text-xs text-muted-foreground mt-1">{tool.notes}</p>
+                            {tool.description && (
+                              <p className="text-xs text-muted-foreground mt-1">{tool.description}</p>
                             )}
                           </div>
                         </div>
@@ -276,7 +286,7 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
             onClick={() => setShowFullList(!showFullList)}
             className="w-full"
           >
-            {showFullList ? 'Show Essential Tools Only' : 'Generate Full Recommended List'}
+            {showFullList ? 'Show Important Tools Only' : 'Generate Full Recommended List'}
           </Button>
         </div>
       </CardContent>

@@ -291,36 +291,43 @@ export class AMEService {
   }
   
   // Task operations
-  static async getTasks(): Promise<Task[]> {
+  static async getTasks(): Promise<any[]> {
     const { data, error } = await supabase
-      .from('ame_tasks')
+      .from('ame_tasks_normalized')
       .select('*')
       .order('task_id');
     
     if (error) throw error;
-    return (data || []) as Task[];
+    return data || [];
   }
   
-  static async getTasksByServiceTier(serviceTier: string): Promise<Task[]> {
+  static async getTasksByServiceTier(serviceTier: string): Promise<any[]> {
+    // Use junction table to find tasks by service tier
     const { data, error } = await supabase
-      .from('ame_tasks')
-      .select('*')
-      .contains('service_tiers', [serviceTier])
+      .from('ame_tasks_normalized')
+      .select(`
+        *,
+        task_service_tiers!inner(
+          service_tier_id,
+          service_tiers!inner(tier_code)
+        )
+      `)
+      .eq('task_service_tiers.service_tiers.tier_code', serviceTier)
       .order('task_id');
     
     if (error) throw error;
-    return (data || []) as Task[];
+    return data || [];
   }
   
-  static async createTask(task: Omit<Task, 'id'>): Promise<Task> {
+  static async createTask(task: any): Promise<any> {
     const { data, error } = await supabase
-      .from('ame_tasks')
+      .from('ame_tasks_normalized')
       .insert(task)
       .select()
       .single();
     
     if (error) throw error;
-    return data as Task;
+    return data;
   }
   
   // Visit Task operations
@@ -348,47 +355,47 @@ export class AMEService {
   }
   
   // Tool operations
-  static async getTools(): Promise<Tool[]> {
+  static async getTools(): Promise<any[]> {
     const { data, error } = await supabase
-      .from('ame_tools')
+      .from('ame_tools_normalized')
       .select('*')
       .order('tool_name');
     
     if (error) throw error;
-    return (data || []) as Tool[];
+    return data || [];
   }
   
-  static async createTool(tool: Omit<Tool, 'id' | 'created_at'>): Promise<Tool> {
+  static async createTool(tool: any): Promise<any> {
     const { data, error } = await supabase
-      .from('ame_tools')
+      .from('ame_tools_normalized')
       .insert(tool)
       .select()
       .single();
     
     if (error) throw error;
-    return data as Tool;
+    return data;
   }
   
   // SOP operations
-  static async getSOPs(): Promise<SOP[]> {
+  static async getSOPs(): Promise<any[]> {
     const { data, error } = await supabase
-      .from('ame_sops')
+      .from('ame_sops_normalized')
       .select('*')
-      .order('sop_name');
+      .order('title');
     
     if (error) throw error;
-    return (data || []) as SOP[];
+    return data || [];
   }
   
-  static async createSOP(sop: Omit<SOP, 'id'>): Promise<SOP> {
+  static async createSOP(sop: any): Promise<any> {
     const { data, error } = await supabase
-      .from('ame_sops')
+      .from('ame_sops_normalized')
       .insert(sop)
       .select()
       .single();
     
     if (error) throw error;
-    return data as SOP;
+    return data;
   }
   
   // Report operations
