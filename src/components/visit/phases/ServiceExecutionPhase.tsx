@@ -36,13 +36,12 @@ interface VisitTask {
   id: string;
   visit_id: string;
   task_id: string;
-  status: string;
+  status: 'Pending' | 'In Progress' | 'Completed' | 'Skipped';
   started_at?: string;
   completed_at?: string;
   time_spent?: number;
   technician_notes?: string;
   created_at?: string;
-  notes?: string;
 }
 
 interface SOPData {
@@ -169,7 +168,10 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         throw error;
       }
       
-      setVisitTasks(data || []);
+      setVisitTasks((data || []).map(vt => ({
+        ...vt,
+        status: vt.status as 'Pending' | 'In Progress' | 'Completed' | 'Skipped'
+      })));
     } catch (error) {
       console.error('Error loading visit tasks:', error);
     }
@@ -221,7 +223,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
 
   const getTaskStatus = (task: TaskData): string => {
     const visitTask = visitTasks.find(vt => vt.task_id === task.id);
-    return visitTask?.status || 'not_started';
+    return visitTask?.status || 'Pending';
   };
 
   const formatTime = (milliseconds: number): string => {
@@ -244,9 +246,9 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
 
   const getStatusIcon = (status: string, isRunning: boolean = false) => {
     switch (status) {
-      case 'completed':
+      case 'Completed':
         return <CheckCircle className="w-5 h-5 text-success" />;
-      case 'in_progress':
+      case 'In Progress':
         return <Play className={cn("w-5 h-5 text-info", isRunning && "animate-pulse")} />;
       default:
         return <div className="w-5 h-5 rounded-full border-2 border-muted-foreground" />;
@@ -277,10 +279,10 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
 
   const getTaskStats = () => {
     const total = serviceTierTasks.length;
-    const completed = serviceTierTasks.filter(task => getTaskStatus(task) === 'completed').length;
+    const completed = serviceTierTasks.filter(task => getTaskStatus(task) === 'Completed').length;
     const totalDuration = serviceTierTasks.reduce((sum, task) => sum + task.duration_minutes, 0);
     const completedDuration = serviceTierTasks
-      .filter(task => getTaskStatus(task) === 'completed')
+      .filter(task => getTaskStatus(task) === 'Completed')
       .reduce((sum, task) => sum + task.duration_minutes, 0);
 
     return {
@@ -329,7 +331,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
           .insert({
             visit_id: visitId,
             task_id: task.id, // Use task.id (UUID) from ame_tasks_normalized
-            status: 'in_progress',
+            status: 'In Progress',
             started_at: new Date().toISOString()
           })
           .select()
@@ -339,14 +341,17 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
           throw insertError;
         }
         
-        visitTask = newVisitTask;
-        setVisitTasks(prev => [...prev, newVisitTask as VisitTask]);
+        visitTask = {
+          ...newVisitTask,
+          status: newVisitTask.status as 'Pending' | 'In Progress' | 'Completed' | 'Skipped'
+        };
+        setVisitTasks(prev => [...prev, visitTask]);
       } else {
         // Update existing task
         const { error: updateError } = await supabase
           .from('ame_visit_tasks')
           .update({
-            status: 'in_progress',
+            status: 'In Progress',
             started_at: new Date().toISOString()
           })
           .eq('id', visitTask.id);
@@ -357,7 +362,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         
         setVisitTasks(prev => prev.map(vt => 
           vt.id === visitTask!.id 
-            ? { ...vt, status: 'in_progress', started_at: new Date().toISOString() } as VisitTask
+            ? { ...vt, status: 'In Progress', started_at: new Date().toISOString() } 
             : vt
         ));
       }
@@ -401,7 +406,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         const { error: updateError } = await supabase
           .from('ame_visit_tasks')
           .update({
-            status: 'completed',
+            status: 'Completed',
             completed_at: new Date().toISOString(),
             time_spent: taskTimers[task.id] ? Math.floor((Date.now() - taskTimers[task.id]) / 60000) : 0
           })
@@ -412,7 +417,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         // Update local state
         setVisitTasks(prev => prev.map(vt => 
           vt.id === visitTask.id 
-            ? { ...vt, status: 'completed', completed_at: new Date().toISOString() } as VisitTask
+            ? { ...vt, status: 'Completed', completed_at: new Date().toISOString() } 
             : vt
         ));
 
@@ -574,7 +579,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
             filteredTasks.map((task) => {
               const visitTask = visitTasks.find(vt => vt.task_id === task.id);
               const isExpanded = expandedTasks.has(task.id);
-              const isActive = getTaskStatus(task) === 'in_progress';
+              const isActive = getTaskStatus(task) === 'In Progress';
               
               // Find matching SOP data and map it to IntegratedTaskCard format
               const taskSOP = sopData.find(sop => 
@@ -615,17 +620,13 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
                   }}
                   visitTask={visitTask ? { 
                     ...visitTask, 
-                    notes: visitTask.technician_notes || null,
                     started_at: visitTask.started_at || null,
                     completed_at: visitTask.completed_at || null
                   } : undefined}
                   sopData={mappedSOP}
                   isExpanded={isExpanded}
-                  isActive={isActive}
-                  completedSteps={completedSteps}
                   onTaskStart={handleTaskStart}
                   onTaskComplete={handleTaskComplete}
-                  onStepComplete={handleStepComplete}
                   onExpand={(taskId) => {
                     // Collapse all other tasks and expand this one
                     setExpandedTasks(new Set([taskId]));
