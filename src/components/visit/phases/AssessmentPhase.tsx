@@ -28,9 +28,11 @@ import { TridiumDataImporter } from '@/components/assessment/TridiumDataImporter
 interface AssessmentPhaseProps {
   onPhaseComplete: () => void;
   visitId: string;
+  sessionData?: any;
+  updateAutoSaveData?: (data: any) => void;
 }
 
-export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplete, visitId }) => {
+export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplete, visitId, sessionData, updateAutoSaveData }) => {
   const { toast } = useToast();
   
   const [currentStep, setCurrentStep] = useState(1);
@@ -136,15 +138,62 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     { number: 6, title: 'Initial System Status', duration: 10 }
   ];
 
-  // Auto-save functionality
+  // Load saved data on component mount
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Auto-save logic here
+    if (sessionData?.autoSaveData?.assessmentPhase) {
+      const savedData = sessionData.autoSaveData.assessmentPhase;
       
-    }, 15000);
+      if (savedData.stepStatuses) {
+        setStepStatuses(savedData.stepStatuses);
+      }
+      
+      if (savedData.skippedSteps) {
+        setSkippedSteps(savedData.skippedSteps);
+      }
+      
+      if (savedData.currentStep) {
+        setCurrentStep(savedData.currentStep);
+        setExpandedStep(savedData.currentStep);
+      }
+      
+      // Load step data
+      if (savedData.step1Data) setStep1Data(savedData.step1Data);
+      if (savedData.step2Data) setStep2Data(savedData.step2Data);
+      if (savedData.step3Data) setStep3Data(savedData.step3Data);
+      if (savedData.step4Data) setStep4Data(savedData.step4Data);
+      if (savedData.step5Data) setStep5Data(savedData.step5Data);
+      if (savedData.step6Data) setStep6Data(savedData.step6Data);
+      if (savedData.priorityData) setPriorityData(savedData.priorityData);
+      if (savedData.systemStatusData) setSystemStatusData(savedData.systemStatusData);
+    }
+  }, [sessionData]);
 
-    return () => clearInterval(interval);
-  }, []);
+  // Auto-save functionality - save all assessment data
+  useEffect(() => {
+    if (updateAutoSaveData) {
+      updateAutoSaveData({
+        assessmentPhase: {
+          currentStep,
+          expandedStep,
+          stepStatuses,
+          skippedSteps,
+          step1Data,
+          step2Data,
+          step3Data,
+          step4Data,
+          step5Data,
+          step6Data,
+          priorityData,
+          systemStatusData,
+          lastUpdated: new Date().toISOString()
+        }
+      });
+    }
+  }, [
+    currentStep, expandedStep, stepStatuses, skippedSteps,
+    step1Data, step2Data, step3Data, step4Data, step5Data, step6Data,
+    priorityData, systemStatusData, updateAutoSaveData
+  ]);
 
   const handleStepStart = (stepNumber: number) => {
     setStepStatuses(prev => ({

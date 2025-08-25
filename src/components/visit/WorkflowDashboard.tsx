@@ -425,16 +425,20 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
             </TabsList>
             
             <TabsContent value="phase-1" className="space-y-6">
-              <PreVisitPhase 
-                customer={customer}
-                onPhaseComplete={() => handlePhaseComplete(1)}
-              />
+                    <PreVisitPhase 
+                      customer={customer} 
+                      onPhaseComplete={() => handlePhaseComplete(1)}
+                      sessionData={sessionData}
+                      updateAutoSaveData={updateAutoSaveData}
+                    />
             </TabsContent>
             
             <TabsContent value="phase-2" className="space-y-6">
               <AssessmentPhase 
                 onPhaseComplete={() => handlePhaseComplete(2)}
-                visitId={visitId}
+                visitId={visitId!}
+                sessionData={sessionData}
+                updateAutoSaveData={updateAutoSaveData}
               />
             </TabsContent>
             

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckCircle, Clock, Shield, Wrench, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,9 +11,11 @@ import { ToolManagement } from '@/components/ToolManagement';
 interface PreVisitPhaseProps {
   customer: Customer;
   onPhaseComplete: () => void;
+  sessionData?: any;
+  updateAutoSaveData?: (data: any) => void;
 }
 
-export const PreVisitPhase = ({ customer, onPhaseComplete }: PreVisitPhaseProps) => {
+export const PreVisitPhase = ({ customer, onPhaseComplete, sessionData, updateAutoSaveData }: PreVisitPhaseProps) => {
   const [reviewItems, setReviewItems] = useState({
     customerInfo: false,
     siteAccess: false,
@@ -25,6 +27,39 @@ export const PreVisitPhase = ({ customer, onPhaseComplete }: PreVisitPhaseProps)
   const [safetyAcknowledgment, setSafetyAcknowledgment] = useState(false);
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const { toast } = useToast();
+
+  // Load saved data on component mount
+  useEffect(() => {
+    if (sessionData?.autoSaveData?.preVisitPhase) {
+      const savedData = sessionData.autoSaveData.preVisitPhase;
+      
+      if (savedData.reviewItems) {
+        setReviewItems(savedData.reviewItems);
+      }
+      
+      if (savedData.safetyAcknowledgment !== undefined) {
+        setSafetyAcknowledgment(savedData.safetyAcknowledgment);
+      }
+      
+      if (savedData.selectedTools) {
+        setSelectedTools(savedData.selectedTools);
+      }
+    }
+  }, [sessionData]);
+
+  // Auto-save data when state changes
+  useEffect(() => {
+    if (updateAutoSaveData) {
+      updateAutoSaveData({
+        preVisitPhase: {
+          reviewItems,
+          safetyAcknowledgment,
+          selectedTools,
+          lastUpdated: new Date().toISOString()
+        }
+      });
+    }
+  }, [reviewItems, safetyAcknowledgment, selectedTools, updateAutoSaveData]);
 
   const allItemsChecked = Object.values(reviewItems).every(Boolean) && safetyAcknowledgment;
 
