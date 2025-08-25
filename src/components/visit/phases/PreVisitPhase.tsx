@@ -26,11 +26,13 @@ export const PreVisitPhase = ({ customer, onPhaseComplete, sessionData, updateAu
   
   const [safetyAcknowledgment, setSafetyAcknowledgment] = useState(false);
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(false);
   const { toast } = useToast();
 
   // Load saved data on component mount
   useEffect(() => {
     if (sessionData?.autoSaveData?.preVisitPhase) {
+      setIsLoadingData(true);
       const savedData = sessionData.autoSaveData.preVisitPhase;
       
       if (savedData.reviewItems) {
@@ -44,12 +46,15 @@ export const PreVisitPhase = ({ customer, onPhaseComplete, sessionData, updateAu
       if (savedData.selectedTools) {
         setSelectedTools(savedData.selectedTools);
       }
+      
+      // Small delay to ensure all state updates are processed
+      setTimeout(() => setIsLoadingData(false), 100);
     }
   }, [sessionData]);
 
   // Auto-save data when state changes
   useEffect(() => {
-    if (updateAutoSaveData) {
+    if (updateAutoSaveData && !isLoadingData) {
       updateAutoSaveData({
         preVisitPhase: {
           reviewItems,
@@ -59,7 +64,7 @@ export const PreVisitPhase = ({ customer, onPhaseComplete, sessionData, updateAu
         }
       });
     }
-  }, [reviewItems, safetyAcknowledgment, selectedTools, updateAutoSaveData]);
+  }, [reviewItems, safetyAcknowledgment, selectedTools, isLoadingData]);
 
   const allItemsChecked = Object.values(reviewItems).every(Boolean) && safetyAcknowledgment;
 

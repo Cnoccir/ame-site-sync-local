@@ -138,9 +138,13 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     { number: 6, title: 'Initial System Status', duration: 10 }
   ];
 
+  // Track if we're currently loading data to prevent auto-save during load
+  const [isLoadingData, setIsLoadingData] = useState(false);
+
   // Load saved data on component mount
   useEffect(() => {
     if (sessionData?.autoSaveData?.assessmentPhase) {
+      setIsLoadingData(true);
       const savedData = sessionData.autoSaveData.assessmentPhase;
       
       if (savedData.stepStatuses) {
@@ -165,12 +169,15 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
       if (savedData.step6Data) setStep6Data(savedData.step6Data);
       if (savedData.priorityData) setPriorityData(savedData.priorityData);
       if (savedData.systemStatusData) setSystemStatusData(savedData.systemStatusData);
+      
+      // Small delay to ensure all state updates are processed
+      setTimeout(() => setIsLoadingData(false), 100);
     }
   }, [sessionData]);
 
   // Auto-save functionality - save all assessment data
   useEffect(() => {
-    if (updateAutoSaveData) {
+    if (updateAutoSaveData && !isLoadingData) {
       updateAutoSaveData({
         assessmentPhase: {
           currentStep,
@@ -192,7 +199,7 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
   }, [
     currentStep, expandedStep, stepStatuses, skippedSteps,
     step1Data, step2Data, step3Data, step4Data, step5Data, step6Data,
-    priorityData, systemStatusData, updateAutoSaveData
+    priorityData, systemStatusData, isLoadingData
   ]);
 
   const handleStepStart = (stepNumber: number) => {
