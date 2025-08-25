@@ -173,53 +173,36 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
     }
   };
 
-  // Enhanced step parsing for rich content with proper type handling
-  const formatStepsList = (stepInput: any): Array<{id: number, text: string}> => {
+  // Enhanced step parsing for task library steps (from sop_steps column)
+  const formatTaskSteps = (stepInput: any): Array<{id: number, text: string}> => {
     if (!stepInput) return [];
     
-    // Ensure we have a string to work with
-    let stepText: string;
-    if (typeof stepInput === 'string') {
-      stepText = stepInput;
-    } else if (Array.isArray(stepInput)) {
-      // If it's already an array, process each item
-      return stepInput.map((step, index) => ({
-        id: index + 1,
-        text: step != null ? String(step) : `Step ${index + 1}`
-      })).filter(step => step.text.trim().length > 0);
-    } else {
-      stepText = String(stepInput);
-    }
+    let stepText = String(stepInput).trim();
     
-    // Handle array format from database (JSON string)
+    // Handle JSON array format
     try {
       if (stepText.startsWith('[') && stepText.endsWith(']')) {
         const parsed = JSON.parse(stepText);
         if (Array.isArray(parsed)) {
           return parsed.map((step, index) => ({
             id: index + 1,
-            text: step != null ? (typeof step === 'string' ? step : (step.content || step.text || String(step))) : `Step ${index + 1}`
-          })).filter(step => step.text.trim().length > 0);
+            text: String(step).trim()
+          })).filter(step => step.text.length > 0);
         }
       }
     } catch (e) {
       // Continue with string parsing
     }
     
-    // Split on various delimiters, prioritizing HTML breaks and numbered patterns
+    // Split on numbered patterns first (most common format)
     let steps: string[] = [];
     
-    // First try to split on numbered patterns like "1.", "2.", etc.
-    if (/\d+\.\s/.test(stepText)) {
+    if (/^\d+\.\s/.test(stepText)) {
+      // Split on numbered patterns like "1.", "2.", etc.
       steps = stepText.split(/(?=\d+\.\s)/).filter(s => s && s.trim().length > 0);
-    }
-    // Then try HTML breaks
-    else if (stepText.includes('<br>') || stepText.includes('<br/>')) {
-      steps = stepText.split(/<br\s*\/?>/i);
-    }
-    // Try other delimiters
-    else {
-      const delimiters = ['\n', '|', ';'];
+    } else {
+      // Try other delimiters
+      const delimiters = ['\n', '|'];
       for (const delimiter of delimiters) {
         if (stepText.includes(delimiter)) {
           steps = stepText.split(delimiter);
@@ -234,7 +217,7 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
     }
     
     return steps
-      .map(step => step != null ? String(step).trim() : '')
+      .map(step => step.trim())
       .filter(step => step.length > 0)
       .map((step, index) => ({
         id: index + 1,
@@ -317,7 +300,7 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
     }
     
     if (typeof sopSteps === 'string') {
-      const steps = formatStepsList(sopSteps);
+      const steps = formatTaskSteps(sopSteps);
       return steps.map(step => ({
         ...step,
         references: extractReferences(step.text)
@@ -365,32 +348,12 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
     return [];
   };
 
-  // Parse steps from various sources
-  const steps = useMemo(() => {
-    // Try to get detailed steps from multiple sources
-    const stepSources = [
-      sopData?.steps,
-      task.sop_steps,
-      task.description
-    ].filter(Boolean);
-
-    for (const source of stepSources) {
-      const parsedSteps = formatStepsList(source);
-      if (parsedSteps.length > 1) {
-        return parsedSteps.map((step, index) => ({
-          id: step.id,
-          title: `Step ${step.id}`,
-          description: step.text,
-          navigationPath: task.navigation_path,
-          specificActions: [],
-          safetyNotes: task.safety_notes ? [task.safety_notes] : []
-        }));
-      }
-    }
-
-    // Fallback to simple steps
-    const fallbackSteps = formatStepsList(task.sop_steps || task.description || '');
-    return fallbackSteps.map((step, index) => ({
+  // Parse steps from task library (simple format for tasks)
+  const taskSteps = useMemo(() => {
+    if (!task.sop_steps) return [];
+    
+    const parsedSteps = formatTaskSteps(task.sop_steps);
+    return parsedSteps.map((step) => ({
       id: step.id,
       title: `Step ${step.id}`,
       description: step.text,
@@ -398,7 +361,10 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
       specificActions: [],
       safetyNotes: task.safety_notes ? [task.safety_notes] : []
     }));
-  }, [task, sopData]);
+  }, [task]);
+
+  // Use taskSteps for the steps variable (these are the Task Library steps)
+  const steps = taskSteps;
 
   // Memoized SOP parsing
   const sopSteps = useMemo(() => parseSOPSteps(sopData?.steps), [sopData?.steps]);
@@ -645,7 +611,7 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
                           })
                         ) : (
                           <div className="space-y-3">
-                            {formatStepsList(task.sop_steps || task.description || '').map((step, index) => {
+                            {formatTaskSteps(task.sop_steps || task.description || '').map((step, index) => {
                               const stepNumber = index + 1;
                               const isStepCompleted = completedSteps.has(stepNumber);
                               
