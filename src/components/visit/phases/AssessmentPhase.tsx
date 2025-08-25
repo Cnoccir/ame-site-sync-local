@@ -5,10 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertTriangle, Network, BarChart3, Search } from 'lucide-react';
+import { AlertTriangle, Network, BarChart3, Search, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AMEService } from '@/services/ameService';
+import { useAutoSave } from '@/hooks/useAutoSave';
+import { RequiredField } from '@/components/ui/required-field';
 
 // Import assessment components
 
@@ -37,6 +39,7 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
   
   const [currentStep, setCurrentStep] = useState(1);
   const [expandedStep, setExpandedStep] = useState(1);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Step completion states
   const [stepStatuses, setStepStatuses] = useState<Record<number, 'pending' | 'active' | 'completed' | 'skipped'>>({
@@ -138,13 +141,23 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     { number: 6, title: 'Initial System Status', duration: 10 }
   ];
 
-  // Track if we're currently loading data to prevent auto-save during load
-  const [isLoadingData, setIsLoadingData] = useState(false);
+  // Auto-save with debouncing
+  const { debouncedSave, setLoading } = useAutoSave({
+    delay: 2000,
+    onSave: (data) => {
+      if (updateAutoSaveData) {
+        setIsSaving(true);
+        updateAutoSaveData(data);
+        setTimeout(() => setIsSaving(false), 500);
+      }
+    },
+    enabled: true
+  });
 
   // Load saved data on component mount
   useEffect(() => {
     if (sessionData?.autoSaveData?.assessmentPhase) {
-      setIsLoadingData(true);
+      setLoading(true);
       const savedData = sessionData.autoSaveData.assessmentPhase;
       
       if (savedData.stepStatuses) {
@@ -170,36 +183,33 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
       if (savedData.priorityData) setPriorityData(savedData.priorityData);
       if (savedData.systemStatusData) setSystemStatusData(savedData.systemStatusData);
       
-      // Small delay to ensure all state updates are processed
-      setTimeout(() => setIsLoadingData(false), 100);
+      setTimeout(() => setLoading(false), 100);
     }
-  }, [sessionData]);
+  }, [sessionData, setLoading]);
 
-  // Auto-save functionality - save all assessment data
+  // Trigger auto-save when data changes
   useEffect(() => {
-    if (updateAutoSaveData && !isLoadingData) {
-      updateAutoSaveData({
-        assessmentPhase: {
-          currentStep,
-          expandedStep,
-          stepStatuses,
-          skippedSteps,
-          step1Data,
-          step2Data,
-          step3Data,
-          step4Data,
-          step5Data,
-          step6Data,
-          priorityData,
-          systemStatusData,
-          lastUpdated: new Date().toISOString()
-        }
-      });
-    }
+    debouncedSave({
+      assessmentPhase: {
+        currentStep,
+        expandedStep,
+        stepStatuses,
+        skippedSteps,
+        step1Data,
+        step2Data,
+        step3Data,
+        step4Data,
+        step5Data,
+        step6Data,
+        priorityData,
+        systemStatusData,
+        lastUpdated: new Date().toISOString()
+      }
+    });
   }, [
     currentStep, expandedStep, stepStatuses, skippedSteps,
     step1Data, step2Data, step3Data, step4Data, step5Data, step6Data,
-    priorityData, systemStatusData, isLoadingData
+    priorityData, systemStatusData, debouncedSave
   ]);
 
   const handleStepStart = (stepNumber: number) => {
@@ -209,6 +219,14 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     }));
     setCurrentStep(stepNumber);
     setExpandedStep(stepNumber);
+  };
+
+  const handleStepToggle = (stepNumber: number) => {
+    if (expandedStep === stepNumber) {
+      setExpandedStep(0); // Collapse if already expanded
+    } else {
+      setExpandedStep(stepNumber);
+    }
   };
 
   const handleStepComplete = async (stepNumber: number) => {
@@ -238,8 +256,8 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
   };
 
   const canStartStep = (stepNumber: number) => {
-    if (stepNumber === 1) return true;
-    return stepStatuses[stepNumber - 1] === 'completed';
+    // Allow free navigation - users can start any step
+    return true;
   };
   
   const handleStepSkip = async (stepNumber: number) => {
@@ -293,8 +311,8 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
   };
 
   const canSkipStep = (stepNumber: number): boolean => {
-    // Steps 4-6 can be skipped initially, can extend to others later
-    return [4, 5, 6].includes(stepNumber) && stepStatuses[stepNumber] === 'active';
+    // All steps can be skipped - this is a learning tool
+    return stepStatuses[stepNumber] === 'active';
   };
 
   // Reactive completion checking for steps 4-6
@@ -499,13 +517,23 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
-          <Search className="w-5 h-5 text-orange-600" />
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+            <Search className="w-5 h-5 text-orange-600" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold">Phase 2: Initial Assessment</h2>
+            <p className="text-muted-foreground">Systematic arrival protocol</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-2xl font-bold">Phase 2: Initial Assessment</h2>
-          <p className="text-muted-foreground">Systematic arrival protocol</p>
+        <div className="flex items-center gap-2">
+          {isSaving && (
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Save className="w-4 h-4 animate-pulse" />
+              Saving...
+            </div>
+          )}
         </div>
       </div>
 
@@ -535,7 +563,7 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
             duration={step.duration}
             status={stepStatuses[step.number]}
             isExpanded={expandedStep === step.number}
-            onToggle={() => setExpandedStep(expandedStep === step.number ? 0 : step.number)}
+            onToggle={() => handleStepToggle(step.number)}
             onStart={() => handleStepStart(step.number)}
             onComplete={() => handleStepComplete(step.number)}
             onSkip={() => handleStepSkip(step.number)}
@@ -546,14 +574,16 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
             {/* Step Content */}
             {step.number === 1 && (
               <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">Contact Person</label>
-                  <Input
-                    placeholder="Primary contact on-site"
-                    value={step1Data.contactPerson}
-                    onChange={(e) => setStep1Data(prev => ({ ...prev, contactPerson: e.target.value }))}
-                  />
-                </div>
+                <RequiredField required={true} completed={step1Data.contactPerson.trim() !== ''}>
+                  <div>
+                    <label className="text-sm font-medium">Contact Person *</label>
+                    <Input
+                      placeholder="Primary contact on-site"
+                      value={step1Data.contactPerson}
+                      onChange={(e) => setStep1Data(prev => ({ ...prev, contactPerson: e.target.value }))}
+                    />
+                  </div>
+                </RequiredField>
                 <div>
                   <label className="text-sm font-medium">Special Requests</label>
                   <Textarea
@@ -639,30 +669,34 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
               <div className="space-y-4">
                 <h5 className="font-medium">System Status Grid</h5>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="text-sm font-medium">Active Alarms</label>
-                    <Input
-                      type="number"
-                      placeholder="Count"
-                      value={step6Data.activeAlarms}
-                      onChange={(e) => {
-                        setStep6Data(prev => ({ ...prev, activeAlarms: e.target.value }));
-                        setCompletionTriggers(prev => ({ ...prev, 6: prev[6] + 1 }));
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Critical Alarms</label>
-                    <Input
-                      type="number"
-                      placeholder="Count"
-                      value={step6Data.criticalAlarms}
-                      onChange={(e) => {
-                        setStep6Data(prev => ({ ...prev, criticalAlarms: e.target.value }));
-                        setCompletionTriggers(prev => ({ ...prev, 6: prev[6] + 1 }));
-                      }}
-                    />
-                  </div>
+                  <RequiredField required={true} completed={step6Data.activeAlarms !== ''}>
+                    <div>
+                      <label className="text-sm font-medium">Active Alarms *</label>
+                      <Input
+                        type="number"
+                        placeholder="Count"
+                        value={step6Data.activeAlarms}
+                        onChange={(e) => {
+                          setStep6Data(prev => ({ ...prev, activeAlarms: e.target.value }));
+                          setCompletionTriggers(prev => ({ ...prev, 6: prev[6] + 1 }));
+                        }}
+                      />
+                    </div>
+                  </RequiredField>
+                  <RequiredField required={true} completed={step6Data.criticalAlarms !== ''}>
+                    <div>
+                      <label className="text-sm font-medium">Critical Alarms *</label>
+                      <Input
+                        type="number"
+                        placeholder="Count"
+                        value={step6Data.criticalAlarms}
+                        onChange={(e) => {
+                          setStep6Data(prev => ({ ...prev, criticalAlarms: e.target.value }));
+                          setCompletionTriggers(prev => ({ ...prev, 6: prev[6] + 1 }));
+                        }}
+                      />
+                    </div>
+                  </RequiredField>
                   <div>
                     <label className="text-sm font-medium">CPU Usage %</label>
                     <Input

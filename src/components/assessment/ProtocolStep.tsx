@@ -99,6 +99,18 @@ export const ProtocolStep = ({
               </div>
               
               <div className="flex items-center gap-2">
+                {/* Start button in header for better UX */}
+                {status === 'pending' && canStart && onStart && (
+                  <Button onClick={onStart} size="sm" variant="outline">
+                    <Play className="w-4 h-4 mr-1" />
+                    Start
+                  </Button>
+                )}
+                {status === 'active' && canComplete && onComplete && (
+                  <Button onClick={onComplete} size="sm">
+                    Complete
+                  </Button>
+                )}
                 {getStatusIcon()}
                 {isExpanded ? (
                   <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -117,25 +129,12 @@ export const ProtocolStep = ({
             </div>
             
             <div className="flex gap-2 justify-end">
-              {status === 'pending' && canStart && onStart && (
-                <Button onClick={onStart} variant="outline">
-                  Start Step
+              {/* Always show skip option for active steps */}
+              {status === 'active' && onSkip && (
+                <Button onClick={onSkip} variant="outline" className="text-warning hover:text-warning">
+                  <SkipForward className="w-4 h-4 mr-2" />
+                  Skip Step
                 </Button>
-              )}
-              {status === 'active' && (
-                <>
-                  {canSkip && onSkip && (
-                    <Button onClick={onSkip} variant="outline" className="text-warning hover:text-warning">
-                      <SkipForward className="w-4 h-4 mr-2" />
-                      Skip Step
-                    </Button>
-                  )}
-                  {canComplete && onComplete && (
-                    <Button onClick={onComplete}>
-                      Complete Step
-                    </Button>
-                  )}
-                </>
               )}
               {status === 'skipped' && onStart && (
                 <Button onClick={onStart} variant="outline">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, Clock, Shield, Wrench, FileText } from 'lucide-react';
+import { CheckCircle, Clock, Shield, Wrench, FileText, Save } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Customer } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { ToolManagement } from '@/components/ToolManagement';
+import { useAutoSave } from '@/hooks/useAutoSave';
+import { RequiredField } from '@/components/ui/required-field';
 
 interface PreVisitPhaseProps {
   customer: Customer;
@@ -26,13 +28,26 @@ export const PreVisitPhase = ({ customer, onPhaseComplete, sessionData, updateAu
   
   const [safetyAcknowledgment, setSafetyAcknowledgment] = useState(false);
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
-  const [isLoadingData, setIsLoadingData] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
+
+  // Auto-save with debouncing
+  const { debouncedSave, setLoading } = useAutoSave({
+    delay: 2000,
+    onSave: (data) => {
+      if (updateAutoSaveData) {
+        setIsSaving(true);
+        updateAutoSaveData(data);
+        setTimeout(() => setIsSaving(false), 500);
+      }
+    },
+    enabled: true
+  });
 
   // Load saved data on component mount
   useEffect(() => {
     if (sessionData?.autoSaveData?.preVisitPhase) {
-      setIsLoadingData(true);
+      setLoading(true);
       const savedData = sessionData.autoSaveData.preVisitPhase;
       
       if (savedData.reviewItems) {
@@ -47,24 +62,21 @@ export const PreVisitPhase = ({ customer, onPhaseComplete, sessionData, updateAu
         setSelectedTools(savedData.selectedTools);
       }
       
-      // Small delay to ensure all state updates are processed
-      setTimeout(() => setIsLoadingData(false), 100);
+      setTimeout(() => setLoading(false), 100);
     }
-  }, [sessionData]);
+  }, [sessionData, setLoading]);
 
-  // Auto-save data when state changes
+  // Trigger auto-save when data changes
   useEffect(() => {
-    if (updateAutoSaveData && !isLoadingData) {
-      updateAutoSaveData({
-        preVisitPhase: {
-          reviewItems,
-          safetyAcknowledgment,
-          selectedTools,
-          lastUpdated: new Date().toISOString()
-        }
-      });
-    }
-  }, [reviewItems, safetyAcknowledgment, selectedTools, isLoadingData]);
+    debouncedSave({
+      preVisitPhase: {
+        reviewItems,
+        safetyAcknowledgment,
+        selectedTools,
+        lastUpdated: new Date().toISOString()
+      }
+    });
+  }, [reviewItems, safetyAcknowledgment, selectedTools, debouncedSave]);
 
   const allItemsChecked = Object.values(reviewItems).every(Boolean) && safetyAcknowledgment;
 
@@ -73,20 +85,20 @@ export const PreVisitPhase = ({ customer, onPhaseComplete, sessionData, updateAu
   };
 
   const handleCompletePhase = () => {
+    // Allow completion even if not all items are checked - this is a learning tool
     if (!allItemsChecked) {
       toast({
-        title: 'Incomplete Preparation',
-        description: 'Please complete all preparation items before proceeding.',
-        variant: 'destructive'
+        title: 'Phase 1 Complete',
+        description: 'Moving to next phase. Consider completing remaining items as they help ensure successful visits.',
+        variant: 'default'
       });
-      return;
+    } else {
+      toast({
+        title: 'Phase 1 Complete',
+        description: 'Pre-visit preparation completed successfully.',
+        variant: 'default'
+      });
     }
-
-    toast({
-      title: 'Phase 1 Complete',
-      description: 'Pre-visit preparation completed successfully.',
-      variant: 'default'
-    });
     onPhaseComplete();
   };
 
@@ -128,11 +140,19 @@ export const PreVisitPhase = ({ customer, onPhaseComplete, sessionData, updateAu
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-foreground">Phase 1: Pre-Visit Preparation</h2>
-          <p className="text-muted-foreground">Complete all preparation steps before arriving on-site</p>
+          <p className="text-muted-foreground">Complete preparation steps to ensure a successful visit</p>
         </div>
-        <Badge variant={allItemsChecked ? 'default' : 'secondary'} className="px-3 py-1">
-          {Object.values(reviewItems).filter(Boolean).length + (safetyAcknowledgment ? 1 : 0)} of {reviewItemsList.length + 1} Complete
-        </Badge>
+        <div className="flex items-center gap-2">
+          {isSaving && (
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Save className="w-4 h-4 animate-pulse" />
+              Saving...
+            </div>
+          )}
+          <Badge variant={allItemsChecked ? 'default' : 'secondary'} className="px-3 py-1">
+            {Object.values(reviewItems).filter(Boolean).length + (safetyAcknowledgment ? 1 : 0)} of {reviewItemsList.length + 1} Complete
+          </Badge>
+        </div>
       </div>
 
       {/* Customer Overview */}
@@ -170,26 +190,32 @@ export const PreVisitPhase = ({ customer, onPhaseComplete, sessionData, updateAu
         <CardContent>
           <div className="space-y-4">
             {reviewItemsList.map((item) => (
-              <div key={item.key} className="flex items-start space-x-3 p-3 rounded-lg border border-card-border">
-                <Checkbox
-                  id={item.key}
-                  checked={reviewItems[item.key]}
-                  onCheckedChange={(checked) => handleItemChange(item.key, checked as boolean)}
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2">
-                    <item.icon className="w-4 h-4 text-primary" />
-                    <label htmlFor={item.key} className="font-medium text-foreground cursor-pointer">
-                      {item.label}
-                    </label>
-                    {reviewItems[item.key] && (
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                    )}
+              <RequiredField 
+                key={item.key} 
+                required={true} 
+                completed={reviewItems[item.key]}
+              >
+                <div className="flex items-start space-x-3 p-3 rounded-lg border border-card-border hover:bg-muted/50 transition-colors">
+                  <Checkbox
+                    id={item.key}
+                    checked={reviewItems[item.key]}
+                    onCheckedChange={(checked) => handleItemChange(item.key, checked as boolean)}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <item.icon className="w-4 h-4 text-primary" />
+                      <label htmlFor={item.key} className="font-medium text-foreground cursor-pointer">
+                        {item.label}
+                      </label>
+                      {reviewItems[item.key] && (
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
                 </div>
-              </div>
+              </RequiredField>
             ))}
           </div>
         </CardContent>
@@ -233,12 +259,12 @@ export const PreVisitPhase = ({ customer, onPhaseComplete, sessionData, updateAu
       <div className="flex justify-end">
         <Button
           onClick={handleCompletePhase}
-          disabled={!allItemsChecked}
           size="lg"
           className="px-8"
+          variant={allItemsChecked ? "default" : "outline"}
         >
           <CheckCircle className="w-5 h-5 mr-2" />
-          Complete Phase 1
+          {allItemsChecked ? "Complete Phase 1" : "Continue to Phase 2"}
         </Button>
       </div>
     </div>
