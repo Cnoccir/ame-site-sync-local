@@ -16,6 +16,12 @@ export interface TridiumDataTypes {
     requiredColumns: ['Name', 'Type', 'Address', 'Status'];
     optionalColumns: ['Platform Status', 'Version', 'Client Conn', 'Server Conn'];
   };
+  platformDetails: {
+    requiredColumns: ['Name', 'Value'];
+  };
+  unknown: {
+    requiredColumns: string[];
+  };
 }
 
 export interface ParsedStatus {
@@ -56,6 +62,7 @@ export interface TridiumDataset {
   id: string;
   filename: string;
   type: keyof TridiumDataTypes;
+  format?: string;
   columns: CSVColumn[];
   rows: TridiumDataRow[];
   summary: DatasetSummary;
@@ -64,6 +71,7 @@ export interface TridiumDataset {
     parseErrors: string[];
     uploadedAt: Date;
     fileSize: number;
+    detectedFormat?: string;
   };
 }
 

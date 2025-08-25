@@ -57,7 +57,7 @@ export class TridiumCSVParser {
       }
 
       const headers = this.parseCSVLine(lines[0]);
-      const format = this.detectFormat(headers);
+      const format = this.detectFormat(headers, filename);
       
       logger.info('Detected format', { 
         format: format?.type, 
@@ -74,33 +74,31 @@ export class TridiumCSVParser {
         try {
           const rowData = this.parseCSVLine(lines[i]);
           if (rowData.length === headers.length) {
-            const dataObj: Record<string, any> = {};
-            headers.forEach((header, index) => {
-              dataObj[header] = this.convertValue(rowData[index], columns[index].type);
-            });
+            const parsedRow = this.parseRowByFormat(rowData, headers, format);
+            if (parsedRow) {
+              const row: TridiumDataRow = {
+                id: `row-${i}`,
+                selected: false,
+                data: parsedRow,
+              };
 
-            const row: TridiumDataRow = {
-              id: `row-${i}`,
-              selected: false,
-              data: dataObj,
-            };
+              // Parse status if format has status column
+              if (format && 'statusColumn' in format && format.statusColumn && parsedRow[format.statusColumn]) {
+                row.parsedStatus = this.parseStatus(parsedRow[format.statusColumn]);
+              }
 
-            // Parse status if format has status column
-            if (format && 'statusColumn' in format && format.statusColumn && dataObj[format.statusColumn]) {
-              row.parsedStatus = this.parseStatus(dataObj[format.statusColumn]);
+              // Parse values for resource metrics
+              if (format && 'valueParser' in format && format.valueParser) {
+                row.parsedValues = {};
+                Object.entries(parsedRow).forEach(([key, value]) => {
+                  if (key !== format.keyColumn && value) {
+                    row.parsedValues![key] = this.parseValue(value);
+                  }
+                });
+              }
+
+              rows.push(row);
             }
-
-            // Parse values for resource metrics
-            if (format && 'valueParser' in format && format.valueParser) {
-              row.parsedValues = {};
-              Object.entries(dataObj).forEach(([key, value]) => {
-                if (key !== format.keyColumn && value) {
-                  row.parsedValues![key] = this.parseValue(value);
-                }
-              });
-            }
-
-            rows.push(row);
           }
         } catch (error) {
           parseErrors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Parse error'}`);
@@ -112,7 +110,8 @@ export class TridiumCSVParser {
       return {
         id: `dataset-${Date.now()}`,
         filename,
-        type: format?.type || 'resourceMetrics',
+        type: (format?.type as keyof TridiumDataTypes) || 'unknown',
+        format: format?.name || 'Unknown',
         columns,
         rows,
         summary,
@@ -120,7 +119,8 @@ export class TridiumCSVParser {
           totalRows: rows.length,
           parseErrors,
           uploadedAt: new Date(),
-          fileSize: csvContent.length
+          fileSize: csvContent.length,
+          detectedFormat: format?.name || 'Unknown'
         }
       };
     } catch (error) {
@@ -164,40 +164,70 @@ export class TridiumCSVParser {
     return result;
   }
 
-  private static detectFormat(headers: string[]) {
-    // Normalize headers for case-insensitive matching
-    const normalizedHeaders = headers.map(h => h.toLowerCase().trim());
-    
-    // Try exact matches first
-    for (const [formatName, config] of Object.entries(this.supportedFormats)) {
-      const normalizedIdentifiers = config.identifier.map(id => id.toLowerCase().trim());
-      const exactMatches = normalizedIdentifiers.filter(id => normalizedHeaders.includes(id));
-      
-      // For ResourceExport, require exact 2-column match
-      if (formatName === 'ResourceExport' && headers.length === 2 && exactMatches.length === 2) {
-        return { ...config, name: formatName };
-      }
-      
-      // For other formats, require all required columns
-      if (formatName !== 'ResourceExport' && exactMatches.length === normalizedIdentifiers.length) {
-        return { ...config, name: formatName };
-      }
+  private static detectFormat(headers: string[], filename?: string) {
+    // Handle text files first
+    if (filename && filename.toLowerCase().includes('platformdetails') && filename.toLowerCase().endsWith('.txt')) {
+      return { 
+        name: 'PlatformDetails', 
+        type: 'platformDetails',
+        identifier: ['Platform Summary']
+      };
     }
     
-    // Fallback: check for partial matches with high threshold
-    for (const [formatName, config] of Object.entries(this.supportedFormats)) {
-      const normalizedIdentifiers = config.identifier.map(id => id.toLowerCase().trim());
-      const partialMatches = normalizedIdentifiers.filter(id => 
-        normalizedHeaders.some(h => h.includes(id) || id.includes(h))
-      );
-      
-      // Require at least 80% match for fallback detection
-      if (partialMatches.length >= Math.ceil(normalizedIdentifiers.length * 0.8)) {
-        return { ...config, name: formatName };
-      }
+    // CSV file detection - be more specific with header matching
+    const headerStr = headers.join('|').toLowerCase();
+    
+    // N2 Export: Must have Controller Type column
+    if (headers.includes('Controller Type') && headers.includes('Status') && headers.includes('Address')) {
+      return { 
+        name: 'N2Export', 
+        type: 'networkDevices',
+        statusColumn: 'Status',
+        keyColumn: 'Name',
+        identifier: ['Name', 'Status', 'Address', 'Controller Type']
+      };
     }
     
-    return null;
+    // BACnet Export: Must have Device ID and Vendor columns  
+    if (headers.includes('Device ID') && (headers.includes('Vendor') || headers.includes('Type'))) {
+      return { 
+        name: 'BacnetExport', 
+        type: 'bacnetDevices',
+        statusColumn: 'Status', 
+        keyColumn: 'Name',
+        identifier: ['Name', 'Type', 'Device ID', 'Status', 'Vendor', 'Model']
+      };
+    }
+    
+    // Niagara Network Export: Must have Fox Port or Path column
+    if (headers.includes('Fox Port') || headers.includes('Path') || headers.some(h => h.toLowerCase().includes('platform status'))) {
+      return { 
+        name: 'NiagaraNetExport', 
+        type: 'niagaraStations',
+        statusColumn: 'Status',
+        keyColumn: 'Name', 
+        hierarchical: true,
+        identifier: ['Path', 'Name', 'Type', 'Address']
+      };
+    }
+    
+    // Resource Export: Exactly 2 columns Name + Value
+    if (headers.length === 2 && headers.includes('Name') && headers.includes('Value')) {
+      return { 
+        name: 'ResourceExport', 
+        type: 'resourceMetrics',
+        keyColumn: 'Name',
+        valueParser: true,
+        identifier: ['Name', 'Value']
+      };
+    }
+    
+    // Unknown format
+    return { 
+      name: 'Unknown', 
+      type: 'unknown',
+      identifier: headers 
+    };
   }
 
   private static createColumns(headers: string[]): CSVColumn[] {
@@ -293,6 +323,123 @@ export class TridiumCSVParser {
       details: ['Status unclear'],
       badge: { text: statusValue || 'UNKNOWN', variant: 'default' }
     };
+  }
+
+  private static parseRowByFormat(rawRow: string[], headers: string[], format: any): Record<string, any> {
+    const row: Record<string, any> = {};
+    
+    // Build base row object
+    headers.forEach((header, index) => {
+      row[header] = rawRow[index] || '';
+    });
+    
+    // Apply format-specific parsing
+    switch (format?.name) {
+      case 'N2Export':
+        return this.parseN2Row(row);
+      case 'BacnetExport':  
+        return this.parseBacnetRow(row);
+      case 'ResourceExport':
+        return this.parseResourceRow(row);
+      case 'NiagaraNetExport':
+        return this.parseNiagaraNetRow(row);
+      default:
+        return row;
+    }
+  }
+
+  private static parseN2Row(row: Record<string, any>): Record<string, any> {
+    return {
+      ...row,
+      deviceType: this.categorizeN2Device(row['Controller Type']),
+      address: parseInt(row.Address) || row.Address,
+      network: 'N2'
+    };
+  }
+
+  private static parseBacnetRow(row: Record<string, any>): Record<string, any> {
+    return {
+      ...row,
+      deviceId: row['Device ID'],
+      vendor: row.Vendor,
+      model: row.Model,
+      parsedHealth: row.Health ? this.parseHealth(row.Health) : null,
+      network: 'BACnet'
+    };
+  }
+
+  private static parseResourceRow(row: Record<string, any>): Record<string, any> {
+    return {
+      ...row,
+      parsedValue: this.parseResourceValue(row.Value),
+      category: this.categorizeResource(row.Name),
+      isCapacity: row.Value?.includes('Limit:'),
+      isPercentage: row.Value?.includes('%')
+    };
+  }
+
+  private static parseNiagaraNetRow(row: Record<string, any>): Record<string, any> {
+    return {
+      ...row,
+      parsedPlatformStatus: row['Platform Status'] ? this.parseStatus(row['Platform Status']) : null,
+      ipAddress: this.extractIP(row.Address),
+      connectionStatus: {
+        client: row['Client Conn'],
+        server: row['Server Conn']
+      },
+      network: 'Niagara'
+    };
+  }
+
+  private static categorizeN2Device(controllerType: string): string {
+    if (!controllerType) return 'Unknown';
+    const type = controllerType.toLowerCase();
+    if (type.includes('vav')) return 'VAV Controller';
+    if (type.includes('ahu')) return 'AHU Controller';
+    if (type.includes('unitary')) return 'Unitary Controller';
+    if (type.includes('lighting')) return 'Lighting Controller';
+    return 'General Controller';
+  }
+
+  private static categorizeResource(name: string): string {
+    if (!name) return 'Unknown';
+    const resourceName = name.toLowerCase();
+    if (resourceName.includes('memory') || resourceName.includes('heap')) return 'Memory';
+    if (resourceName.includes('cpu') || resourceName.includes('processor')) return 'CPU';
+    if (resourceName.includes('disk') || resourceName.includes('storage')) return 'Storage';
+    if (resourceName.includes('connection') || resourceName.includes('socket')) return 'Network';
+    return 'System';
+  }
+
+  private static parseHealth(health: string): { status: string; level: number } {
+    if (!health) return { status: 'unknown', level: 0 };
+    const healthLower = health.toLowerCase();
+    if (healthLower.includes('good')) return { status: 'good', level: 100 };
+    if (healthLower.includes('fair')) return { status: 'fair', level: 75 };
+    if (healthLower.includes('poor')) return { status: 'poor', level: 25 };
+    return { status: 'unknown', level: 0 };
+  }
+
+  private static parseResourceValue(value: string): { numeric: number | null; unit: string | null; formatted: string } {
+    if (!value) return { numeric: null, unit: null, formatted: '' };
+    
+    // Extract numeric value and unit
+    const match = value.match(/(\d+(?:\.\d+)?)\s*([A-Za-z%]+)?/);
+    if (match) {
+      return {
+        numeric: parseFloat(match[1]),
+        unit: match[2] || null,
+        formatted: value
+      };
+    }
+    
+    return { numeric: null, unit: null, formatted: value };
+  }
+
+  private static extractIP(address: string): string | null {
+    if (!address) return null;
+    const ipMatch = address.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
+    return ipMatch ? ipMatch[0] : null;
   }
 
   static parseValue(value: any): ParsedValue {

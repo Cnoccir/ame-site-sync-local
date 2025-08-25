@@ -54,7 +54,8 @@ export const TridiumDataImporter: React.FC<TridiumDataImporterProps> = ({
         logger.info('Dataset parsed successfully', {
           filename: file.name,
           rows: dataset.rows.length,
-          type: dataset.type
+          type: dataset.type,
+          detectedFormat: dataset.format || dataset.metadata.detectedFormat || 'Unknown'
         });
       }
       
@@ -229,17 +230,21 @@ export const TridiumDataImporter: React.FC<TridiumDataImporterProps> = ({
                   onClick={() => setActiveDataset(dataset.id)}
                   className="flex items-center gap-2"
                 >
-                  <div className="flex items-center gap-1">
-                    {dataset.metadata.parseErrors.length === 0 ? (
-                      <CheckCircle className="w-3 h-3 text-green-500" />
-                    ) : (
-                      <AlertTriangle className="w-3 h-3 text-yellow-500" />
-                    )}
-                    {dataset.filename}
+                  <div className="flex flex-col items-start">
+                    <div className="flex items-center gap-1">
+                      {dataset.metadata.parseErrors.length === 0 ? (
+                        <CheckCircle className="w-3 h-3 text-green-500" />
+                      ) : (
+                        <AlertTriangle className="w-3 h-3 text-yellow-500" />
+                      )}
+                      <span className="text-sm">{dataset.filename}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>{dataset.format || dataset.metadata.detectedFormat || 'Unknown'}</span>
+                      <span>•</span>
+                      <span>{dataset.rows.length} rows</span>
+                    </div>
                   </div>
-                  <span className="text-xs bg-background px-1 rounded">
-                    {dataset.rows.length}
-                  </span>
                 </Button>
               ))}
             </div>
@@ -258,7 +263,7 @@ export const TridiumDataImporter: React.FC<TridiumDataImporterProps> = ({
               isDown: row.parsedStatus?.status === 'down',
               hasAlarm: row.parsedStatus?.status === 'alarm',
               sourceFile: activeDatasetData.filename,
-              format: activeDatasetData.type
+              format: activeDatasetData.format || activeDatasetData.type
             }))}
             onSelectionChange={(selectedDevices) => {
               // Handle selection change if needed
