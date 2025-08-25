@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 // Import assessment components
-import { AssessmentTimer } from '@/components/assessment/AssessmentTimer';
+
 import { ProtocolStep } from '@/components/assessment/ProtocolStep';
 import { SafetyChecklist } from '@/components/assessment/SafetyChecklist';
 import { LocationMapping } from '@/components/assessment/LocationMapping';
@@ -31,7 +31,7 @@ interface AssessmentPhaseProps {
 
 export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplete, visitId }) => {
   const { toast } = useToast();
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  
   const [currentStep, setCurrentStep] = useState(1);
   const [expandedStep, setExpandedStep] = useState(1);
   
@@ -143,10 +143,6 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
   }, []);
 
   const handleStepStart = (stepNumber: number) => {
-    if (!isTimerRunning && stepNumber === 1) {
-      setIsTimerRunning(true);
-    }
-    
     setStepStatuses(prev => ({
       ...prev,
       [stepNumber]: 'active'
@@ -226,21 +222,6 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     }
   }, [step6Data.activeAlarms, step6Data.criticalAlarms, stepStatuses]);
 
-  const handleTimeWarning = () => {
-    toast({
-      title: "Time Warning",
-      description: "Assessment approaching 25 minutes. Consider wrapping up current step.",
-      variant: "destructive"
-    });
-  };
-
-  const handleTimeUp = () => {
-    toast({
-      title: "Time Exceeded",
-      description: "30-minute assessment period has elapsed.",
-      variant: "destructive"
-    });
-  };
 
   const parseCSVFile = async (file: File) => {
     return new Promise((resolve, reject) => {
@@ -402,16 +383,10 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
         </div>
         <div>
           <h2 className="text-2xl font-bold">Phase 2: Initial Assessment</h2>
-          <p className="text-muted-foreground">30-minute systematic arrival protocol</p>
+          <p className="text-muted-foreground">Systematic arrival protocol</p>
         </div>
       </div>
 
-      {/* Assessment Timer */}
-      <AssessmentTimer 
-        isRunning={isTimerRunning}
-        onTimeWarning={handleTimeWarning}
-        onTimeUp={handleTimeUp}
-      />
 
       {/* Protocol Steps */}
       <div className="space-y-4">
