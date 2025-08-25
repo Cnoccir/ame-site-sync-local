@@ -370,13 +370,16 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
                           )}
                           <span className="font-medium">{category.category_name}</span>
                           <span className="text-sm text-muted-foreground">({categoryTools.length} Tools)</span>
+                          {category.is_essential && (
+                            <Badge variant="default" className="text-xs">Essential</Badge>
+                          )}
                         </div>
                       </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-2">
                       <div className="pl-6 space-y-2">
                         {categoryTools.map((tool) => (
-                          <div key={tool.id} className="flex items-center justify-between p-2 border rounded">
+                          <div key={tool.id} className="flex items-center justify-between p-3 border rounded-lg">
                             <div className="flex items-center space-x-3">
                               <Checkbox
                                 id={`full-${tool.id}`}
