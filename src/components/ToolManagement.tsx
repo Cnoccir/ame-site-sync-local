@@ -15,25 +15,16 @@ interface Tool {
   category_id: string;
   description?: string;
   status: string;
-  alternative_tools?: string;
-  calibration_required: boolean;
-  cost_estimate?: number;
-  current_stock: number;
-  last_updated: string;
-  maintenance_notes?: string;
-  minimum_stock: number;
-  request_method?: string;
   safety_category: string;
-  vendor_link?: string;
-  created_at: string;
+  current_stock: number;
+  minimum_stock: number;
 }
 
 interface ToolCategory {
   id: string;
   category_name: string;
   description: string;
-  safety_level: string;
-  created_at: string;
+  is_essential: boolean;
 }
 
 interface ToolManagementProps {
@@ -59,27 +50,30 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
 
   const loadToolsAndCategories = async () => {
     try {
-      // Load tools from the normalized table
-      const { data: toolsData, error: toolsError } = await supabase
-        .from('ame_tools_normalized')
-        .select('*')
-        .order('tool_name');
+      // Load tools and categories
+      const [toolsResult, categoriesResult] = await Promise.all([
+        supabase
+          .from('ame_tools_normalized')
+          .select('id, tool_id, tool_name, category_id, description, status, safety_category, current_stock, minimum_stock')
+          .eq('status', 'active')
+          .order('tool_name'),
+        supabase
+          .from('ame_tool_categories')
+          .select('id, category_name, description, is_essential')
+          .order('category_name')
+      ]);
 
-      if (toolsError) throw toolsError;
+      if (toolsResult.error) throw toolsResult.error;
+      if (categoriesResult.error) throw categoriesResult.error;
 
-      setTools(toolsData || []);
+      setTools(toolsResult.data || []);
+      setCategories(categoriesResult.data || []);
 
-      // Create categories from tools' safety_category field
-      const safetyCategories = [
-        { id: 'standard', category_name: 'Standard Tools', description: 'General purpose tools', safety_level: 'standard', created_at: new Date().toISOString() },
-        { id: 'high', category_name: 'High Safety Tools', description: 'Tools requiring special safety precautions', safety_level: 'high', created_at: new Date().toISOString() },
-        { id: 'critical', category_name: 'Critical Safety Tools', description: 'Mission critical safety tools', safety_level: 'critical', created_at: new Date().toISOString() }
-      ];
-      
-      setCategories(safetyCategories);
-
-      // Auto-expand high safety level categories
-      setExpandedCategories(new Set(['high', 'critical']));
+      // Auto-expand essential categories
+      const essentialCategoryIds = (categoriesResult.data || [])
+        .filter(cat => cat.is_essential)
+        .map(cat => cat.id);
+      setExpandedCategories(new Set(essentialCategoryIds));
 
       setLoading(false);
     } catch (error) {
@@ -114,21 +108,27 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
   };
 
   const getToolsByCategory = (categoryId: string) => {
-    return tools.filter(tool => tool.safety_category === categoryId);
+    return tools.filter(tool => tool.category_id === categoryId);
   };
 
   const getToolStats = () => {
-    const selectedToolsArray = Array.from(selectedTools);
-    const selectedToolObjects = tools.filter(tool => selectedToolsArray.includes(tool.id));
+    const allTools = tools.length;
+    const requiredTools = tools.filter(tool => tool.safety_category === 'site_required').length;
+    const recommendedTools = tools.filter(tool => tool.safety_category === 'recommended').length;
+    const optionalTools = tools.filter(tool => tool.safety_category === 'standard').length;
+    
     return {
-      total: selectedToolsArray.length,
-      required: selectedToolObjects.filter(tool => tool.status === 'required').length,
-      safety: selectedToolObjects.filter(tool => tool.safety_category === 'high').length
+      total: allTools,
+      required: requiredTools,
+      recommended: recommendedTools,
+      optional: optionalTools
     };
   };
 
-  const importantTools = tools.filter(tool => tool.safety_category === 'high' || tool.status === 'required');
-  const displayedCategories = showFullList ? categories : categories.filter(cat => cat.safety_level === 'high');
+  const getRequiredTools = () => {
+    return tools.filter(tool => tool.safety_category === 'site_required');
+  };
+
   const stats = getToolStats();
 
   if (loading) {
@@ -156,53 +156,51 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Package className="w-5 h-5" />
-            <span>Tool Management</span>
+            <span>Tools & Equipment</span>
           </div>
-          <div className="flex items-center space-x-2 text-sm">
-            <Badge variant="outline">{stats.total} selected</Badge>
-            {stats.required > 0 && (
-              <Badge variant="destructive">{stats.required} required</Badge>
-            )}
-            {stats.safety > 0 && (
-              <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-                <Shield className="w-3 h-3 mr-1" />
-                {stats.safety} safety
-              </Badge>
-            )}
-          </div>
+          <Button variant="default" size="sm">
+            Generate Full Recommended List
+          </Button>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {!showFullList && (
           <div>
-            <h4 className="font-medium text-foreground mb-3">Important Tools</h4>
-            <div className="space-y-2">
-              {importantTools.map((tool) => (
-                <div key={tool.id} className="flex items-center space-x-3 p-2 rounded border border-border">
-                  <Checkbox
-                    id={tool.id}
-                    checked={selectedTools.has(tool.id)}
-                    onCheckedChange={() => toggleToolSelection(tool.id)}
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2">
-                      <label htmlFor={tool.id} className="text-sm font-medium cursor-pointer">
-                        {tool.tool_name}
-                      </label>
-                      {tool.status === 'required' && (
-                        <Badge variant="destructive" className="text-xs">Required</Badge>
-                      )}
-                      {tool.safety_category === 'high' && (
-                        <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-800">
-                          <Shield className="w-3 h-3 mr-1" />
-                          Safety
-                        </Badge>
-                      )}
-                    </div>
-                    {tool.description && (
-                      <p className="text-xs text-muted-foreground mt-1">{tool.description}</p>
-                    )}
+            <h4 className="text-sm text-muted-foreground mb-3">Essential Tools (Default)</h4>
+            <div className="space-y-3">
+              {getRequiredTools().map((tool) => (
+                <div key={tool.id} className="flex items-center justify-between py-2">
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id={tool.id}
+                      checked={selectedTools.has(tool.id)}
+                      onCheckedChange={() => toggleToolSelection(tool.id)}
+                    />
+                    <label htmlFor={tool.id} className="text-sm font-medium cursor-pointer">
+                      {tool.tool_name}
+                    </label>
                   </div>
+                  <Badge variant="destructive" className="text-xs">
+                    REQUIRED
+                  </Badge>
+                </div>
+              ))}
+              
+              {tools.filter(tool => tool.safety_category === 'recommended').slice(0, 2).map((tool) => (
+                <div key={tool.id} className="flex items-center justify-between py-2">
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id={tool.id}
+                      checked={selectedTools.has(tool.id)}
+                      onCheckedChange={() => toggleToolSelection(tool.id)}
+                    />
+                    <label htmlFor={tool.id} className="text-sm font-medium cursor-pointer">
+                      {tool.tool_name}
+                    </label>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    OPTIONAL
+                  </Badge>
                 </div>
               ))}
             </div>
@@ -210,72 +208,87 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
         )}
 
         {showFullList && (
-          <div className="space-y-3">
-            <h4 className="font-medium text-foreground">All Tool Categories</h4>
-            {displayedCategories.map((category) => {
-              const categoryTools = getToolsByCategory(category.id);
-              const isExpanded = expandedCategories.has(category.id);
-              
-              return (
-                <Collapsible
-                  key={category.id}
-                  open={isExpanded}
-                  onOpenChange={() => toggleCategory(category.id)}
-                >
-                  <CollapsibleTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-between p-3 h-auto border border-border rounded-lg hover:bg-muted"
-                    >
-                      <div className="flex items-center space-x-2">
-                        {isExpanded ? (
-                          <ChevronDown className="w-4 h-4" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4" />
-                        )}
-                        <span className="font-medium">{category.category_name}</span>
-                        <Badge variant="outline">{categoryTools.length} tools</Badge>
-                        {category.safety_level === 'high' && (
-                          <Badge variant="default" className="bg-orange-100 text-orange-800">High Safety</Badge>
-                        )}
-                      </div>
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-2">
-                    <div className="pl-6 space-y-2">
-                      {categoryTools.map((tool) => (
-                        <div key={tool.id} className="flex items-center space-x-3 p-2 rounded border border-border">
-                          <Checkbox
-                            id={tool.id}
-                            checked={selectedTools.has(tool.id)}
-                            onCheckedChange={() => toggleToolSelection(tool.id)}
-                          />
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2">
-                              <label htmlFor={tool.id} className="text-sm font-medium cursor-pointer">
+          <div className="space-y-4">
+            {/* Statistics Section */}
+            <div className="grid grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+              <div className="text-center">
+                <div className="text-2xl font-bold">{stats.total}</div>
+                <div className="text-xs text-muted-foreground">TOTAL TOOLS</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold">{stats.required}</div>
+                <div className="text-xs text-muted-foreground">REQUIRED</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold">{stats.recommended}</div>
+                <div className="text-xs text-muted-foreground">RECOMMENDED</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold">{stats.optional}</div>
+                <div className="text-xs text-muted-foreground">OPTIONAL</div>
+              </div>
+            </div>
+
+            {/* Categories Section */}
+            <div className="space-y-3">
+              {categories.map((category) => {
+                const categoryTools = getToolsByCategory(category.id);
+                const isExpanded = expandedCategories.has(category.id);
+                
+                if (categoryTools.length === 0) return null;
+                
+                return (
+                  <Collapsible
+                    key={category.id}
+                    open={isExpanded}
+                    onOpenChange={() => toggleCategory(category.id)}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-between p-3 h-auto border border-border rounded-lg hover:bg-muted"
+                      >
+                        <div className="flex items-center space-x-2">
+                          {isExpanded ? (
+                            <ChevronDown className="w-4 h-4" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4" />
+                          )}
+                          <span className="font-medium">{category.category_name}</span>
+                          <span className="text-sm text-muted-foreground">({categoryTools.length} Tools)</span>
+                        </div>
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2">
+                      <div className="pl-6 space-y-2">
+                        {categoryTools.map((tool) => (
+                          <div key={tool.id} className="flex items-center justify-between py-2">
+                            <div className="flex items-center space-x-3">
+                              <Checkbox
+                                id={`full-${tool.id}`}
+                                checked={selectedTools.has(tool.id)}
+                                onCheckedChange={() => toggleToolSelection(tool.id)}
+                              />
+                              <label htmlFor={`full-${tool.id}`} className="text-sm font-medium cursor-pointer">
                                 {tool.tool_name}
                               </label>
-                              {tool.status === 'required' && (
-                                <Badge variant="destructive" className="text-xs">Required</Badge>
-                              )}
-                              {tool.safety_category === 'high' && (
-                                <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-800">
-                                  <Shield className="w-3 h-3 mr-1" />
-                                  Safety
-                                </Badge>
-                              )}
                             </div>
-                            {tool.description && (
-                              <p className="text-xs text-muted-foreground mt-1">{tool.description}</p>
-                            )}
+                            <Badge 
+                              variant={tool.safety_category === 'site_required' ? 'destructive' : 
+                                     tool.safety_category === 'recommended' ? 'default' : 'outline'} 
+                              className="text-xs"
+                            >
+                              {tool.safety_category === 'site_required' ? 'REQUIRED' : 
+                               tool.safety_category === 'recommended' ? 'RECOMMENDED' : 'OPTIONAL'}
+                            </Badge>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              );
-            })}
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -285,7 +298,7 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
             onClick={() => setShowFullList(!showFullList)}
             className="w-full"
           >
-            {showFullList ? 'Show Important Tools Only' : 'Generate Full Recommended List'}
+            {showFullList ? 'Show Essential Tools Only' : 'Generate Full Recommended List'}
           </Button>
         </div>
       </CardContent>
