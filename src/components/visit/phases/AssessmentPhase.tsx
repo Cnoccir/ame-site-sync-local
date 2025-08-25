@@ -632,6 +632,7 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
                 </p>
                 
                 <TridiumDataImporter
+                  visitId={visitId}
                   onAnalysisComplete={(result) => {
                     setStep5Data(prev => ({ 
                       ...prev, 

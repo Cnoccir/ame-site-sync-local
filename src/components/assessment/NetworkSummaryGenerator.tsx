@@ -27,7 +27,7 @@ interface NetworkSummaryGeneratorProps {
   onSummaryGenerated: (summary: string) => void;
 }
 
-type SummaryTemplate = 'comprehensive' | 'executive' | 'technical' | 'issues-focused' | 'custom';
+type SummaryTemplate = 'comprehensive' | 'executive' | 'technical' | 'issues-focused' | 'simple-inventory' | 'custom';
 
 const summaryTemplates = {
   comprehensive: {

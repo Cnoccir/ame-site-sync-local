@@ -7,16 +7,19 @@ import { TridiumCSVParser } from '@/utils/tridiumParser';
 import { TridiumDataset, TridiumAnalysisResult, TridiumDataTypes } from '@/types/tridium';
 import { TridiumDataTable } from './TridiumDataTable';
 import { TridiumSummaryGenerator } from './TridiumSummaryGenerator';
+import { DeviceInventoryAggregator } from './DeviceInventoryAggregator';
 import { logger } from '@/utils/logger';
 
 interface TridiumDataImporterProps {
   onAnalysisComplete?: (result: TridiumAnalysisResult) => void;
   onDataSelected?: (summaryText: string) => void;
+  visitId?: string;
 }
 
 export const TridiumDataImporter: React.FC<TridiumDataImporterProps> = ({
   onAnalysisComplete,
-  onDataSelected
+  onDataSelected,
+  visitId
 }) => {
   const { toast } = useToast();
   const [datasets, setDatasets] = useState<TridiumDataset[]>([]);
@@ -329,6 +332,17 @@ export const TridiumDataImporter: React.FC<TridiumDataImporterProps> = ({
             </div>
           </CardHeader>
         </Card>
+      )}
+
+      {/* Multi-File Aggregation */}
+      {datasets.length > 0 && (
+        <DeviceInventoryAggregator 
+          datasets={datasets}
+          visitId={visitId}
+          onAggregationComplete={(aggregationId, devices) => {
+            console.log('Aggregation completed:', { aggregationId, deviceCount: devices.length });
+          }}
+        />
       )}
 
       {/* Active Dataset Display */}

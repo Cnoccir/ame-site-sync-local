@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, Download, CheckSquare } from 'lucide-react';
+import { Search, Filter, Download, CheckSquare, Database } from 'lucide-react';
+import { DeviceInventoryService } from "@/services/deviceInventoryService";
+import { useToast } from "@/hooks/use-toast";
 
 interface Device {
   id: string;
@@ -40,6 +42,7 @@ export const TridiumDataTable: React.FC<TridiumDataTableProps> = ({
   devices,
   onSelectionChange
 }) => {
+  const { toast } = useToast();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -117,6 +120,72 @@ export const TridiumDataTable: React.FC<TridiumDataTableProps> = ({
     
     const selectedDevices = filteredDevices.filter(d => newSelectedIds.has(d.id));
     onSelectionChange(selectedDevices);
+  };
+
+  const handleSaveToInventory = async () => {
+    if (selectedIds.size === 0) {
+      toast({
+        title: "No Selection",
+        description: "Please select devices to save to inventory",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Convert selected devices to device records
+      const selectedDevices = devices.filter(d => selectedIds.has(d.id));
+      
+      // Create a mock dataset for conversion
+      const mockDataset = {
+        id: 'temp',
+        filename: selectedDevices[0]?.sourceFile || 'unknown',
+        type: 'networkDevices' as const,
+        columns: [],
+        rows: selectedDevices.map(device => ({
+          id: device.id,
+          selected: true,
+          data: device,
+          parsedStatus: {
+            status: (device.isOnline ? 'ok' : device.isDown ? 'down' : device.hasAlarm ? 'alarm' : 'unknown') as 'ok' | 'down' | 'alarm' | 'fault' | 'unknown',
+            severity: 'normal' as const,
+            details: [],
+            badge: { text: '', variant: 'default' as const }
+          }
+        })),
+        summary: {
+          totalDevices: selectedDevices.length,
+          statusBreakdown: { ok: 0, down: 0, alarm: 0, fault: 0, unknown: 0 },
+          typeBreakdown: {},
+          criticalFindings: [],
+          recommendations: []
+        },
+        metadata: {
+          totalRows: selectedDevices.length,
+          parseErrors: [],
+          uploadedAt: new Date(),
+          fileSize: 0
+        }
+      };
+
+      const deviceRecords = DeviceInventoryService.convertDatasetToDevices(mockDataset);
+      const result = await DeviceInventoryService.saveDevices(deviceRecords);
+      
+      if (result.success) {
+        toast({
+          title: "Devices Saved",
+          description: `${selectedIds.size} devices saved to inventory`
+        });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      toast({
+        title: "Save Failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   const getStatusBadge = (device: Device) => {
@@ -226,6 +295,13 @@ export const TridiumDataTable: React.FC<TridiumDataTableProps> = ({
               d.format === 'n2Export'
             ).length})
           </Button>
+          
+          {selectedIds.size > 0 && (
+            <Button variant="outline" size="sm" onClick={handleSaveToInventory}>
+              <Database className="h-4 w-4 mr-2" />
+              Save to Inventory ({selectedIds.size})
+            </Button>
+          )}
         </div>
 
         {/* Selection Summary */}
