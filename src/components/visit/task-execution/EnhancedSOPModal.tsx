@@ -124,11 +124,31 @@ export const EnhancedSOPModal: React.FC<EnhancedSOPModalProps> = ({
 
   const parseHyperlinks = (links: any[]) => {
     if (!Array.isArray(links)) return [];
-    return links.map(link => ({
-      title: link.title || link.name || 'Documentation Link',
-      url: link.url || link.href || '#',
-      description: link.description || 'External documentation'
-    }));
+    return links.map(link => {
+      // Handle different link formats from database
+      const url = link.url || link.href || link.link || '#';
+      const title = link.title || link.name || link.text || url;
+      const description = link.description || link.desc || 'External documentation';
+      const type = link.type || getContentType(url);
+      
+      return {
+        title,
+        url,
+        description,
+        type,
+        isVideo: type === 'video' || url.includes('youtube') || url.includes('vimeo'),
+        isPDF: type === 'pdf' || url.includes('.pdf'),
+        isImage: type === 'image' || /\.(jpg|jpeg|png|gif|webp)$/i.test(url)
+      };
+    });
+  };
+
+  const getContentType = (url: string): string => {
+    if (!url) return 'link';
+    if (url.includes('youtube') || url.includes('vimeo') || url.includes('.mp4')) return 'video';
+    if (url.includes('.pdf')) return 'pdf';
+    if (/\.(jpg|jpeg|png|gif|webp)$/i.test(url)) return 'image';
+    return 'link';
   };
 
   const steps = parseSteps(taskData.sop_steps);
@@ -512,7 +532,7 @@ export const EnhancedSOPModal: React.FC<EnhancedSOPModalProps> = ({
               </Card>
             )}
 
-            {/* Reference Documentation Links */}
+            {/* Enhanced Reference Documentation with Multimedia Support */}
             {hyperlinks.length > 0 && (
               <Card>
                 <Collapsible 
@@ -527,8 +547,8 @@ export const EnhancedSOPModal: React.FC<EnhancedSOPModalProps> = ({
                         ) : (
                           <ChevronRight className="w-5 h-5" />
                         )}
-                        <ExternalLink className="w-5 h-5 text-blue-600" />
-                        Reference Documentation
+                        <ExternalLink className="w-5 h-5 text-info" />
+                        Reference Documentation & Media
                         <Badge variant="secondary">
                           {hyperlinks.length}
                         </Badge>
@@ -537,24 +557,88 @@ export const EnhancedSOPModal: React.FC<EnhancedSOPModalProps> = ({
                   </CollapsibleTrigger>
                   
                   <CollapsibleContent>
-                    <CardContent className="space-y-3">
+                    <CardContent className="space-y-4">
                       {hyperlinks.map((link, index) => (
-                        <Card key={index} className="hover:shadow-sm transition-shadow">
-                          <CardContent className="flex items-center justify-between p-4">
-                            <div className="space-y-1">
-                              <h5 className="font-medium">{link.title}</h5>
-                              <p className="text-sm text-muted-foreground">{link.description}</p>
+                        <div 
+                          key={index} 
+                          className="border rounded-lg p-4 hover:shadow-md transition-all"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0">
+                              {link.isVideo && (
+                                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                                  <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                              )}
+                              {link.isPDF && (
+                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <FileText className="w-4 h-4 text-blue-600" />
+                                </div>
+                              )}
+                              {link.isImage && (
+                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                  <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                              )}
+                              {!link.isVideo && !link.isPDF && !link.isImage && (
+                                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                                  <ExternalLink className="w-4 h-4 text-gray-600" />
+                                </div>
+                              )}
                             </div>
-                            <Button variant="outline" size="sm" asChild>
-                              <a href={link.url} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="w-4 h-4" />
-                              </a>
-                            </Button>
-                          </CardContent>
-                        </Card>
+                            
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-sm mb-1 truncate">{link.title}</h4>
+                              <p className="text-xs text-muted-foreground mb-2">{link.description}</p>
+                              
+                              {/* Embedded content for videos */}
+                              {link.isVideo && link.url.includes('youtube') && (
+                                <div className="mt-3">
+                                  <div className="aspect-video rounded-lg overflow-hidden bg-gray-100">
+                                    <iframe
+                                      src={link.url.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')}
+                                      className="w-full h-full"
+                                      frameBorder="0"
+                                      allowFullScreen
+                                      title={link.title}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Preview for images */}
+                              {link.isImage && (
+                                <div className="mt-3">
+                                  <img 
+                                    src={link.url} 
+                                    alt={link.title}
+                                    className="max-w-full h-auto rounded-lg border max-h-48 object-cover"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex-shrink-0">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => window.open(link.url, '_blank')}
+                              >
+                                {link.isVideo ? 'Watch' : link.isPDF ? 'View PDF' : 'Open'}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
                       ))}
                     </CardContent>
-                  </CollapsibleContent>
+                  </CollipsibleContent>
                 </Collapsible>
               </Card>
             )}

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { StepByStepViewer } from '../task-execution/StepByStepViewer';
 import { EnhancedSOPModal } from '../task-execution/EnhancedSOPModal';
+import { TaskCompletionModal } from '../task-execution/TaskCompletionModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Customer } from '@/types';
@@ -37,12 +38,11 @@ interface VisitTask {
   visit_id: string;
   task_id: string;
   status: string;
-  start_time?: string;
-  completion_time?: string;
-  actual_duration?: number;
-  notes?: string;
+  started_at?: string;
+  completed_at?: string;
+  time_spent?: number;
+  technician_notes?: string;
   created_at?: string;
-  updated_at?: string;
 }
 
 interface SOPData {
@@ -69,6 +69,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
   const [selectedSOP, setSelectedSOP] = useState<SOPData | null>(null);
   const [showSOPModal, setShowSOPModal] = useState(false);
   const [showStepViewer, setShowStepViewer] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [taskTimers, setTaskTimers] = useState<Record<string, number>>({});
   const [overallTimer, setOverallTimer] = useState(0);
   const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
@@ -156,7 +157,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
 
     try {
       const { data, error } = await supabase
-        .from('visit_tasks')
+        .from('ame_visit_tasks')
         .select('*')
         .eq('visit_id', visitId);
 
@@ -215,7 +216,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
   };
 
   const getTaskStatus = (task: TaskData): string => {
-    const visitTask = visitTasks.find(vt => vt.task_id === task.task_id);
+    const visitTask = visitTasks.find(vt => vt.task_id === task.id);
     return visitTask?.status || 'not_started';
   };
 
@@ -304,7 +305,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
       const { data: visitData, error: visitError } = await supabase
         .from('ame_visits')
         .select('id, visit_id, technician_id')
-        .eq('visit_id', visitId)
+        .eq('id', visitId)
         .single();
 
       if (visitError) {
@@ -315,17 +316,17 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         throw new Error('Visit not found');
       }
       
-      // Check if visit task exists, create if not - use task.task_id instead of task.id
-      let visitTask = visitTasks.find(vt => vt.task_id === task.task_id);
+      // Check if visit task exists, create if not - use task.id
+      let visitTask = visitTasks.find(vt => vt.task_id === task.id);
       
       if (!visitTask) {
         const { data: newVisitTask, error: insertError } = await supabase
-          .from('visit_tasks')
+          .from('ame_visit_tasks')
           .insert({
             visit_id: visitId,
-            task_id: task.task_id, // Use task.task_id (string) not task.id (uuid)
+            task_id: task.id, // Use task.id (UUID) from ame_tasks_normalized
             status: 'in_progress',
-            start_time: new Date().toISOString()
+            started_at: new Date().toISOString()
           })
           .select()
           .single();
@@ -339,10 +340,10 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
       } else {
         // Update existing task
         const { error: updateError } = await supabase
-          .from('visit_tasks')
+          .from('ame_visit_tasks')
           .update({
             status: 'in_progress',
-            start_time: new Date().toISOString()
+            started_at: new Date().toISOString()
           })
           .eq('id', visitTask.id);
 
@@ -352,7 +353,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         
         setVisitTasks(prev => prev.map(vt => 
           vt.id === visitTask!.id 
-            ? { ...vt, status: 'in_progress', start_time: new Date().toISOString() } as VisitTask
+            ? { ...vt, status: 'in_progress', started_at: new Date().toISOString() } as VisitTask
             : vt
         ));
       }
@@ -388,16 +389,46 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
     if (!visitId) return;
 
     try {
+      // Find the visit task
+      const visitTask = visitTasks.find(vt => vt.task_id === task.id);
+      
+      if (visitTask) {
+        // Update task status to completed
+        const { error: updateError } = await supabase
+          .from('ame_visit_tasks')
+          .update({
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+            time_spent: taskTimers[task.id] ? Math.floor((Date.now() - taskTimers[task.id]) / 60000) : 0
+          })
+          .eq('id', visitTask.id);
 
-      // Check if all required tasks are completed
+        if (updateError) throw updateError;
+
+        // Update local state
+        setVisitTasks(prev => prev.map(vt => 
+          vt.id === visitTask.id 
+            ? { ...vt, status: 'completed', completed_at: new Date().toISOString() } as VisitTask
+            : vt
+        ));
+
+        // Clear timer
+        setTaskTimers(prev => ({ ...prev, [task.id]: 0 }));
+
+        toast({
+          title: 'Task Completed',
+          description: `${task.task_name} marked as complete`
+        });
+      }
+
+      // Check if user wants to complete phase (non-blocking)
       const stats = getTaskStats();
-      if (stats.completed === stats.total) {
+      if (stats.completed >= stats.total * 0.8) { // Allow completion with 80% tasks done
         setTimeout(() => {
           toast({
-            title: 'Phase Complete',
-            description: 'All service execution tasks completed!'
+            title: 'Phase Available for Completion',
+            description: `${stats.completed}/${stats.total} tasks completed. You can proceed to the next phase when ready.`
           });
-          onPhaseComplete();
         }, 1000);
       }
     } catch (error) {
@@ -411,7 +442,17 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
   };
 
   const handleViewSOP = (task: TaskData) => {
-    const sop = sopData.find(s => s.sop_id === task.task_id);
+    // Try to find SOP by task_id first, then by matching patterns
+    let sop = sopData.find(s => s.sop_id === task.task_id);
+    
+    // If not found, try pattern matching for similar names
+    if (!sop) {
+      sop = sopData.find(s => 
+        s.title.toLowerCase().includes(task.task_name.toLowerCase().split(' ')[0]) ||
+        task.task_name.toLowerCase().includes(s.title.toLowerCase().split(' ')[0])
+      );
+    }
+    
     setSelectedSOP(sop || null);
     setSelectedTask(task);
     setShowSOPModal(true);
@@ -423,8 +464,16 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
 
   const handleAllStepsComplete = () => {
     if (selectedTask) {
-      handleTaskComplete(selectedTask);
+      setShowCompletionModal(true);
       setShowStepViewer(false);
+    }
+  };
+
+  const handleTaskCompletionWithNotes = (notes: string) => {
+    if (selectedTask) {
+      handleTaskComplete(selectedTask);
+      setShowCompletionModal(false);
+      setSelectedTask(null);
     }
   };
 
@@ -458,7 +507,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
           </div>
           <div className="panel-description text-muted-foreground">
             Execute comprehensive maintenance tasks with integrated visual step-by-step guidance. 
-            Each task includes detailed SOPs, quality checks, and safety protocols.
+            Tasks are <strong>recommended but not mandatory</strong> - complete based on site conditions and requirements.
           </div>
         </div>
 
@@ -499,267 +548,222 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
                   {isPaused ? 'Resume' : 'Pause'}
                 </Button>
                 <Button size="sm" variant="outline" onClick={resetTimer}>
-                  <RotateCcw className="w-4 h-4" />
+                  <RotateCcw className="w-4 h-4 mr-1" />
+                  Reset
                 </Button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Service Tier Filter - Only show customer's tier */}
-        <div className="tier-filter mb-6 flex gap-3 items-center">
-          <span className="font-semibold text-muted-foreground">Current Service Tier:</span>
-          <Badge 
-            variant="default"
-            className={`${customer?.service_tier === 'CORE' ? 'bg-tier-core text-white' : 
-                       customer?.service_tier === 'ASSURE' ? 'bg-tier-assure text-white' : 
-                       'bg-tier-guardian text-white'}`}
-          >
-            {customer?.service_tier || 'CORE'}
-          </Badge>
-          <div className="text-sm text-muted-foreground">
-            Showing {filteredTasks.length} tasks for this tier
-          </div>
+        {/* Service Tasks List */}
+        <div className="tasks-container space-y-4">
+          {filteredTasks.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-muted-foreground">
+                <Target className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <p className="text-lg mb-2">No service tasks available</p>
+                <p className="text-sm">Tasks will appear here based on your customer's service tier.</p>
+              </div>
+            </div>
+          ) : (
+            filteredTasks.map((task) => {
+              const status = getTaskStatus(task);
+              const isExpanded = expandedTasks.has(task.id);
+              const steps = parseSteps(task.sop_steps);
+              const qualityChecks = parseQualityChecks(task.quality_checks);
+              const isRunning = status === 'in_progress' && taskTimers[task.id];
+
+              return (
+                <Card key={task.id} className={cn(
+                  "task-card transition-all duration-200 hover:shadow-lg",
+                  status === 'completed' && "bg-success/5 border-success/20",
+                  status === 'in_progress' && "bg-info/5 border-info/20 shadow-md"
+                )}>
+                  <Collapsible 
+                    open={isExpanded} 
+                    onOpenChange={() => toggleTaskExpansion(task.id)}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors">
+                        <div className="task-header flex items-center justify-between">
+                          <div className="task-info flex items-center gap-3">
+                            <div className="task-status">
+                              {getStatusIcon(status, isRunning)}
+                            </div>
+                            <div className="task-details">
+                              <div className="task-title-row flex items-center gap-2">
+                                <h3 className="task-name text-lg font-medium">{task.task_name}</h3>
+                                <Badge 
+                                  variant={task.is_mandatory ? "default" : "secondary"}
+                                  className="text-xs"
+                                >
+                                  {task.is_mandatory ? "Recommended" : "Optional"}
+                                </Badge>
+                              </div>
+                              <div className="task-meta flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-4 h-4" />
+                                  {task.duration_minutes}min
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Target className="w-4 h-4" />
+                                  {steps.length} steps
+                                </span>
+                                {task.skills_required && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {task.skills_required}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="task-controls flex items-center gap-2">
+                            {status === 'in_progress' && (
+                              <div className="task-timer bg-info/10 px-3 py-1 rounded-full text-sm font-mono">
+                                {getTaskTimer(task)}
+                              </div>
+                            )}
+                            <div className="expand-icon">
+                              {isExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+                            </div>
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+
+                    <CollapsibleContent className="border-t bg-muted/20">
+                      <div className="p-4 space-y-4">
+                        {/* Navigation Path */}
+                        {task.navigation_path && (
+                          <div className="bg-info/10 border border-info/20 rounded-lg p-3">
+                            <div className="flex items-start gap-2">
+                              <Target className="w-4 h-4 text-info mt-0.5 flex-shrink-0" />
+                              <div>
+                                <p className="font-medium text-info text-sm">Navigation Path</p>
+                                <p className="text-sm text-info/80">{task.navigation_path}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Safety Notes */}
+                        {task.safety_notes && (
+                          <div className="bg-warning/10 border border-warning/20 rounded-lg p-3">
+                            <div className="flex items-start gap-2">
+                              <AlertTriangle className="w-4 h-4 text-warning mt-0.5 flex-shrink-0" />
+                              <div>
+                                <p className="font-medium text-warning text-sm">Safety Requirements</p>
+                                <p className="text-sm text-warning/80">{task.safety_notes}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Quality Checks */}
+                        {qualityChecks.length > 0 && (
+                          <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                            <p className="font-medium text-primary text-sm mb-2">Quality Checks</p>
+                            <ul className="space-y-1">
+                              {qualityChecks.map((check, index) => (
+                                <li key={index} className="text-sm text-primary/80 flex items-start gap-2">
+                                  <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                  {check}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Task Actions */}
+                        <div className="flex gap-2 pt-3">
+                          {status === 'not_started' && (
+                            <>
+                              <Button 
+                                size="sm" 
+                                onClick={() => handleStartStepViewer(task)}
+                                className="flex-1"
+                              >
+                                <Play className="w-4 h-4 mr-1" />
+                                Start Task
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => handleViewSOP(task)}
+                              >
+                                <Book className="w-4 h-4 mr-1" />
+                                View SOP
+                              </Button>
+                            </>
+                          )}
+
+                          {status === 'in_progress' && (
+                            <>
+                              <Button 
+                                size="sm" 
+                                onClick={() => handleTaskComplete(task)}
+                                className="flex-1"
+                              >
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                                Complete
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => handleViewSOP(task)}
+                              >
+                                <Book className="w-4 h-4 mr-1" />
+                                View SOP
+                              </Button>
+                            </>
+                          )}
+
+                          {status === 'completed' && (
+                            <div className="flex items-center gap-2 text-success">
+                              <CheckCircle className="w-4 h-4" />
+                              <span className="text-sm font-medium">Completed</span>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => handleViewSOP(task)}
+                              >
+                                <Book className="w-4 h-4 mr-1" />
+                                Review SOP
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </Card>
+              );
+            })
+          )}
         </div>
 
-        {/* Task List */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xl flex items-center gap-3">
-                  <Target className="w-6 h-6 text-primary" />
-                  Service Tasks
-                </CardTitle>
-                <div className="flex items-center gap-4">
-                  <Badge 
-                    variant="outline"
-                    className={`text-sm font-medium ${
-                      customer?.service_tier === 'CORE' ? 'bg-tier-core text-white border-tier-core' : 
-                      customer?.service_tier === 'ASSURE' ? 'bg-tier-assure text-white border-tier-assure' : 
-                      'bg-tier-guardian text-white border-tier-guardian'
-                    }`}
-                  >
-                    {customer?.service_tier || 'CORE'} Tier
-                  </Badge>
-                  <div className="text-sm text-muted-foreground">
-                    {stats.completed}/{stats.total} completed
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span>Overall Progress</span>
-                  <span className="font-medium">{stats.percentage}%</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div 
-                    className="bg-primary rounded-full h-2 transition-all duration-500" 
-                    style={{ width: `${stats.percentage}%` }}
-                  />
-                </div>
-              </div>
-            </CardHeader>
-            
-            <CardContent className="space-y-3">
-              {loading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-16 bg-muted/50 rounded-lg animate-pulse" />
-                  ))}
-                </div>
-              ) : filteredTasks.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Target className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No tasks found for {customer?.service_tier || 'CORE'} tier</p>
-                  <p className="text-sm">Check customer service tier configuration</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {filteredTasks.map((task) => {
-                    const status = getTaskStatus(task);
-                    const isExpanded = expandedTasks.has(task.id);
-                    const isRunning = !!taskTimers[task.id];
-                    const steps = parseSteps(task.sop_steps);
-                    const qualityChecks = parseQualityChecks(task.quality_checks);
-                    
-                    return (
-                      <Card
-                        key={task.id}
-                        className={cn(
-                          'transition-all duration-200 border',
-                          status === 'completed' && 'bg-success/5 border-success/20',
-                          status === 'in_progress' && 'bg-info/5 border-info/20',
-                          isExpanded && 'shadow-md'
-                        )}
-                      >
-                        <Collapsible open={isExpanded} onOpenChange={() => toggleTaskExpansion(task.id)}>
-                          <CollapsibleTrigger asChild>
-                            <div className="p-4 cursor-pointer hover:bg-muted/30 transition-colors">
-                              <div className="flex items-center gap-3">
-                                <div className="flex-shrink-0">
-                                  {getStatusIcon(status, isRunning)}
-                                </div>
-                                
-                                <div className="flex-1 space-y-2">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                      <h3 className={cn(
-                                        "font-semibold text-base",
-                                        status === 'completed' && 'line-through text-muted-foreground'
-                                      )}>
-                                        {task.task_name}
-                                      </h3>
-                                      <Badge variant="outline" className="text-xs">
-                                        {task.task_id}
-                                      </Badge>
-                                      {task.is_mandatory && (
-                                        <Badge variant="destructive" className="text-xs">
-                                          MANDATORY
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      {isRunning && (
-                                        <Badge variant="secondary" className="animate-pulse text-xs">
-                                          <Clock className="w-3 h-3 mr-1" />
-                                          {getTaskTimer(task)}
-                                        </Badge>
-                                      )}
-                                      {isExpanded ? (
-                                        <ChevronDown className="w-5 h-5 text-muted-foreground" />
-                                      ) : (
-                                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                                      )}
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                    <span className="flex items-center gap-1">
-                                      <Clock className="w-4 h-4" />
-                                      {task.duration_minutes}min
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                      <Target className="w-4 h-4" />
-                                      {steps.length} steps
-                                    </span>
-                                    {task.skills_required && (
-                                      <span className="bg-muted px-2 py-1 rounded text-xs">
-                                        {task.skills_required}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </CollapsibleTrigger>
-
-                          <CollapsibleContent className="border-t bg-muted/20">
-                            <div className="p-4 space-y-4">
-                              {/* Navigation Path */}
-                              {task.navigation_path && (
-                                <div className="bg-info/10 border border-info/20 rounded-lg p-3">
-                                  <div className="flex items-start gap-2">
-                                    <Target className="w-4 h-4 text-info mt-0.5 flex-shrink-0" />
-                                    <div>
-                                      <p className="font-medium text-info text-sm">Navigation Path</p>
-                                      <p className="text-sm text-info/80">{task.navigation_path}</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Safety Notes */}
-                              {task.safety_notes && (
-                                <div className="bg-warning/10 border border-warning/20 rounded-lg p-3">
-                                  <div className="flex items-start gap-2">
-                                    <AlertTriangle className="w-4 h-4 text-warning mt-0.5 flex-shrink-0" />
-                                    <div>
-                                      <p className="font-medium text-warning text-sm">Safety Requirements</p>
-                                      <p className="text-sm text-warning/80">{task.safety_notes}</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Quality Checks */}
-                              {qualityChecks.length > 0 && (
-                                <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-                                  <p className="font-medium text-primary text-sm mb-2">Quality Checks</p>
-                                  <ul className="space-y-1">
-                                    {qualityChecks.map((check, index) => (
-                                      <li key={index} className="text-sm text-primary/80 flex items-start gap-2">
-                                        <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                                        {check}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-
-                              {/* Action Buttons */}
-                              <div className="flex gap-3 pt-2">
-                                {status === 'not_started' && (
-                                  <Button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleStartStepViewer(task);
-                                    }}
-                                    className="flex-1"
-                                  >
-                                    <Play className="w-4 h-4 mr-2" />
-                                    Start Task
-                                  </Button>
-                                )}
-                                
-                                {status === 'in_progress' && (
-                                  <Button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleTaskComplete(task);
-                                    }}
-                                    className="flex-1"
-                                  >
-                                    <CheckCircle className="w-4 h-4 mr-2" />
-                                    Mark Complete
-                                  </Button>
-                                )}
-                                
-                                <Button 
-                                  variant="outline"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleViewSOP(task);
-                                  }}
-                                  className="flex-1"
-                                >
-                                  <Book className="w-4 h-4 mr-2" />
-                                  View Full SOP
-                                </Button>
-                              </div>
-
-                              {/* Step-by-Step Viewer for In-Progress Tasks */}
-                              {status === 'in_progress' && selectedTask?.id === task.id && showStepViewer && (
-                                <div className="border-t pt-4 mt-4">
-                                  <StepByStepViewer
-                                    task={selectedTask}
-                                    onStepComplete={handleStepComplete}
-                                    onAllStepsComplete={handleAllStepsComplete}
-                                    completedSteps={completedSteps}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      </Card>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        {/* Phase Completion */}
+        <div className="phase-completion mt-8 p-6 bg-gradient-to-r from-success/10 to-success/5 rounded-lg border border-success/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-success mb-1">Service Execution Complete</h3>
+              <p className="text-sm text-muted-foreground">
+                {stats.completed} of {stats.total} tasks completed ({stats.percentage}%)
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Tasks are recommendations - proceed when site work is complete
+              </p>
+            </div>
+            <Button 
+              onClick={onPhaseComplete}
+              className="bg-success hover:bg-success/90"
+              disabled={stats.completed === 0}
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Complete Phase
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -771,6 +775,35 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
           onClose={() => {
             setShowSOPModal(false);
             setSelectedSOP(null);
+            setSelectedTask(null);
+          }}
+        />
+      )}
+
+      {/* Step-by-Step Viewer */}
+      {showStepViewer && selectedTask && (
+        <StepByStepViewer
+          taskData={selectedTask}
+          completedSteps={completedSteps}
+          onStepComplete={handleStepComplete}
+          onAllStepsComplete={handleAllStepsComplete}
+          onClose={() => {
+            setShowStepViewer(false);
+            setSelectedTask(null);
+            setCompletedSteps(new Set());
+          }}
+        />
+      )}
+
+      {/* Task Completion Modal */}
+      {showCompletionModal && selectedTask && (
+        <TaskCompletionModal
+          taskName={selectedTask.task_name}
+          timeSpent={taskTimers[selectedTask.id] ? Date.now() - taskTimers[selectedTask.id] : 0}
+          onComplete={handleTaskCompletionWithNotes}
+          onCancel={() => {
+            setShowCompletionModal(false);
+            setSelectedTask(null);
           }}
         />
       )}
