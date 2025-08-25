@@ -589,7 +589,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
                         <div className="task-header flex items-center justify-between">
                           <div className="task-info flex items-center gap-3">
                             <div className="task-status">
-                              {getStatusIcon(status, isRunning)}
+                              {getStatusIcon(status, !!isRunning)}
                             </div>
                             <div className="task-details">
                               <div className="task-title-row flex items-center gap-2">
@@ -783,7 +783,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
       {/* Step-by-Step Viewer */}
       {showStepViewer && selectedTask && (
         <StepByStepViewer
-          taskData={selectedTask}
+          task={selectedTask}
           completedSteps={completedSteps}
           onStepComplete={handleStepComplete}
           onAllStepsComplete={handleAllStepsComplete}

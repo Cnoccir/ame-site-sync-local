@@ -43,13 +43,15 @@ interface StepByStepViewerProps {
   onStepComplete: (stepNumber: number) => void;
   onAllStepsComplete: () => void;
   completedSteps: Set<number>;
+  onClose: () => void;
 }
 
 export const StepByStepViewer: React.FC<StepByStepViewerProps> = ({
   task,
   onStepComplete,
   onAllStepsComplete,
-  completedSteps
+  completedSteps,
+  onClose
 }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [steps, setSteps] = useState<TaskStep[]>([]);

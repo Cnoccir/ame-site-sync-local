@@ -638,7 +638,7 @@ export const EnhancedSOPModal: React.FC<EnhancedSOPModalProps> = ({
                         </div>
                       ))}
                     </CardContent>
-                  </CollipsibleContent>
+                  </CollapsibleContent>
                 </Collapsible>
               </Card>
             )}
