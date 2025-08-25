@@ -822,6 +822,7 @@ export type Database = {
           original_steps_html: string | null
           rich_content: string | null
           sop_id: string
+          step_images: Json | null
           steps: Json | null
           title: string
           tools_required: Json | null
@@ -840,6 +841,7 @@ export type Database = {
           original_steps_html?: string | null
           rich_content?: string | null
           sop_id: string
+          step_images?: Json | null
           steps?: Json | null
           title: string
           tools_required?: Json | null
@@ -858,6 +860,7 @@ export type Database = {
           original_steps_html?: string | null
           rich_content?: string | null
           sop_id?: string
+          step_images?: Json | null
           steps?: Json | null
           title?: string
           tools_required?: Json | null

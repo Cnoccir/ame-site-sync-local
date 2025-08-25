@@ -7,8 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, FolderPlus, Settings, Database, Users, FileText } from 'lucide-react';
+import { Upload, FolderPlus, Settings, Database, Users, FileText, ImageIcon } from 'lucide-react';
 import { DataImportPanel } from '@/components/admin/DataImportPanel';
+import { SOPImageManager } from '@/components/admin/SOPImageManager';
 
 export const Admin = () => {
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -189,6 +190,7 @@ export const Admin = () => {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="import">Data Import</TabsTrigger>
           <TabsTrigger value="customers">Customer Management</TabsTrigger>
+          <TabsTrigger value="sop-images">SOP Images</TabsTrigger>
           <TabsTrigger value="folders">Drive Integration</TabsTrigger>
           <TabsTrigger value="system">System Settings</TabsTrigger>
         </TabsList>
@@ -272,6 +274,10 @@ export const Admin = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="sop-images" className="space-y-4">
+          <SOPImageManager />
         </TabsContent>
 
         <TabsContent value="folders" className="space-y-4">

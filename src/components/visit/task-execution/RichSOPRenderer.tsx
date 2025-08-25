@@ -15,8 +15,10 @@ import {
   Lightbulb,
   Shield,
   Navigation,
-  Wrench
+  Wrench,
+  ImageIcon
 } from 'lucide-react';
+import { SOPImageService } from '@/services/sopImageService';
 import { cn } from '@/lib/utils';
 
 interface RichSOPStep {
@@ -33,10 +35,12 @@ interface SOPReference {
 
 interface SOPData {
   id: string;
+  sop_id: string; // Add sop_id for image lookup
   title: string;
   category?: string;
   goal?: string;
   steps?: RichSOPStep[];
+  step_images?: Record<string, string>; // Add step_images field
   best_practices?: string;
   hyperlinks?: SOPReference[];
   tools_required?: string[];
@@ -190,31 +194,54 @@ export const RichSOPRenderer: React.FC<RichSOPRendererProps> = ({
                 <div className="space-y-4">
                   {sopData.steps.map((step) => {
                     const isCompleted = completedSteps.includes(step.step_number);
+                    const stepImageUrl = SOPImageService.getImageUrl(sopData.sop_id, step.step_number, sopData.step_images);
+                    
                     return (
-                      <div key={step.step_number} className="flex gap-3">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="p-0 h-auto"
-                          onClick={() => handleStepToggle(step.step_number)}
-                        >
-                          {isCompleted ? (
-                            <CheckCircle className="w-5 h-5 text-green-600" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-muted-foreground" />
-                          )}
-                        </Button>
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">
-                              Step {step.step_number}
-                            </Badge>
-                          </div>
-                          <div className={cn(
-                            "transition-opacity",
-                            isCompleted && "opacity-60 line-through"
-                          )}>
-                            {renderStepContent(step)}
+                      <div key={step.step_number} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex gap-3">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="p-0 h-auto"
+                            onClick={() => handleStepToggle(step.step_number)}
+                          >
+                            {isCompleted ? (
+                              <CheckCircle className="w-5 h-5 text-green-600" />
+                            ) : (
+                              <Circle className="w-5 h-5 text-muted-foreground" />
+                            )}
+                          </Button>
+                          <div className="flex-1 space-y-3">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                Step {step.step_number}
+                              </Badge>
+                              {stepImageUrl && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <ImageIcon className="w-3 h-3 mr-1" />
+                                  Visual Guide
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            {/* Step Image */}
+                            {stepImageUrl && (
+                              <div className="rounded-lg overflow-hidden bg-muted border">
+                                <img 
+                                  src={stepImageUrl} 
+                                  alt={`Step ${step.step_number} visual guide`}
+                                  className="w-full h-48 object-contain"
+                                />
+                              </div>
+                            )}
+                            
+                            {/* Step Content */}
+                            <div className={cn(
+                              "transition-opacity",
+                              isCompleted && "opacity-60 line-through"
+                            )}>
+                              {renderStepContent(step)}
+                            </div>
                           </div>
                         </div>
                       </div>
