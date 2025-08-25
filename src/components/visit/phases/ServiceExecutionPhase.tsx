@@ -4,9 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { StepByStepViewer } from '../task-execution/StepByStepViewer';
-import { EnhancedSOPModal } from '../task-execution/EnhancedSOPModal';
-import { TaskCompletionModal } from '../task-execution/TaskCompletionModal';
+import { IntegratedTaskCard } from '../task-execution/IntegratedTaskCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Customer } from '@/types';
@@ -767,46 +765,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         </div>
       </div>
 
-      {/* Enhanced SOP Modal */}
-      {showSOPModal && selectedTask && (
-        <EnhancedSOPModal
-          sopData={selectedSOP}
-          taskData={selectedTask}
-          onClose={() => {
-            setShowSOPModal(false);
-            setSelectedSOP(null);
-            setSelectedTask(null);
-          }}
-        />
-      )}
-
-      {/* Step-by-Step Viewer */}
-      {showStepViewer && selectedTask && (
-        <StepByStepViewer
-          task={selectedTask}
-          completedSteps={completedSteps}
-          onStepComplete={handleStepComplete}
-          onAllStepsComplete={handleAllStepsComplete}
-          onClose={() => {
-            setShowStepViewer(false);
-            setSelectedTask(null);
-            setCompletedSteps(new Set());
-          }}
-        />
-      )}
-
-      {/* Task Completion Modal */}
-      {showCompletionModal && selectedTask && (
-        <TaskCompletionModal
-          taskName={selectedTask.task_name}
-          timeSpent={taskTimers[selectedTask.id] ? Date.now() - taskTimers[selectedTask.id] : 0}
-          onComplete={handleTaskCompletionWithNotes}
-          onCancel={() => {
-            setShowCompletionModal(false);
-            setSelectedTask(null);
-          }}
-        />
-      )}
+      {/* These modals are now integrated into task cards */}
     </div>
   );
 };
