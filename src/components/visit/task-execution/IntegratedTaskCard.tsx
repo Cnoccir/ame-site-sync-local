@@ -21,6 +21,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { TaskTimer } from './TaskTimer';
+import { RichSOPContent } from './RichSOPContent';
 import { toast } from 'sonner';
 
 interface Task {
@@ -413,249 +414,63 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
       return <p className="text-sm text-muted-foreground italic">No SOP steps available.</p>;
     }
 
-    // Parse steps - handle both string and array formats with enhanced parsing
-    let parsedSteps: Array<{content: string, references: string[]}> = [];
+    // Parse steps for RichSOPContent component
+    let richSteps: Array<{step_number: number, content: string, references: number[]}> = [];
     
-    if (typeof steps === 'string') {
-      // Enhanced parsing for rich HTML content
-      let stepTexts: string[] = [];
-      
-      // First try to parse as JSON array
-      try {
-        if (steps.startsWith('[') && steps.endsWith(']')) {
-          const parsed = JSON.parse(steps);
-          if (Array.isArray(parsed)) {
-            stepTexts = parsed.map(s => typeof s === 'string' ? s : s.content || s.text || String(s));
-          }
-        }
-      } catch (e) {
-        // Continue with string parsing
-      }
-      
-      // If not JSON, split on patterns
-      if (stepTexts.length === 0) {
-        // Split on numbered patterns, HTML breaks, or delimiters
-        if (steps.includes('<br>') || steps.includes('<br/>')) {
-          stepTexts = steps.split(/<br\s*\/?>/i).filter(s => s.trim());
-        } else if (/\d+\.\s/.test(steps)) {
-          stepTexts = steps.split(/(?=\d+\.\s)/).filter(s => s.trim());
-        } else {
-          // Try other delimiters
-          const delimiters = ['\n\n', '\n', '|'];
-          for (const delimiter of delimiters) {
-            if (steps.includes(delimiter)) {
-              stepTexts = steps.split(delimiter).filter(s => s.trim());
-              break;
-            }
-          }
-          // If no delimiters, treat as single step
-          if (stepTexts.length === 0) {
-            stepTexts = [steps];
-          }
-        }
-      }
-      
-      parsedSteps = stepTexts.map(step => {
-        const references = (step.match(/\[(\d+)\]/g) || []).map(match => match.replace(/[\[\]]/g, ''));
+    if (Array.isArray(steps)) {
+      richSteps = steps.map((step, index) => ({
+        step_number: step.step_number || index + 1,
+        content: step.content || step.html_content || String(step),
+        references: step.references || []
+      }));
+    } else if (typeof steps === 'string') {
+      // Parse HTML content
+      const stepTexts = steps.split('<br>').filter(s => s.trim());
+      richSteps = stepTexts.map((step, index) => {
+        const references = (step.match(/\[(\d+)\]/g) || []).map(match => parseInt(match.replace(/[\[\]]/g, '')));
         return {
+          step_number: index + 1,
           content: step.trim(),
           references
         };
       });
-    } else if (Array.isArray(steps)) {
-      parsedSteps = steps.map(step => {
-        const content = typeof step === 'string' ? step : (step.content || step.text || '');
-        const references = (content.match(/\[(\d+)\]/g) || []).map(match => match.replace(/[\[\]]/g, ''));
-        return {
-          content,
-          references
-        };
-      });
     }
 
-    // Parse hyperlinks with enhanced handling
-    let references: Record<string, string> = {};
-    if (typeof hyperlinks === 'string' && hyperlinks.trim()) {
-      try {
-        // Try JSON parse first
-        references = JSON.parse(hyperlinks);
-      } catch (e) {
-        // Parse as delimited string with numbered references
-        const lines = hyperlinks.split(/\n|<br\s*\/?>/i);
-        lines.forEach((line) => {
-          const trimmed = line.trim();
-          if (trimmed) {
-            // Extract number and URL from patterns like "1. https://..."
-            const match = trimmed.match(/^(\d+)\.\s*(.+)$/);
-            if (match) {
-              references[match[1]] = match[2];
-            } else {
-              // Auto-number if no explicit number
-              const nextNum = String(Object.keys(references).length + 1);
-              references[nextNum] = trimmed;
-            }
+    // Parse hyperlinks for RichSOPContent component
+    let richReferences: Array<{ref_number: number, url: string, title: string}> = [];
+    
+    if (Array.isArray(hyperlinks)) {
+      richReferences = hyperlinks.map(link => ({
+        ref_number: link.ref_number || 1,
+        url: link.url || String(link),
+        title: link.title || link.display_text || 'Reference'
+      }));
+    } else if (typeof hyperlinks === 'string' && hyperlinks.trim()) {
+      const lines = hyperlinks.split(/<br\s*\/?>/i);
+      lines.forEach((line) => {
+        const trimmed = line.trim();
+        if (trimmed) {
+          const match = trimmed.match(/^(\d+)\.\s*(https?:\/\/[^\s]+)(?:#:~:text=(.+))?/);
+          if (match) {
+            const [, refNumber, url, anchorText] = match;
+            richReferences.push({
+              ref_number: parseInt(refNumber),
+              url: url.trim(),
+              title: anchorText ? decodeURIComponent(anchorText.replace(/[%,]/g, ' ')) : `Reference ${refNumber}`
+            });
           }
-        });
-      }
-    } else if (Array.isArray(hyperlinks)) {
-      hyperlinks.forEach((link, index) => {
-        if (typeof link === 'string') {
-          references[String(index + 1)] = link;
-        } else if (link && typeof link === 'object') {
-          references[String(index + 1)] = link.url || link.href || String(link);
         }
       });
-    } else if (hyperlinks && typeof hyperlinks === 'object') {
-      references = hyperlinks;
-    }
-
-    if (parsedSteps.length === 0) {
-      return <p className="text-sm text-muted-foreground italic">No SOP steps to display.</p>;
     }
 
     return (
-      <div className="space-y-4">
-        <div className="text-sm text-muted-foreground mb-2">
-          {parsedSteps.length} steps total
-        </div>
-        
-        <Carousel className="w-full relative" opts={{ align: "start" }} setApi={setCarouselApi}>
-          {/* Step Progress Dots */}
-          <div className="flex justify-center items-center gap-2 mb-4">
-            {parsedSteps.map((_, index) => (
-              <button
-                key={index}
-                className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                  index === currentCarouselStep 
-                    ? 'bg-primary w-6' 
-                    : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
-                }`}
-                onClick={() => carouselApi?.scrollTo(index)}
-              />
-            ))}
-          </div>
-
-          <CarouselContent className="min-h-[500px]">
-            {parsedSteps.map((step, index) => (
-              <CarouselItem key={index}>
-                <Card className="min-h-[480px]">
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h6 className="font-semibold text-lg">Step {index + 1}</h6>
-                      <Badge variant="outline" className="text-xs">
-                        {index + 1} of {parsedSteps.length}
-                      </Badge>
-                    </div>
-                    
-                    <div className="mb-6">
-                      <div 
-                        className="prose prose-sm max-w-none leading-relaxed"
-                        dangerouslySetInnerHTML={{ 
-                          __html: step.content
-                            .replace(/\[(\d+)\]/g, '<span class="inline-flex items-center px-2 py-1 rounded-md text-xs bg-blue-100 text-blue-800 font-medium border">[$1]</span>')
-                            .replace(/<br\s*\/?>/gi, '<br>')
-                        }}
-                      />
-                    </div>
-                    
-                    {/* Reference Links for this step */}
-                    {step.references && step.references.length > 0 && (
-                      <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                        <h6 className="font-medium text-sm mb-3 text-blue-800">Step References:</h6>
-                        <div className="space-y-2">
-                          {step.references.map((refNum: string) => (
-                            <div key={refNum} className="text-sm">
-                              <span className="inline-flex items-center px-2 py-1 rounded bg-blue-200 text-blue-800 font-medium text-xs mr-2">
-                                [{refNum}]
-                              </span>
-                              {references[refNum] && (
-                                <a 
-                                  href={references[refNum]} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:text-blue-800 underline break-all"
-                                >
-                                  {references[refNum]}
-                                </a>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Image Upload Area */}
-                    <div className="relative group">
-                      <div className="h-48 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-sm text-muted-foreground hover:border-primary/50 transition-colors cursor-pointer">
-                        <div className="flex items-center gap-2 mb-2">
-                          <FileText className="w-6 h-6" />
-                          <span className="font-medium">Step Reference Image</span>
-                        </div>
-                        <span className="text-xs text-center">
-                          Click to upload screenshot for step {index + 1}<br/>
-                          <span className="text-muted-foreground/70">Supports JPG, PNG, PDF</span>
-                        </span>
-                      </div>
-                      
-                      {/* Hidden file input */}
-                      <input
-                        type="file"
-                        accept="image/*,.pdf"
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            // TODO: Handle file upload
-                            console.log('Uploading file for step', index + 1, file);
-                            toast.success(`File uploaded for step ${index + 1}: ${file.name}`);
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-                </Card>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          
-          {/* Custom positioned navigation */}
-          <div className="flex justify-center items-center gap-4 mt-4">
-            <CarouselPrevious className="relative left-0 top-0 translate-y-0" />
-            <span className="text-sm text-muted-foreground px-4">
-              Step {currentCarouselStep + 1} of {parsedSteps.length}
-            </span>
-            <CarouselNext className="relative right-0 top-0 translate-y-0" />
-          </div>
-        </Carousel>
-        
-        {/* Enhanced Reference List */}
-        {Object.keys(references).length > 0 && (
-          <div className="mt-8 p-6 bg-gray-50 rounded-lg border">
-            <h5 className="font-semibold mb-4 flex items-center gap-2">
-              <ExternalLink className="w-4 h-4" />
-              External References
-            </h5>
-            <div className="grid gap-3">
-              {Object.entries(references).map(([num, url]) => (
-                <div key={num} className="flex items-start gap-3 p-3 bg-white rounded border hover:shadow-sm transition-shadow">
-                  <span className="inline-flex items-center px-2 py-1 rounded bg-gray-200 text-gray-800 font-medium text-xs min-w-[2rem] justify-center">
-                    [{num}]
-                  </span>
-                  <a 
-                    href={String(url)} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 underline break-all text-sm leading-relaxed flex-1"
-                  >
-                    {String(url)}
-                  </a>
-                  <ExternalLink className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      <RichSOPContent
+        steps={richSteps}
+        references={richReferences}
+        onStepComplete={handleStepComplete}
+        completedSteps={completedSteps}
+        className="max-h-96 overflow-y-auto"
+      />
     );
   };
 
