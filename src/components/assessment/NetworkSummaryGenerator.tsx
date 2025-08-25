@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   FileText, 
   Download, 
@@ -14,7 +15,9 @@ import {
   BarChart3,
   Network,
   Activity,
-  Clock
+  Clock,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { TridiumDataset } from '@/types/tridium';
@@ -69,6 +72,9 @@ export const NetworkSummaryGenerator: React.FC<NetworkSummaryGeneratorProps> = (
   const [customNotes, setCustomNotes] = useState('');
   const [generatedSummary, setGeneratedSummary] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isStatsOpen, setIsStatsOpen] = useState(true);
+  const [isTemplateOpen, setIsTemplateOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   // Calculate statistics from selected data
   const analysisStats = useMemo(() => {
@@ -139,6 +145,7 @@ export const NetworkSummaryGenerator: React.FC<NetworkSummaryGeneratorProps> = (
 
   const generateSummary = () => {
     setIsGenerating(true);
+    setIsPreviewOpen(true);
     
     try {
       const template = summaryTemplates[selectedTemplate];
@@ -198,6 +205,7 @@ export const NetworkSummaryGenerator: React.FC<NetworkSummaryGeneratorProps> = (
         description: "Network analysis summary has been created successfully.",
       });
     } catch (error) {
+      console.error('Summary generation error:', error);
       toast({
         title: "Generation Failed",
         description: "Failed to generate summary. Please try again.",
@@ -474,118 +482,210 @@ ${'═'.repeat(15)}
 
   return (
     <div className="space-y-6">
-      {/* Summary Statistics */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Analysis Summary</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold">{analysisStats.totalDevices}</div>
-            <div className="text-sm text-muted-foreground">Total Devices</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">{analysisStats.onlineDevices}</div>
-            <div className="text-sm text-muted-foreground">Online</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-red-600">{analysisStats.offlineDevices}</div>
-            <div className="text-sm text-muted-foreground">Offline</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-yellow-600">{analysisStats.alarmDevices}</div>
-            <div className="text-sm text-muted-foreground">Alarms</div>
-          </div>
-        </div>
-        
-        <div className="mt-4 text-center">
-          <Badge variant={analysisStats.healthPercentage >= 90 ? 'default' : 'destructive'} className="text-lg px-4 py-2">
-            Network Health: {analysisStats.healthPercentage.toFixed(1)}%
-          </Badge>
-        </div>
-      </Card>
+      {/* Analysis Summary Statistics */}
+      <Card className="border-l-4 border-l-blue-500">
+        <Collapsible open={isStatsOpen} onOpenChange={setIsStatsOpen}>
+          <CardHeader className="pb-3">
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between p-0 h-auto font-normal">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-blue-600" />
+                  <div className="text-left">
+                    <CardTitle className="text-lg">Analysis Summary Generator</CardTitle>
+                    <CardDescription className="text-sm">
+                      Current selection: {analysisStats.totalDevices} devices from {datasets.length} files
+                    </CardDescription>
+                  </div>
+                </div>
+                {isStatsOpen ? (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Button>
+            </CollapsibleTrigger>
+          </CardHeader>
 
-      {/* Template Selection */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Summary Template</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          {Object.entries(summaryTemplates).map(([key, template]) => (
-            <Card 
-              key={key}
-              className={`p-4 cursor-pointer transition-colors ${
-                selectedTemplate === key ? 'border-primary bg-primary/5' : 'hover:border-primary/50'
-              }`}
-              onClick={() => setSelectedTemplate(key as SummaryTemplate)}
-            >
-              <h4 className="font-medium">{template.name}</h4>
-              <p className="text-sm text-muted-foreground mt-1">{template.description}</p>
-              <div className="mt-2">
-                <Badge variant="outline" className="text-xs">
-                  {template.sections.length} sections
+          <CollapsibleContent>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-blue-600">{analysisStats.totalDevices}</div>
+                  <div className="text-sm text-muted-foreground font-medium">Total Selected</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-600">{analysisStats.onlineDevices}</div>
+                  <div className="text-sm text-muted-foreground font-medium">Online</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-red-600">{analysisStats.offlineDevices}</div>
+                  <div className="text-sm text-muted-foreground font-medium">Offline</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-yellow-600">{analysisStats.alarmDevices}</div>
+                  <div className="text-sm text-muted-foreground font-medium">Alarms</div>
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <Badge 
+                  variant={analysisStats.healthPercentage >= 90 ? 'default' : 'destructive'} 
+                  className="text-base px-6 py-2 font-semibold"
+                >
+                  Network Health: {analysisStats.healthPercentage.toFixed(1)}% {getHealthStatus(analysisStats.healthPercentage)}
                 </Badge>
               </div>
-            </Card>
-          ))}
-        </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
 
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Additional Notes (Optional)</label>
-            <Textarea
-              placeholder="Add any custom observations or additional context..."
-              value={customNotes}
-              onChange={(e) => setCustomNotes(e.target.value)}
-              rows={3}
-            />
-          </div>
+      {/* Template Selection & Generation */}
+      <Card className="border-l-4 border-l-orange-500">
+        <Collapsible open={isTemplateOpen} onOpenChange={setIsTemplateOpen}>
+          <CardHeader className="pb-3">
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between p-0 h-auto font-normal">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-orange-600" />
+                  <div className="text-left">
+                    <CardTitle className="text-lg">Summary Template & Generation</CardTitle>
+                    <CardDescription className="text-sm">
+                      Configure and generate network analysis reports
+                    </CardDescription>
+                  </div>
+                </div>
+                {isTemplateOpen ? (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Button>
+            </CollapsibleTrigger>
+          </CardHeader>
 
-          <Button 
-            onClick={generateSummary} 
-            size="lg" 
-            className="w-full"
-            disabled={isGenerating || analysisStats.totalDevices === 0}
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            {isGenerating ? 'Generating Summary...' : 'Generate Network Analysis Summary'}
-          </Button>
-        </div>
+          <CollapsibleContent>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(summaryTemplates).map(([key, template]) => (
+                  <Card 
+                    key={key}
+                    className={`p-4 cursor-pointer transition-all duration-200 ${
+                      selectedTemplate === key 
+                        ? 'border-primary bg-primary/10 shadow-md scale-105' 
+                        : 'hover:border-primary/50 hover:shadow-sm hover:scale-102'
+                    }`}
+                    onClick={() => setSelectedTemplate(key as SummaryTemplate)}
+                  >
+                    <h4 className="font-semibold text-sm">{template.name}</h4>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{template.description}</p>
+                    <div className="mt-3">
+                      <Badge variant="outline" className="text-xs px-2 py-1">
+                        {template.sections.length} sections
+                      </Badge>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-semibold">Additional Notes (Optional)</label>
+                  <Textarea
+                    placeholder="Add any custom observations, site-specific details, or additional context..."
+                    value={customNotes}
+                    onChange={(e) => setCustomNotes(e.target.value)}
+                    rows={3}
+                    className="mt-2"
+                  />
+                </div>
+
+                <Button 
+                  onClick={generateSummary} 
+                  size="lg" 
+                  className="w-full h-12 text-base font-semibold"
+                  disabled={isGenerating || analysisStats.totalDevices === 0}
+                >
+                  <FileText className="w-5 h-5 mr-2" />
+                  {isGenerating ? 'Generating Summary...' : 'Generate Network Analysis Summary'}
+                </Button>
+
+                {analysisStats.totalDevices === 0 && (
+                  <p className="text-sm text-muted-foreground text-center">
+                    Select devices from the inventory table above to enable summary generation
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
       </Card>
 
       {/* Generated Summary Preview */}
       {generatedSummary && (
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Generated Summary</h3>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleCopyToClipboard}>
-                <Copy className="w-4 h-4 mr-2" />
-                Copy
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleDownload}>
-                <Download className="w-4 h-4 mr-2" />
-                Download
-              </Button>
-            </div>
-          </div>
-          
-          <div className="bg-muted p-4 rounded-md max-h-96 overflow-y-auto">
-            <pre className="text-sm whitespace-pre-wrap font-mono">{generatedSummary}</pre>
-          </div>
+        <Card className="border-l-4 border-l-green-500">
+          <Collapsible open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+            <CardHeader className="pb-3">
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between p-0 h-auto font-normal">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <div className="text-left">
+                      <CardTitle className="text-lg">Generated Summary</CardTitle>
+                      <CardDescription className="text-sm">
+                        Review and export your network analysis report
+                      </CardDescription>
+                    </div>
+                  </div>
+                  {isPreviewOpen ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+            </CardHeader>
+
+            <CollapsibleContent>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="default" size="lg" onClick={handleCopyToClipboard}>
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy to Clipboard
+                  </Button>
+                  <Button variant="outline" size="lg" onClick={handleDownload}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Report
+                  </Button>
+                </div>
+                
+                <div className="border rounded-lg bg-muted/30 p-4">
+                  <div className="max-h-[500px] overflow-y-auto">
+                    <pre className="text-sm whitespace-pre-wrap font-mono leading-relaxed">{generatedSummary}</pre>
+                  </div>
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
         </Card>
       )}
 
       {/* Usage Tips */}
-      <Card className="p-4 bg-blue-50 border-blue-200">
-        <div className="flex items-start gap-2">
-          <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-          <div>
-            <h4 className="font-medium text-blue-900">Summary Generation Tips</h4>
-            <ul className="text-sm text-blue-700 mt-2 space-y-1">
-              <li>• Select devices using the inventory table filters and checkboxes</li>
-              <li>• Choose template based on your audience (Executive, Technical, etc.)</li>
-              <li>• Add custom notes for site-specific observations</li>
-              <li>• Generated summary will be included in the final assessment report</li>
-            </ul>
+      <Card className="border-blue-200 bg-blue-50/50">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <h4 className="font-semibold text-blue-900 text-sm">Summary Generation Tips</h4>
+              <ul className="text-sm text-blue-700 mt-2 space-y-1">
+                <li>• First select devices using checkboxes in the inventory table above</li>
+                <li>• Choose the appropriate template for your audience (Executive, Technical, etc.)</li>
+                <li>• Add custom notes for site-specific observations or requirements</li>
+                <li>• Generated summaries are automatically saved with your visit assessment</li>
+              </ul>
+            </div>
           </div>
-        </div>
+        </CardContent>
       </Card>
     </div>
   );
