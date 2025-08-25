@@ -50,19 +50,24 @@ export const AssessmentTimer = ({ isRunning, onTimeWarning, onTimeUp }: Assessme
   const isOvertime = timeElapsed >= totalTime;
 
   return (
-    <Card className="p-4 border-2">
+    <Card className={`p-4 border-2 ${isWarning ? 'border-warning' : isOvertime ? 'border-destructive' : 'border-primary'} transition-colors`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Clock className="w-5 h-5 text-primary" />
+          <Clock className={`w-5 h-5 ${isOvertime ? 'text-destructive' : isWarning ? 'text-warning' : 'text-primary'}`} />
           <span className="font-medium">Assessment Timer</span>
+          {isWarning && (
+            <span className={`text-xs px-2 py-1 rounded-full ${isOvertime ? 'bg-destructive text-destructive-foreground' : 'bg-warning text-warning-foreground'}`}>
+              {isOvertime ? 'OVERTIME' : 'TIME WARNING'}
+            </span>
+          )}
         </div>
         {isWarning && (
-          <AlertTriangle className={`w-5 h-5 ${isOvertime ? 'text-destructive' : 'text-warning'}`} />
+          <AlertTriangle className={`w-5 h-5 ${isOvertime ? 'text-destructive animate-pulse' : 'text-warning'}`} />
         )}
       </div>
       
       <div className="text-center mb-3">
-        <div className={`text-3xl font-bold ${isOvertime ? 'text-destructive' : isWarning ? 'text-warning' : 'text-primary'}`}>
+        <div className={`text-3xl font-bold ${isOvertime ? 'text-destructive animate-pulse' : isWarning ? 'text-warning' : 'text-primary'}`}>
           {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
         </div>
         <div className="text-sm text-muted-foreground">
@@ -72,11 +77,11 @@ export const AssessmentTimer = ({ isRunning, onTimeWarning, onTimeUp }: Assessme
       
       <Progress 
         value={Math.min(100, progressPercentage)} 
-        className="h-2"
+        className={`h-3 ${isWarning ? 'animate-pulse' : ''}`}
       />
       
       <div className="text-xs text-muted-foreground text-center mt-2">
-        Target: 30 minutes
+        Target: 30 minutes {isWarning && !isOvertime && '• Complete current step quickly'}
       </div>
     </Card>
   );

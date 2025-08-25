@@ -45,6 +45,13 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     6: 'pending'
   });
 
+  // Completion tracking for reactive updates
+  const [completionTriggers, setCompletionTriggers] = useState({
+    4: 0, // Connection tests completion counter
+    5: 0, // Network analysis completion counter  
+    6: 0  // System status completion counter
+  });
+
   // Form data for each step
   const [step1Data, setStep1Data] = useState({
     contactPerson: '',
@@ -90,7 +97,8 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     manualComponents: '',
     manualProtocols: '',
     analysisMode: 'upload',
-    tridiumAnalysis: '' as string
+    tridiumAnalysis: '' as string,
+    generatedSummary: '' as string
   });
 
   const [step6Data, setStep6Data] = useState({
@@ -176,15 +184,36 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
       case 4:
         return step4Data.supervisorStatus === 'success' || step4Data.workbenchStatus === 'success';
       case 5:
-        return step5Data.analysisMode === 'upload' 
-          ? step5Data.uploadedFiles.length > 0 
-          : step5Data.manualStationCount.trim() !== '';
+        return step5Data.analysisData !== null || Boolean(step5Data.generatedSummary);
       case 6:
         return step6Data.activeAlarms !== '' && step6Data.criticalAlarms !== '';
       default:
         return false;
     }
   };
+
+  // Reactive completion checking for steps 4-6
+  useEffect(() => {
+    // Step 4: Auto-complete when connection tests succeed
+    if (stepStatuses[4] === 'active' && canCompleteStep(4) && 
+        (step4Data.supervisorStatus === 'success' || step4Data.workbenchStatus === 'success')) {
+      handleStepComplete(4);
+    }
+  }, [step4Data.supervisorStatus, step4Data.workbenchStatus, stepStatuses]);
+
+  useEffect(() => {
+    // Step 5: Auto-complete when analysis is done
+    if (stepStatuses[5] === 'active' && canCompleteStep(5)) {
+      handleStepComplete(5);
+    }
+  }, [step5Data.analysisData, step5Data.generatedSummary, stepStatuses]);
+
+  useEffect(() => {
+    // Step 6: Auto-complete when system status is collected
+    if (stepStatuses[6] === 'active' && canCompleteStep(6)) {
+      handleStepComplete(6);
+    }
+  }, [step6Data.activeAlarms, step6Data.criticalAlarms, stepStatuses]);
 
   const handleTimeWarning = () => {
     toast({
@@ -429,7 +458,13 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
             {step.number === 4 && (
               <ConnectionTester
                 value={step4Data}
-                onChange={setStep4Data}
+                onChange={(newData) => {
+                  setStep4Data(newData);
+                  // Trigger completion check when status changes
+                  if (newData.supervisorStatus === 'success' || newData.workbenchStatus === 'success') {
+                    setCompletionTriggers(prev => ({ ...prev, 4: prev[4] + 1 }));
+                  }
+                }}
               />
             )}
 
@@ -459,12 +494,16 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
                         })))
                       }
                     }));
+                    // Trigger completion check
+                    setCompletionTriggers(prev => ({ ...prev, 5: prev[5] + 1 }));
                   }}
                   onDataSelected={(summaryText) => {
                     setStep5Data(prev => ({ 
                       ...prev, 
                       generatedSummary: summaryText 
                     }));
+                    // Trigger completion check
+                    setCompletionTriggers(prev => ({ ...prev, 5: prev[5] + 1 }));
                   }}
                 />
               </div>
@@ -480,7 +519,10 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
                       type="number"
                       placeholder="Count"
                       value={step6Data.activeAlarms}
-                      onChange={(e) => setStep6Data(prev => ({ ...prev, activeAlarms: e.target.value }))}
+                      onChange={(e) => {
+                        setStep6Data(prev => ({ ...prev, activeAlarms: e.target.value }));
+                        setCompletionTriggers(prev => ({ ...prev, 6: prev[6] + 1 }));
+                      }}
                     />
                   </div>
                   <div>
@@ -489,7 +531,10 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
                       type="number"
                       placeholder="Count"
                       value={step6Data.criticalAlarms}
-                      onChange={(e) => setStep6Data(prev => ({ ...prev, criticalAlarms: e.target.value }))}
+                      onChange={(e) => {
+                        setStep6Data(prev => ({ ...prev, criticalAlarms: e.target.value }));
+                        setCompletionTriggers(prev => ({ ...prev, 6: prev[6] + 1 }));
+                      }}
                     />
                   </div>
                   <div>
