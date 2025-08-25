@@ -374,59 +374,89 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
   const completedStepsCount = completedSteps.size;
   const progressPercentage = steps.length > 0 ? (completedStepsCount / steps.length) * 100 : 0;
 
-  // Enhanced SOP Steps rendering with rich content and carousel dots
+  // Enhanced SOP Steps rendering with rich content and carousel dots  
   const renderSOPStepsCarousel = (steps: any, hyperlinks: any) => {
     if (!steps || (Array.isArray(steps) && steps.length === 0)) {
       return <p className="text-sm text-muted-foreground italic">No SOP steps available.</p>;
     }
 
-    // Parse steps for RichSOPContent component
+    // Parse steps for RichSOPContent component - handle new structured format
     let richSteps: Array<{step_number: number, content: string, references: number[]}> = [];
     
     if (Array.isArray(steps)) {
+      // New structured format from database
       richSteps = steps.map((step, index) => ({
         step_number: step.step_number || index + 1,
         content: step.content || step.html_content || String(step),
-        references: step.references || []
+        references: Array.isArray(step.references) ? step.references : []
       }));
     } else if (typeof steps === 'string') {
-      // Parse HTML content
-      const stepTexts = steps.split('<br>').filter(s => s.trim());
-      richSteps = stepTexts.map((step, index) => {
-        const references = (step.match(/\[(\d+)\]/g) || []).map(match => parseInt(match.replace(/[\[\]]/g, '')));
-        return {
-          step_number: index + 1,
-          content: step.trim(),
-          references
-        };
-      });
+      try {
+        // Try parsing as JSON first (stringified array)
+        const parsed = JSON.parse(steps);
+        if (Array.isArray(parsed)) {
+          richSteps = parsed.map((step, index) => ({
+            step_number: step.step_number || index + 1,
+            content: step.content || String(step),
+            references: Array.isArray(step.references) ? step.references : []
+          }));
+        }
+      } catch (e) {
+        // Fallback: Parse HTML content for legacy format
+        const stepTexts = steps.split(/<br\s*\/?>\s*<br\s*\/?>/i).filter(s => s.trim());
+        richSteps = stepTexts.map((step, index) => {
+          const cleanStep = step.replace(/<br\s*\/?>/gi, '\n').trim();
+          const references = (cleanStep.match(/\[(\d+)\]/g) || []).map(match => parseInt(match.replace(/[\[\]]/g, '')));
+          return {
+            step_number: index + 1,
+            content: cleanStep,
+            references
+          };
+        });
+      }
     }
 
-    // Parse hyperlinks for RichSOPContent component
-    let richReferences: Array<{ref_number: number, url: string, title: string}> = [];
+    // Parse hyperlinks for RichSOPContent component - handle new structured format
+    let richReferences: Array<{ref_number: number, url: string, title: string, display_text?: string}> = [];
     
     if (Array.isArray(hyperlinks)) {
+      // New structured format from database
       richReferences = hyperlinks.map(link => ({
         ref_number: link.ref_number || 1,
         url: link.url || String(link),
-        title: link.title || link.display_text || 'Reference'
+        title: link.title || link.display_text || 'Reference',
+        display_text: link.display_text
       }));
     } else if (typeof hyperlinks === 'string' && hyperlinks.trim()) {
-      const lines = hyperlinks.split(/<br\s*\/?>/i);
-      lines.forEach((line) => {
-        const trimmed = line.trim();
-        if (trimmed) {
-          const match = trimmed.match(/^(\d+)\.\s*(https?:\/\/[^\s]+)(?:#:~:text=(.+))?/);
-          if (match) {
-            const [, refNumber, url, anchorText] = match;
-            richReferences.push({
-              ref_number: parseInt(refNumber),
-              url: url.trim(),
-              title: anchorText ? decodeURIComponent(anchorText.replace(/[%,]/g, ' ')) : `Reference ${refNumber}`
-            });
-          }
+      try {
+        // Try parsing as JSON first (stringified array)
+        const parsed = JSON.parse(hyperlinks);
+        if (Array.isArray(parsed)) {
+          richReferences = parsed.map(link => ({
+            ref_number: link.ref_number || 1,
+            url: link.url || String(link),
+            title: link.title || link.display_text || 'Reference',
+            display_text: link.display_text
+          }));
         }
-      });
+      } catch (e) {
+        // Fallback: Parse HTML/text format for legacy
+        const lines = hyperlinks.split(/<br\s*\/?>/i);
+        lines.forEach((line) => {
+          const trimmed = line.trim();
+          if (trimmed) {
+            const match = trimmed.match(/^(\d+)\.\s*(https?:\/\/[^\s]+)(?:#:~:text=(.+))?/);
+            if (match) {
+              const [, refNumber, url, anchorText] = match;
+              richReferences.push({
+                ref_number: parseInt(refNumber),
+                url: url.trim(),
+                title: anchorText ? decodeURIComponent(anchorText.replace(/[%,]/g, ' ')) : `Reference ${refNumber}`
+              });
+            }
+          }
+        });
+      }
     }
 
     return (

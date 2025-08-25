@@ -50,8 +50,9 @@ export const RichSOPContent: React.FC<RichSOPContentProps> = ({
   const renderStepContent = (step: RichSOPStep) => {
     if (!step.content) return null;
 
-    // Split content by reference markers and render with clickable links
-    const parts = step.content.split(/(\[\d+\])/g);
+    // Convert newlines to <br> tags for proper display, then split by reference markers
+    const contentWithBr = step.content.replace(/\n/g, '<br>');
+    const parts = contentWithBr.split(/(\[\d+\])/g);
     
     return (
       <div className="space-y-2">
@@ -76,13 +77,15 @@ export const RichSOPContent: React.FC<RichSOPContentProps> = ({
               }
             }
             
-            // Regular text content with HTML parsing
+            // Regular text content with enhanced HTML parsing
             return (
               <span key={index} 
                     dangerouslySetInnerHTML={{ 
                       __html: part
                         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                         .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                        .replace(/→/g, '→') // Preserve arrow characters
+                        .replace(/–/g, '–') // Preserve en-dash
                     }} 
               />
             );
