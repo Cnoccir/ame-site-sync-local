@@ -33,17 +33,22 @@ export const TridiumDataImporter: React.FC<TridiumDataImporterProps> = ({
     
     try {
       for (const file of Array.from(files)) {
-        if (!file.name.toLowerCase().endsWith('.csv')) {
+        const validExtensions = ['.csv', '.txt', '.xlsx', '.xls'];
+        const hasValidExtension = validExtensions.some(ext => 
+          file.name.toLowerCase().endsWith(ext)
+        );
+        
+        if (!hasValidExtension) {
           toast({
             title: "Invalid File Type",
-            description: `${file.name} is not a CSV file`,
+            description: `${file.name} is not a supported file type`,
             variant: "destructive"
           });
           continue;
         }
         
         const content = await file.text();
-        const dataset = TridiumCSVParser.parseCSVContent(content, file.name);
+        const dataset = TridiumCSVParser.parseFileContent(content, file.name);
         newDatasets.push(dataset);
         
         logger.info('Dataset parsed successfully', {
@@ -182,11 +187,11 @@ export const TridiumDataImporter: React.FC<TridiumDataImporterProps> = ({
             </p>
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>Supported formats: Network Devices, BACnet Exports, Resource Metrics, Niagara Stations</p>
-              <p>Accepted file types: .csv, .xlsx</p>
+              <p>Accepted file types: .csv, .xlsx, .txt (Platform Details)</p>
             </div>
             <input
               type="file"
-              accept=".csv,.xlsx"
+              accept=".csv,.xlsx,.txt"
               multiple
               onChange={handleFileSelect}
               className="hidden"

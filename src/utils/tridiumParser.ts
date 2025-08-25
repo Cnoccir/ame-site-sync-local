@@ -31,6 +31,15 @@ export class TridiumCSVParser {
     }
   };
 
+  static parseFileContent(fileContent: string, filename: string): TridiumDataset {
+    // Check if it's a text file (Platform Details)
+    if (filename.toLowerCase().endsWith('.txt')) {
+      return this.parsePlatformDetails(fileContent, filename);
+    }
+    
+    return this.parseCSVContent(fileContent, filename);
+  }
+
   static parseCSVContent(csvContent: string, filename: string): TridiumDataset {
     try {
       logger.info('Starting CSV parse', { filename });
@@ -369,5 +378,93 @@ export class TridiumCSVParser {
     }
 
     return summary;
+  }
+
+  static parsePlatformDetails(textContent: string, filename: string): TridiumDataset {
+    try {
+      logger.info('Parsing platform details', { filename });
+      
+      const lines = textContent.split(/\r?\n/).filter(line => line.trim());
+      const platformData: Record<string, any> = {};
+      
+      let currentSection = '';
+      let sectionData: string[] = [];
+      
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        
+        // Detect section headers
+        if (trimmedLine.includes('Platform Summary') || 
+            trimmedLine.includes('Modules') || 
+            trimmedLine.includes('Applications') || 
+            trimmedLine.includes('Licenses')) {
+          
+          // Save previous section
+          if (currentSection && sectionData.length > 0) {
+            platformData[currentSection] = sectionData.join('; ');
+          }
+          
+          currentSection = trimmedLine.replace(':', '').trim();
+          sectionData = [];
+        } else if (trimmedLine && currentSection) {
+          // Extract key-value pairs
+          if (trimmedLine.includes(':')) {
+            const [key, ...valueParts] = trimmedLine.split(':');
+            const value = valueParts.join(':').trim();
+            platformData[key.trim()] = value;
+          } else {
+            sectionData.push(trimmedLine);
+          }
+        }
+      }
+      
+      // Save last section
+      if (currentSection && sectionData.length > 0) {
+        platformData[currentSection] = sectionData.join('; ');
+      }
+
+      // Create columns for platform data
+      const columns: CSVColumn[] = Object.keys(platformData).map(key => ({
+        key,
+        label: key,
+        type: 'text' as const,
+        visible: true,
+        sortable: false,
+        width: 200
+      }));
+
+      // Create a single row for platform data
+      const row: TridiumDataRow = {
+        id: 'platform-details',
+        selected: false,
+        data: platformData
+      };
+
+      const summary: DatasetSummary = {
+        totalDevices: 1,
+        statusBreakdown: { ok: 1, down: 0, alarm: 0, fault: 0, unknown: 0 },
+        typeBreakdown: { 'Platform Details': 1 },
+        criticalFindings: [],
+        recommendations: ['Review platform details for system specifications and licensing']
+      };
+
+      return {
+        id: `platform-${Date.now()}`,
+        filename,
+        type: 'resourceMetrics',
+        columns,
+        rows: [row],
+        summary,
+        metadata: {
+          totalRows: 1,
+          parseErrors: [],
+          uploadedAt: new Date(),
+          fileSize: textContent.length
+        }
+      };
+    } catch (error) {
+      logger.error('Platform details parse failed', { filename, error });
+      throw error;
+    }
   }
 }

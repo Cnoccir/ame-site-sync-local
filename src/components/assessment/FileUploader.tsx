@@ -15,7 +15,7 @@ export const FileUploader = ({
   files, 
   onFilesChange, 
   maxFiles = 10,
-  acceptedTypes = ['.csv', '.xlsx', '.xls']
+  acceptedTypes = ['.csv', '.xlsx', '.xls', '.txt']
 }: FileUploaderProps) => {
   const [dragActive, setDragActive] = useState(false);
 
@@ -88,7 +88,7 @@ export const FileUploader = ({
           <Upload className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="font-medium mb-2">Upload Network Export Files</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Drag and drop your CSV or Excel files here, or click to browse
+            Drag and drop your CSV, Excel, or text files here, or click to browse
           </p>
           <Button variant="outline" size="sm">
             Choose Files
