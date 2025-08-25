@@ -55,6 +55,10 @@ interface SOPData {
   tools_required: any;
   hyperlinks: any;
   estimated_duration_minutes: number;
+  category_id: string | null;
+  version: string | null;
+  last_updated: string | null;
+  created_at: string | null;
 }
 
 export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
@@ -580,13 +584,18 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
 
               const mappedSOP = taskSOP ? {
                 id: taskSOP.id,
-                task_id: task.task_id,
+                sop_id: taskSOP.sop_id,
                 title: taskSOP.title,
-                content: taskSOP.best_practices || '',
-                hyperlinks: Array.isArray(taskSOP.hyperlinks) ? taskSOP.hyperlinks.join(',') : '',
-                videos: '',
-                images: '',
-                pdfs: ''
+                goal: taskSOP.goal,
+                steps: taskSOP.steps,
+                best_practices: taskSOP.best_practices,
+                tools_required: taskSOP.tools_required,
+                hyperlinks: taskSOP.hyperlinks,
+                estimated_duration_minutes: taskSOP.estimated_duration_minutes,
+                category_id: taskSOP.category_id,
+                version: taskSOP.version,
+                last_updated: taskSOP.last_updated,
+                created_at: taskSOP.created_at
               } : undefined;
 
               return (

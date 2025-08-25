@@ -16,8 +16,12 @@ import {
   FileText,
   Video,
   ExternalLink,
-  AlertTriangle
+  AlertTriangle,
+  Target,
+  Lightbulb,
+  Wrench
 } from 'lucide-react';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { TaskTimer } from './TaskTimer';
 
 interface TaskStep {
@@ -55,13 +59,18 @@ interface VisitTask {
 
 interface SOPData {
   id: string;
-  task_id: string;
+  sop_id: string;
   title: string;
-  content: string;
-  hyperlinks: string;
-  videos: string;
-  images: string;
-  pdfs: string;
+  goal: string | null;
+  steps: any;
+  best_practices: string | null;
+  tools_required: any;
+  hyperlinks: any;
+  estimated_duration_minutes: number;
+  category_id: string | null;
+  version: string | null;
+  last_updated: string | null;
+  created_at: string | null;
 }
 
 interface IntegratedTaskCardProps {
@@ -178,46 +187,150 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
   const completedStepsCount = Array.from(completedSteps).filter(step => step <= steps.length).length;
   const progressPercentage = steps.length > 0 ? (completedStepsCount / steps.length) * 100 : 0;
 
-  const renderMediaContent = (urls: string, type: 'video' | 'image' | 'pdf') => {
-    if (!urls) return null;
+  const formatToolsList = (taskTools?: string, sopTools?: any) => {
+    const allTools = new Set<string>();
     
-    const urlList = urls.split(',').map(url => url.trim()).filter(Boolean);
+    // Add tools from task
+    if (taskTools) {
+      taskTools.split(',').forEach(tool => {
+        const trimmed = tool.trim();
+        if (trimmed) allTools.add(trimmed);
+      });
+    }
     
-    return urlList.map((url, index) => {
-      if (type === 'video') {
-        return (
-          <div key={index} className="mb-4">
-            <video controls className="w-full rounded-lg">
-              <source src={url} type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
-          </div>
-        );
-      } else if (type === 'image') {
-        return (
-          <img 
-            key={index} 
-            src={url} 
-            alt={`Reference ${index + 1}`}
-            className="w-full rounded-lg mb-4"
-          />
-        );
-      } else if (type === 'pdf') {
-        return (
+    // Add tools from SOP
+    if (sopTools && Array.isArray(sopTools)) {
+      sopTools.forEach(tool => {
+        if (typeof tool === 'string') {
+          allTools.add(tool.trim());
+        } else if (tool && tool.name) {
+          allTools.add(tool.name.trim());
+        }
+      });
+    }
+    
+    if (allTools.size === 0) {
+      return <span className="text-muted-foreground italic">Standard tools</span>;
+    }
+    
+    return (
+      <div className="flex flex-wrap gap-1 mt-1">
+        {Array.from(allTools).map((tool, index) => (
+          <Badge key={index} variant="outline" className="text-xs">
+            <Wrench className="w-3 h-3 mr-1" />
+            {tool}
+          </Badge>
+        ))}
+      </div>
+    );
+  };
+
+  const formatStepsList = (stepsString: string) => {
+    if (!stepsString) return [];
+    
+    // Handle different delimiters and formats
+    const steps = stepsString
+      .split(/[\|\n]/) // Split by pipe or newline
+      .map(step => step.trim())
+      .filter(Boolean)
+      .map((step, index) => {
+        // Remove existing numbering if present
+        const cleanStep = step.replace(/^\d+\.?\s*/, '');
+        return {
+          id: index + 1,
+          text: cleanStep
+        };
+      });
+    
+    return steps;
+  };
+
+  const renderHyperlinksList = (hyperlinks: any) => {
+    if (!hyperlinks) return null;
+    
+    let links = [];
+    if (Array.isArray(hyperlinks)) {
+      links = hyperlinks;
+    } else if (typeof hyperlinks === 'string') {
+      try {
+        links = JSON.parse(hyperlinks);
+      } catch {
+        links = hyperlinks.split(',').map((url: string) => ({ 
+          url: url.trim(), 
+          title: `Reference ${links.length + 1}` 
+        }));
+      }
+    }
+    
+    if (!Array.isArray(links) || links.length === 0) return null;
+    
+    return (
+      <div className="space-y-2">
+        {links.map((link: any, index: number) => (
           <a 
             key={index}
-            href={url} 
+            href={link.url || link}
             target="_blank" 
             rel="noopener noreferrer"
-            className="flex items-center gap-2 text-blue-600 hover:text-blue-800 mb-2"
+            className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors"
           >
-            <FileText className="w-4 h-4" />
-            PDF Reference {index + 1}
-            <ExternalLink className="w-3 h-3" />
+            <ExternalLink className="w-4 h-4" />
+            {link.title || link.name || `Reference ${index + 1}`}
           </a>
-        );
+        ))}
+      </div>
+    );
+  };
+
+  const renderSOPStepsCarousel = (steps: any) => {
+    if (!steps) return null;
+    
+    let stepsList = [];
+    if (Array.isArray(steps)) {
+      stepsList = steps;
+    } else if (typeof steps === 'string') {
+      try {
+        stepsList = JSON.parse(steps);
+      } catch {
+        stepsList = steps.split('\n').filter(Boolean).map((step: string, index: number) => ({
+          id: index + 1,
+          title: `Step ${index + 1}`,
+          description: step.trim()
+        }));
       }
-    });
+    }
+    
+    if (!Array.isArray(stepsList) || stepsList.length === 0) return null;
+    
+    return (
+      <Carousel className="w-full">
+        <CarouselContent>
+          {stepsList.map((step: any, index: number) => (
+            <CarouselItem key={index}>
+              <Card className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="font-semibold text-primary">{index + 1}</span>
+                  </div>
+                  <div className="flex-1">
+                    <h5 className="font-medium mb-2">{step.title || `Step ${index + 1}`}</h5>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {step.description || step.content || step}
+                    </p>
+                    {/* Placeholder for future images */}
+                    <div className="mt-3 h-32 bg-gray-100 rounded-lg flex items-center justify-center text-sm text-muted-foreground">
+                      Step Reference Image
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+        <CarouselPrevious />
+        <CarouselNext />
+      </Carousel>
+    );
   };
 
   return (
@@ -287,7 +400,9 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
                         </div>
                         <div>
                           <strong>Tools Required:</strong>
-                          <p className="text-muted-foreground">{task.tools_required || 'Standard tools'}</p>
+                          <div className="text-muted-foreground">
+                            {formatToolsList(task.tools_required, sopData?.tools_required)}
+                          </div>
                         </div>
                         <div>
                           <strong>Skills Required:</strong>
@@ -313,7 +428,7 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
 
                   <TabsContent value="steps" className="mt-4">
                     <div className="space-y-4">
-                      {steps.length > 0 && (
+                      {steps.length > 0 ? (
                         <>
                           <div className="flex items-center justify-between">
                             <h4 className="font-medium">Task Progress</h4>
@@ -392,42 +507,96 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
                             })}
                           </div>
                         </>
+                      ) : (
+                        // Fallback: Format steps from task.sop_steps as a simple list
+                        <div className="space-y-4">
+                          <h4 className="font-medium">Task Steps</h4>
+                          <div className="space-y-2">
+                            {formatStepsList(task.sop_steps).map((step) => (
+                              <div key={step.id} className="flex items-start gap-3 p-3 border rounded-lg">
+                                <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
+                                  {step.id}
+                                </div>
+                                <p className="text-sm flex-1">{step.text}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
                   </TabsContent>
 
                   <TabsContent value="sop" className="mt-4">
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                       {sopData ? (
                         <>
-                          <div>
-                            <h4 className="font-medium mb-2">SOP: {sopData.title}</h4>
-                            <div className="prose prose-sm max-w-none">
-                              <div dangerouslySetInnerHTML={{ __html: sopData.content }} />
+                          {/* SOP Header */}
+                          <div className="border-b pb-4">
+                            <h4 className="font-semibold text-lg mb-2">{sopData.title}</h4>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <span>Version: {sopData.version || '1.0'}</span>
+                              <span>•</span>
+                              <span>Duration: {sopData.estimated_duration_minutes} min</span>
+                              {sopData.last_updated && (
+                                <>
+                                  <span>•</span>
+                                  <span>Updated: {new Date(sopData.last_updated).toLocaleDateString()}</span>
+                                </>
+                              )}
                             </div>
                           </div>
-                          
-                          {sopData.videos && (
-                            <div>
-                              <h5 className="font-medium mb-2 flex items-center gap-2">
-                                <Video className="w-4 h-4" />
-                                Reference Videos
+
+                          {/* Goal Section */}
+                          {sopData.goal && (
+                            <div className="bg-blue-50 rounded-lg p-4">
+                              <h5 className="font-medium mb-2 flex items-center gap-2 text-blue-800">
+                                <Target className="w-4 h-4" />
+                                Objective
                               </h5>
-                              {renderMediaContent(sopData.videos, 'video')}
+                              <p className="text-sm text-blue-700">{sopData.goal}</p>
                             </div>
                           )}
-                          
-                          {sopData.images && (
+
+                          {/* Tools Required */}
+                          {sopData.tools_required && (
                             <div>
-                              <h5 className="font-medium mb-2">Reference Images</h5>
-                              {renderMediaContent(sopData.images, 'image')}
+                              <h5 className="font-medium mb-3 flex items-center gap-2">
+                                <Wrench className="w-4 h-4" />
+                                Required Tools & Equipment
+                              </h5>
+                              {formatToolsList(undefined, sopData.tools_required)}
                             </div>
                           )}
-                          
-                          {sopData.pdfs && (
+
+                          {/* SOP Steps Carousel */}
+                          {sopData.steps && (
                             <div>
-                              <h5 className="font-medium mb-2">Reference Documents</h5>
-                              {renderMediaContent(sopData.pdfs, 'pdf')}
+                              <h5 className="font-medium mb-3">Step-by-Step Procedure</h5>
+                              {renderSOPStepsCarousel(sopData.steps)}
+                            </div>
+                          )}
+
+                          {/* Best Practices */}
+                          {sopData.best_practices && (
+                            <div className="bg-green-50 rounded-lg p-4">
+                              <h5 className="font-medium mb-2 flex items-center gap-2 text-green-800">
+                                <Lightbulb className="w-4 h-4" />
+                                Best Practices
+                              </h5>
+                              <div className="text-sm text-green-700 whitespace-pre-line">
+                                {sopData.best_practices}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Hyperlinks */}
+                          {sopData.hyperlinks && (
+                            <div>
+                              <h5 className="font-medium mb-3 flex items-center gap-2">
+                                <ExternalLink className="w-4 h-4" />
+                                Reference Links
+                              </h5>
+                              {renderHyperlinksList(sopData.hyperlinks)}
                             </div>
                           )}
                           
@@ -450,7 +619,11 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
                           )}
                         </>
                       ) : (
-                        <p className="text-muted-foreground">No SOP data available for this task.</p>
+                        <div className="text-center py-8 text-muted-foreground">
+                          <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                          <p>No SOP data available for this task</p>
+                          <p className="text-sm mt-1">SOP content will be loaded when available</p>
+                        </div>
                       )}
                     </div>
                   </TabsContent>
@@ -458,13 +631,33 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
                   <TabsContent value="quality" className="mt-4">
                     <div className="space-y-4">
                       <h4 className="font-medium">Quality Checks</h4>
-                      {task.quality_checks ? (
-                        <div className="prose prose-sm max-w-none">
-                          <div dangerouslySetInnerHTML={{ __html: task.quality_checks.replace(/\n/g, '<br>') }} />
-                        </div>
-                      ) : (
-                        <p className="text-muted-foreground">No quality checks defined for this task.</p>
-                      )}
+                      <div className="space-y-3">
+                        {task.quality_checks ? (
+                          task.quality_checks.split('|').map((check, index) => (
+                            <Card key={index} className="p-3">
+                              <div className="flex items-start gap-3">
+                                <input 
+                                  type="checkbox" 
+                                  className="rounded mt-1" 
+                                  id={`quality-check-${index}`}
+                                />
+                                <label 
+                                  htmlFor={`quality-check-${index}`}
+                                  className="text-sm flex-1 cursor-pointer"
+                                >
+                                  {check.trim()}
+                                </label>
+                              </div>
+                            </Card>
+                          ))
+                        ) : (
+                          <div className="text-center py-6 text-muted-foreground">
+                            <CheckCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                            <p>No quality checks defined for this task</p>
+                            <p className="text-sm mt-1">Quality checks will appear here when available</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </TabsContent>
                 </Tabs>
