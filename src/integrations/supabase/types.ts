@@ -778,6 +778,7 @@ export type Database = {
       ame_sops_normalized: {
         Row: {
           best_practices: string | null
+          category: string | null
           category_id: string | null
           created_at: string | null
           estimated_duration_minutes: number | null
@@ -785,6 +786,8 @@ export type Database = {
           hyperlinks: Json | null
           id: string
           last_updated: string | null
+          original_steps_html: string | null
+          rich_content: string | null
           sop_id: string
           steps: Json | null
           title: string
@@ -793,6 +796,7 @@ export type Database = {
         }
         Insert: {
           best_practices?: string | null
+          category?: string | null
           category_id?: string | null
           created_at?: string | null
           estimated_duration_minutes?: number | null
@@ -800,6 +804,8 @@ export type Database = {
           hyperlinks?: Json | null
           id?: string
           last_updated?: string | null
+          original_steps_html?: string | null
+          rich_content?: string | null
           sop_id: string
           steps?: Json | null
           title: string
@@ -808,6 +814,7 @@ export type Database = {
         }
         Update: {
           best_practices?: string | null
+          category?: string | null
           category_id?: string | null
           created_at?: string | null
           estimated_duration_minutes?: number | null
@@ -815,6 +822,8 @@ export type Database = {
           hyperlinks?: Json | null
           id?: string
           last_updated?: string | null
+          original_steps_html?: string | null
+          rich_content?: string | null
           sop_id?: string
           steps?: Json | null
           title?: string

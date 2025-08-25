@@ -59,6 +59,8 @@ interface SOPData {
   estimated_duration_minutes?: number;
   last_updated?: string;
   goal?: string;
+  category?: string;
+  rich_content?: string;
   tools_required?: any;
   steps?: any;
   best_practices?: string;

@@ -277,7 +277,75 @@ export class CSVImportService {
   }
 
   /**
-   * Import SOPs data from CSV text
+   * Parse rich HTML steps content into structured format
+   */
+  private static parseRichSteps(stepsHtml: string): any[] {
+    if (!stepsHtml) return [];
+    
+    const steps: any[] = [];
+    // Split by <br> tags and extract numbered steps
+    const stepTexts = stepsHtml.split('<br>').filter(step => step.trim());
+    
+    stepTexts.forEach((stepText, index) => {
+      const trimmed = stepText.trim();
+      if (trimmed) {
+        // Extract references like [1], [2] from the step text
+        const references: number[] = [];
+        const refMatches = trimmed.match(/\[(\d+)\]/g);
+        if (refMatches) {
+          refMatches.forEach(match => {
+            const refNum = parseInt(match.replace(/[\[\]]/g, ''));
+            if (!isNaN(refNum)) references.push(refNum);
+          });
+        }
+
+        steps.push({
+          step_number: index + 1,
+          content: trimmed,
+          references: references
+        });
+      }
+    });
+    
+    return steps;
+  }
+
+  /**
+   * Parse numbered hyperlinks format into structured array
+   */
+  private static parseNumberedHyperlinks(hyperlinksText: string): any[] {
+    if (!hyperlinksText) return [];
+    
+    const links: any[] = [];
+    // Split by <br> tags and parse numbered format: "1. url", "2. url"
+    const linkTexts = hyperlinksText.split('<br>').filter(link => link.trim());
+    
+    linkTexts.forEach(linkText => {
+      const trimmed = linkText.trim();
+      const match = trimmed.match(/^(\d+)\.\s*(https?:\/\/[^\s]+)(?:#:~:text=(.+))?/);
+      if (match) {
+        const [, refNumber, url, anchorText] = match;
+        links.push({
+          ref_number: parseInt(refNumber),
+          url: url,
+          title: anchorText ? decodeURIComponent(anchorText.replace(/[%,]/g, ' ')) : `Reference ${refNumber}`
+        });
+      }
+    });
+    
+    return links;
+  }
+
+  /**
+   * Parse comma-separated tool IDs into array
+   */
+  private static parseToolIds(toolsText: string): string[] {
+    if (!toolsText) return [];
+    return toolsText.split(',').map(tool => tool.trim()).filter(tool => tool);
+  }
+
+  /**
+   * Import SOPs data from CSV text with rich content support
    */
   static async importSOPsFromCsv(csvData: string): Promise<{ success: number; errors: string[] }> {
     try {
@@ -288,14 +356,22 @@ export class CSVImportService {
       
       for (const sop of sops) {
         try {
+          // Parse rich content from CSV
+          const stepsHtml = sop.Steps || sop.steps || sop.Procedure_Steps || sop.SOP_Steps || '';
+          const hyperlinksText = sop.Hyperlinks || sop.hyperlinks || sop.Links || '';
+          const toolsText = sop.Tools || sop.tools_required || sop.Tools_Required || '';
+          
           const sopData = {
             sop_id: sop.SOP_ID || sop.sop_id || sop.ID,
             title: sop.SOP_Name || sop.Title || sop.title || sop.Name,
+            category: sop.Category || sop.category || 'General',
             goal: sop.Goal || sop.goal || sop.Description || sop.description,
-            steps: this.parseJSON(sop.Steps || sop.steps || sop.Procedure_Steps || sop.SOP_Steps),
+            rich_content: stepsHtml, // Store original HTML
+            original_steps_html: stepsHtml,
+            steps: this.parseRichSteps(stepsHtml), // Parse into structured format
             best_practices: sop.Best_Practices || sop.best_practices || sop.Tips,
-            tools_required: this.parseJSON(sop.Tools_Required || sop.tools_required || sop.Tools),
-            hyperlinks: this.parseJSON(sop.Hyperlinks || sop.hyperlinks || sop.Links),
+            tools_required: this.parseToolIds(toolsText), // Parse tool IDs
+            hyperlinks: this.parseNumberedHyperlinks(hyperlinksText), // Parse numbered references
             version: sop.Version || sop.version || '1.0',
             estimated_duration_minutes: parseInt(sop.Duration || sop.estimated_duration_minutes || sop.Time || '30') || 30
           };
