@@ -190,7 +190,7 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
   const formatToolsList = (taskTools?: string, sopTools?: any) => {
     const allTools = new Set<string>();
     
-    // Add tools from task
+    // Add tools from task (just tool IDs/names)
     if (taskTools) {
       taskTools.split(',').forEach(tool => {
         const trimmed = tool.trim();
@@ -216,9 +216,14 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
     return (
       <div className="flex flex-wrap gap-1 mt-1">
         {Array.from(allTools).map((tool, index) => (
-          <Badge key={index} variant="outline" className="text-xs">
+          <Badge 
+            key={index} 
+            variant="outline" 
+            className="text-xs cursor-help" 
+            title={`Tool: ${tool}`}
+          >
             <Wrench className="w-3 h-3 mr-1" />
-            {tool}
+            {tool.replace(/^TOOL_/, '').replace(/_/g, ' ')}
           </Badge>
         ))}
       </div>
@@ -228,7 +233,18 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
   const formatStepsList = (stepsString: string) => {
     if (!stepsString) return [];
     
-    // Handle different delimiters and formats
+    // First try to parse as JSON array (from database)
+    try {
+      const parsed = JSON.parse(stepsString);
+      if (Array.isArray(parsed)) {
+        return parsed.map((step, index) => ({
+          id: index + 1,
+          text: typeof step === 'string' ? step : step.description || step.text || `Step ${index + 1}`
+        }));
+      }
+    } catch {}
+    
+    // Handle pipe-delimited or line-separated format
     const steps = stepsString
       .split(/[\|\n]/) // Split by pipe or newline
       .map(step => step.trim())
@@ -282,54 +298,174 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
     );
   };
 
-  const renderSOPStepsCarousel = (steps: any) => {
+  const parseRichHTMLContent = (content: string) => {
+    if (!content) return { steps: [], references: {} };
+    
+    // Extract reference links
+    const references: { [key: string]: string } = {};
+    const linkMatches = content.match(/\d+\.\s+https?:\/\/[^\s<]+/g);
+    if (linkMatches) {
+      linkMatches.forEach(match => {
+        const [num, url] = match.split('. ');
+        references[num] = url;
+      });
+    }
+    
+    // Split content by <br> tags and process steps
+    const stepTexts = content.split('<br>').filter(text => text.trim());
+    const steps = stepTexts.map((stepText, index) => {
+      // Convert numbered references [1], [2] to clickable links
+      const processedText = stepText.replace(/\[(\d+)(?:,\s*(\d+))*\]/g, (match, ...nums) => {
+        const numbers = match.match(/\d+/g) || [];
+        return numbers.map(num => `<a href="#ref-${num}" class="text-blue-600 underline">[${num}]</a>`).join(', ');
+      });
+      
+      return {
+        id: index + 1,
+        title: index === 0 ? 'Performance Verification' : `Step ${index + 1}`,
+        content: processedText.trim(),
+        references: stepText.match(/\[(\d+)\]/g)?.map(ref => ref.replace(/[\[\]]/g, '')) || []
+      };
+    });
+    
+    return { steps, references };
+  };
+
+  const renderSOPStepsCarousel = (steps: any, hyperlinks: any) => {
     if (!steps) return null;
     
     let stepsList = [];
+    let references = {};
+    
     if (Array.isArray(steps)) {
-      stepsList = steps;
+      stepsList = steps.map((step, index) => ({
+        id: index + 1,
+        title: step.title || `Step ${index + 1}`,
+        content: step.description || step.content || step,
+        references: []
+      }));
     } else if (typeof steps === 'string') {
       try {
-        stepsList = JSON.parse(steps);
+        // Try parsing as JSON first
+        const parsed = JSON.parse(steps);
+        if (Array.isArray(parsed)) {
+          stepsList = parsed.map((step, index) => ({
+            id: index + 1,
+            title: step.title || `Step ${index + 1}`,
+            content: step.description || step.content || step,
+            references: []
+          }));
+        }
       } catch {
-        stepsList = steps.split('\n').filter(Boolean).map((step: string, index: number) => ({
-          id: index + 1,
-          title: `Step ${index + 1}`,
-          description: step.trim()
-        }));
+        // Parse as rich HTML content with references
+        const { steps: parsedSteps, references: parsedRefs } = parseRichHTMLContent(steps);
+        stepsList = parsedSteps;
+        references = parsedRefs;
       }
     }
     
     if (!Array.isArray(stepsList) || stepsList.length === 0) return null;
     
     return (
-      <Carousel className="w-full">
-        <CarouselContent>
-          {stepsList.map((step: any, index: number) => (
-            <CarouselItem key={index}>
-              <Card className="p-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="font-semibold text-primary">{index + 1}</span>
-                  </div>
-                  <div className="flex-1">
-                    <h5 className="font-medium mb-2">{step.title || `Step ${index + 1}`}</h5>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {step.description || step.content || step}
-                    </p>
-                    {/* Placeholder for future images */}
-                    <div className="mt-3 h-32 bg-gray-100 rounded-lg flex items-center justify-center text-sm text-muted-foreground">
-                      Step Reference Image
+      <div className="space-y-4">
+        {/* Step Progress Indicator */}
+        <div className="flex items-center justify-between">
+          <h4 className="font-medium">SOP Steps</h4>
+          <span className="text-sm text-muted-foreground">
+            {stepsList.length} steps total
+          </span>
+        </div>
+        
+        <Carousel className="w-full">
+          <CarouselContent>
+            {stepsList.map((step: any, index: number) => (
+              <CarouselItem key={index}>
+                <Card className="p-6">
+                  <div className="space-y-4">
+                    {/* Step Header */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="font-semibold text-primary">{index + 1}</span>
+                      </div>
+                      <div>
+                        <h5 className="font-medium text-lg">{step.title}</h5>
+                        <span className="text-sm text-muted-foreground">Step {index + 1} of {stepsList.length}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Step Content */}
+                    <div className="prose prose-sm max-w-none">
+                      <div 
+                        className="text-sm leading-relaxed"
+                        dangerouslySetInnerHTML={{ 
+                          __html: step.content?.replace(/\[(\d+)\]/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-800 font-medium">[$1]</span>') || ''
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Reference Links for this step */}
+                    {step.references && step.references.length > 0 && (
+                      <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                        <h6 className="font-medium text-sm mb-2">References for this step:</h6>
+                        <div className="space-y-1">
+                          {step.references.map((refNum: string) => (
+                            <div key={refNum} className="text-xs">
+                              <span className="font-medium">[{refNum}]</span>
+                              {references[refNum] && (
+                                <a 
+                                  href={references[refNum]} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="ml-2 text-blue-600 hover:text-blue-800 underline"
+                                >
+                                  {references[refNum]}
+                                </a>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Placeholder for screenshots */}
+                    <div className="mt-4 h-40 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="w-5 h-5" />
+                        <span>Step Reference Image</span>
+                      </div>
+                      <span className="text-xs">Upload screenshot for step {index + 1}</span>
                     </div>
                   </div>
+                </Card>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          <CarouselPrevious />
+          <CarouselNext />
+        </Carousel>
+        
+        {/* Complete Reference List */}
+        {Object.keys(references).length > 0 && (
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+            <h5 className="font-medium mb-3">Complete Reference List</h5>
+            <div className="space-y-2 text-sm">
+              {Object.entries(references).map(([num, url]) => (
+                <div key={num} className="flex gap-2">
+                  <span className="font-medium min-w-[2rem]">[{num}]</span>
+                  <a 
+                    href={String(url)} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 underline break-all"
+                  >
+                    {String(url)}
+                  </a>
                 </div>
-              </Card>
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-        <CarouselPrevious />
-        <CarouselNext />
-      </Carousel>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -511,15 +647,28 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
                         // Fallback: Format steps from task.sop_steps as a simple list
                         <div className="space-y-4">
                           <h4 className="font-medium">Task Steps</h4>
-                          <div className="space-y-2">
-                            {formatStepsList(task.sop_steps).map((step) => (
-                              <div key={step.id} className="flex items-start gap-3 p-3 border rounded-lg">
-                                <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
-                                  {step.id}
-                                </div>
-                                <p className="text-sm flex-1">{step.text}</p>
-                              </div>
-                            ))}
+                          <div className="space-y-3">
+                            {formatStepsList(task.sop_steps || '').length > 0 ? (
+                              <ol className="space-y-3">
+                                {formatStepsList(task.sop_steps || '').map((step, index) => (
+                                  <li key={step.id} className="flex items-start gap-3 p-3 border rounded-lg bg-gray-50">
+                                    <div className="w-7 h-7 bg-blue-500 text-white rounded-full flex items-center justify-center flex-shrink-0 font-medium text-sm">
+                                      {step.id}
+                                    </div>
+                                    <div className="flex-1">
+                                      <div 
+                                        className="text-sm leading-relaxed"
+                                        dangerouslySetInnerHTML={{ 
+                                          __html: step.text.replace(/\[(\d+)\]/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-800 font-medium">[$1]</span>')
+                                        }}
+                                      />
+                                    </div>
+                                  </li>
+                                ))}
+                              </ol>
+                            ) : (
+                              <p className="text-sm text-muted-foreground italic">No specific steps defined for this task.</p>
+                            )}
                           </div>
                         </div>
                       )}
@@ -572,7 +721,7 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
                           {sopData.steps && (
                             <div>
                               <h5 className="font-medium mb-3">Step-by-Step Procedure</h5>
-                              {renderSOPStepsCarousel(sopData.steps)}
+                              {renderSOPStepsCarousel(sopData.steps, sopData.hyperlinks)}
                             </div>
                           )}
 
