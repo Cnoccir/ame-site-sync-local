@@ -19,14 +19,21 @@ interface ConnectionTesterProps {
     workbenchUsername: string;
     workbenchPassword: string;
     workbenchStatus: 'not_tested' | 'testing' | 'success' | 'failed';
+    platformUsername: string;
+    platformPassword: string;
+    webSupervisorUrl: string;
+    vpnRequired: boolean;
+    vpnDetails: string;
     systemVersion: string;
     connectionNotes: string;
+    remoteAccessResults: any;
   };
   onChange: (value: any) => void;
   visitId?: string;
+  showRequired?: boolean;
 }
 
-export const ConnectionTester = ({ value, onChange, visitId }: ConnectionTesterProps) => {
+export const ConnectionTester = ({ value, onChange, visitId, showRequired = false }: ConnectionTesterProps) => {
   const { toast } = useToast();
   const [platformStatus, setPlatformStatus] = useState<'not_tested' | 'testing' | 'success' | 'failed'>('not_tested');
   const [platformUsername, setPlatformUsername] = useState('');

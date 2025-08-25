@@ -17,6 +17,8 @@ import { RequiredField } from '@/components/ui/required-field';
 import { ProtocolStep } from '@/components/assessment/ProtocolStep';
 import { SafetyChecklist } from '@/components/assessment/SafetyChecklist';
 import { LocationMapping } from '@/components/assessment/LocationMapping';
+import { CustomerCheckIn } from '@/components/assessment/CustomerCheckIn';
+import { PhysicalSystemWalk } from '@/components/assessment/PhysicalSystemWalk';
 import { ConnectionTester } from '@/components/assessment/ConnectionTester';
 import { FileUploader } from '@/components/assessment/FileUploader';
 import { NetworkAnalysisResults } from '@/components/assessment/NetworkAnalysisResults';
@@ -53,6 +55,12 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
 
   // Track skipped steps
   const [skippedSteps, setSkippedSteps] = useState<number[]>([]);
+  
+  // Validation mode - only show required field warnings when trying to complete phase
+  const [validationMode, setValidationMode] = useState(false);
+  
+  // Customer data for pre-population
+  const [customer, setCustomer] = useState<any>(null);
 
   // Completion tracking for reactive updates
   const [completionTriggers, setCompletionTriggers] = useState({
@@ -64,6 +72,10 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
   // Form data for each step
   const [step1Data, setStep1Data] = useState({
     contactPerson: '',
+    contactNumber: '',
+    contactEmail: '',
+    communicationPreference: 'call',
+    onSiteContactVerified: false,
     specialRequests: ''
   });
 
@@ -71,6 +83,8 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     ppeAvailable: false,
     hazardsReviewed: false,
     emergencyProcedures: false,
+    safetyRequirements: '',
+    siteHazards: '',
     notes: ''
   });
 
@@ -81,6 +95,8 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     jaceAccess: '',
     controllerDetails: '',
     controllerChallenges: '',
+    buildingAccessType: '',
+    buildingAccessDetails: '',
     panelsAccessible: false,
     wiringCondition: false,
     environmentalOk: false,
@@ -95,8 +111,14 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     workbenchUsername: '',
     workbenchPassword: '',
     workbenchStatus: 'not_tested' as 'not_tested' | 'testing' | 'success' | 'failed',
+    platformUsername: '',
+    platformPassword: '',
+    webSupervisorUrl: '',
+    vpnRequired: false,
+    vpnDetails: '',
     systemVersion: '',
-    connectionNotes: ''
+    connectionNotes: '',
+    remoteAccessResults: {}
   });
 
   const [step5Data, setStep5Data] = useState({
@@ -154,8 +176,49 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     enabled: true
   });
 
-  // Load saved data on component mount
+  // Load customer data and saved data on component mount
   useEffect(() => {
+    const loadCustomerData = async () => {
+      if (!visitId) return;
+      
+      try {
+        // Get visit data to find customer_id
+        const { data: visitData, error: visitError } = await supabase
+          .from('ame_visits')
+          .select('customer_id')
+          .eq('id', visitId)
+          .single();
+          
+        if (visitError) {
+          console.error('Error loading visit:', visitError);
+          return;
+        }
+        
+        // Get customer data
+        const { data: customerData, error: customerError } = await supabase
+          .from('ame_customers')
+          .select('*')
+          .eq('id', visitData.customer_id)
+          .single();
+          
+        if (customerError) {
+          console.error('Error loading customer:', customerError);
+          return;
+        }
+        
+        setCustomer(customerData);
+        
+        // Pre-populate form fields if not already set
+        if (!sessionData?.autoSaveData?.assessmentPhase) {
+          prePopulateFromCustomer(customerData);
+        }
+      } catch (error) {
+        console.error('Error loading customer data:', error);
+      }
+    };
+    
+    loadCustomerData();
+    
     if (sessionData?.autoSaveData?.assessmentPhase) {
       setLoading(true);
       const savedData = sessionData.autoSaveData.assessmentPhase;
@@ -170,7 +233,7 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
       
       if (savedData.currentStep) {
         setCurrentStep(savedData.currentStep);
-        setExpandedStep(savedData.currentStep);
+        // Don't auto-expand - respect user navigation
       }
       
       // Load step data
@@ -185,7 +248,7 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
       
       setTimeout(() => setLoading(false), 100);
     }
-  }, [sessionData, setLoading]);
+  }, [sessionData, setLoading, visitId]);
 
   // Trigger auto-save when data changes
   useEffect(() => {
@@ -212,13 +275,45 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     priorityData, systemStatusData, debouncedSave
   ]);
 
+  // Pre-populate form fields from customer data
+  const prePopulateFromCustomer = (customerData: any) => {
+    setStep1Data(prev => ({
+      ...prev,
+      contactPerson: customerData.primary_contact || prev.contactPerson,
+      contactNumber: customerData.contact_phone || prev.contactNumber,
+      contactEmail: customerData.contact_email || prev.contactEmail
+    }));
+    
+    setStep2Data(prev => ({
+      ...prev,
+      safetyRequirements: customerData.safety_requirements || prev.safetyRequirements,
+      siteHazards: customerData.site_hazards || prev.siteHazards
+    }));
+    
+    setStep3Data(prev => ({
+      ...prev,
+      buildingAccessType: customerData.building_access_type || prev.buildingAccessType,
+      buildingAccessDetails: customerData.building_access_details || prev.buildingAccessDetails
+    }));
+    
+    setStep4Data(prev => ({
+      ...prev,
+      supervisorIp: customerData.bms_supervisor_ip || prev.supervisorIp,
+      workbenchUsername: customerData.workbench_username || prev.workbenchUsername,
+      platformUsername: customerData.platform_username || prev.platformUsername,
+      webSupervisorUrl: customerData.web_supervisor_url || prev.webSupervisorUrl,
+      vpnRequired: customerData.vpn_required || prev.vpnRequired,
+      vpnDetails: customerData.vpn_details || prev.vpnDetails
+    }));
+  };
+
   const handleStepStart = (stepNumber: number) => {
     setStepStatuses(prev => ({
       ...prev,
       [stepNumber]: 'active'
     }));
     setCurrentStep(stepNumber);
-    setExpandedStep(stepNumber);
+    // Don't auto-expand - let user control
   };
 
   const handleStepToggle = (stepNumber: number) => {
@@ -248,10 +343,9 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
       }
     }
     
-    // Auto-advance to next step
+    // Auto-advance to next step but don't auto-expand
     if (stepNumber < 6) {
       setCurrentStep(stepNumber + 1);
-      setExpandedStep(stepNumber + 1);
     }
   };
 
@@ -277,11 +371,10 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
       console.error('Failed to save skipped steps:', error);
     }
     
-    // Update current step to next available step
+    // Update current step to next available step but don't auto-expand
     const nextStep = stepNumber + 1;
     if (nextStep <= 6) {
       setCurrentStep(nextStep);
-      setExpandedStep(nextStep);
     }
     
     toast({
@@ -293,7 +386,7 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
   const canCompleteStep = (stepNumber: number) => {
     switch (stepNumber) {
       case 1:
-        return step1Data.contactPerson.trim() !== '';
+        return step1Data.contactPerson.trim() !== '' && step1Data.contactNumber.trim() !== '';
       case 2:
         return step2Data.ppeAvailable && step2Data.hazardsReviewed && step2Data.emergencyProcedures;
       case 3:
@@ -308,6 +401,41 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
       default:
         return false;
     }
+  };
+  
+  const getMissingRequirements = (stepNumber: number): string[] => {
+    const missing = [];
+    switch (stepNumber) {
+      case 1:
+        if (!step1Data.contactPerson.trim()) missing.push('Contact Person');
+        if (!step1Data.contactNumber.trim()) missing.push('Contact Number');
+        break;
+      case 2:
+        if (!step2Data.ppeAvailable) missing.push('PPE Available');
+        if (!step2Data.hazardsReviewed) missing.push('Hazards Reviewed');
+        if (!step2Data.emergencyProcedures) missing.push('Emergency Procedures');
+        break;
+      case 3:
+        if (!step3Data.panelsAccessible) missing.push('Panels Accessible');
+        if (!step3Data.wiringCondition) missing.push('Wiring Condition OK');
+        if (!step3Data.environmentalOk) missing.push('Environmental Conditions OK');
+        break;
+      case 4:
+        if (step4Data.supervisorStatus === 'not_tested' && step4Data.workbenchStatus === 'not_tested') {
+          missing.push('At least one connection test');
+        }
+        break;
+      case 5:
+        if (!step5Data.analysisData && !step5Data.generatedSummary) {
+          missing.push('Network analysis or manual summary');
+        }
+        break;
+      case 6:
+        if (!step6Data.activeAlarms) missing.push('Active Alarms count');
+        if (!step6Data.criticalAlarms) missing.push('Critical Alarms count');
+        break;
+    }
+    return missing;
   };
 
   const canSkipStep = (stepNumber: number): boolean => {
@@ -491,6 +619,28 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
   const hasSkippedSteps = skippedSteps.length > 0;
   
   const handlePhaseComplete = () => {
+    // Check for incomplete required steps
+    const incompleteSteps = [];
+    for (let i = 1; i <= 6; i++) {
+      if (!skippedSteps.includes(i) && !canCompleteStep(i)) {
+        const missing = getMissingRequirements(i);
+        if (missing.length > 0) {
+          incompleteSteps.push({ step: i, missing });
+        }
+      }
+    }
+    
+    if (incompleteSteps.length > 0) {
+      setValidationMode(true);
+      const stepsList = incompleteSteps.map(s => `Step ${s.step}: ${s.missing.join(', ')}`).join('\n');
+      toast({
+        title: "Incomplete Required Fields",
+        description: `Please complete the following:\n${stepsList}`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
     if (hasSkippedSteps) {
       toast({
         title: "Warning: Skipped Steps",
@@ -573,40 +723,26 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
           >
             {/* Step Content */}
             {step.number === 1 && (
-              <div className="space-y-4">
-                <RequiredField required={true} completed={step1Data.contactPerson.trim() !== ''}>
-                  <div>
-                    <label className="text-sm font-medium">Contact Person *</label>
-                    <Input
-                      placeholder="Primary contact on-site"
-                      value={step1Data.contactPerson}
-                      onChange={(e) => setStep1Data(prev => ({ ...prev, contactPerson: e.target.value }))}
-                    />
-                  </div>
-                </RequiredField>
-                <div>
-                  <label className="text-sm font-medium">Special Requests</label>
-                  <Textarea
-                    placeholder="Any special requests or considerations..."
-                    value={step1Data.specialRequests}
-                    onChange={(e) => setStep1Data(prev => ({ ...prev, specialRequests: e.target.value }))}
-                    rows={3}
-                  />
-                </div>
-              </div>
+              <CustomerCheckIn
+                value={step1Data}
+                onChange={setStep1Data}
+                showRequired={validationMode}
+              />
             )}
 
             {step.number === 2 && (
               <SafetyChecklist
                 value={step2Data}
                 onChange={setStep2Data}
+                showRequired={validationMode}
               />
             )}
 
             {step.number === 3 && (
-              <LocationMapping
+              <PhysicalSystemWalk
                 value={step3Data}
                 onChange={setStep3Data}
+                showRequired={validationMode}
               />
             )}
 
@@ -621,6 +757,7 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
                   }
                 }}
                 visitId={visitId}
+                showRequired={validationMode}
               />
             )}
 
