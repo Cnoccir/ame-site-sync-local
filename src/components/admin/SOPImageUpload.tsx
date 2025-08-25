@@ -32,10 +32,10 @@ export const SOPImageUpload = ({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
       toast({
         title: 'File Too Large',
-        description: 'Please upload an image smaller than 5MB',
+        description: 'Please upload an image smaller than 10MB',
         variant: 'destructive'
       });
       return;
@@ -47,8 +47,7 @@ export const SOPImageUpload = ({
       onImageUpdated(imageUrl);
       toast({
         title: 'Image Uploaded',
-        description: `Step ${stepNumber} image uploaded successfully`,
-        variant: 'default'
+        description: `Step ${stepNumber} image uploaded and optimized successfully`,
       });
     } catch (error: any) {
       toast({
@@ -122,7 +121,7 @@ export const SOPImageUpload = ({
               <img 
                 src={currentImageUrl} 
                 alt={`Step ${stepNumber} visual guide`}
-                className="w-full h-48 object-contain"
+                className="w-full max-h-64 object-contain"
               />
             </div>
             <div className="flex gap-2">

@@ -230,7 +230,7 @@ export const RichSOPRenderer: React.FC<RichSOPRendererProps> = ({
                                 <img 
                                   src={stepImageUrl} 
                                   alt={`Step ${step.step_number} visual guide`}
-                                  className="w-full h-48 object-contain"
+                                  className="w-full max-h-64 object-contain"
                                 />
                               </div>
                             )}
