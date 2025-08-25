@@ -113,7 +113,9 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
 
   const getToolStats = () => {
     const allTools = tools.length;
-    const requiredTools = tools.filter(tool => tool.safety_category === 'site_required').length;
+    const requiredTools = tools.filter(tool => 
+      tool.safety_category === 'site_required' || tool.safety_category === 'required'
+    ).length;
     const recommendedTools = tools.filter(tool => tool.safety_category === 'recommended').length;
     const optionalTools = tools.filter(tool => tool.safety_category === 'standard').length;
     
@@ -126,7 +128,9 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
   };
 
   const getRequiredTools = () => {
-    return tools.filter(tool => tool.safety_category === 'site_required');
+    return tools.filter(tool => 
+      tool.safety_category === 'site_required' || tool.safety_category === 'required'
+    );
   };
 
   const stats = getToolStats();
@@ -186,7 +190,25 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
                 </div>
               ))}
               
-              {tools.filter(tool => tool.safety_category === 'recommended').slice(0, 2).map((tool) => (
+              {tools.filter(tool => tool.safety_category === 'recommended').slice(0, 4).map((tool) => (
+                <div key={tool.id} className="flex items-center justify-between py-2">
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id={tool.id}
+                      checked={selectedTools.has(tool.id)}
+                      onCheckedChange={() => toggleToolSelection(tool.id)}
+                    />
+                    <label htmlFor={tool.id} className="text-sm font-medium cursor-pointer">
+                      {tool.tool_name}
+                    </label>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    RECOMMENDED
+                  </Badge>
+                </div>
+              ))}
+
+              {tools.filter(tool => tool.safety_category === 'standard').slice(0, 2).map((tool) => (
                 <div key={tool.id} className="flex items-center justify-between py-2">
                   <div className="flex items-center space-x-3">
                     <Checkbox
@@ -274,12 +296,18 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
                               </label>
                             </div>
                             <Badge 
-                              variant={tool.safety_category === 'site_required' ? 'destructive' : 
-                                     tool.safety_category === 'recommended' ? 'default' : 'outline'} 
+                              variant={
+                                tool.safety_category === 'site_required' || tool.safety_category === 'required' 
+                                  ? 'destructive' : 
+                                tool.safety_category === 'recommended' 
+                                  ? 'default' : 'outline'
+                              } 
                               className="text-xs"
                             >
-                              {tool.safety_category === 'site_required' ? 'REQUIRED' : 
-                               tool.safety_category === 'recommended' ? 'RECOMMENDED' : 'OPTIONAL'}
+                              {tool.safety_category === 'site_required' || tool.safety_category === 'required' 
+                                ? 'REQUIRED' : 
+                               tool.safety_category === 'recommended' 
+                                ? 'RECOMMENDED' : 'OPTIONAL'}
                             </Badge>
                           </div>
                         ))}
