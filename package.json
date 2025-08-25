@@ -5,11 +5,16 @@
   "description": "Local development version of AME Site Sync - Building Automation Maintenance Management",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "git fetch origin --quiet && vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit",
+    "sync-check": "git fetch origin && git status",
+    "safe-start": "git pull origin main --ff-only && npm install && npm run dev",
+    "sync-status": "git log --oneline origin/main..HEAD && git log --oneline HEAD..origin/main",
+    "emergency-reset": "git stash push -m 'Emergency stash' && git reset --hard origin/main"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
