@@ -271,6 +271,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
       if (newSet.has(taskId)) {
         newSet.delete(taskId);
       } else {
+        // Allow multiple tasks to be expanded simultaneously
         newSet.add(taskId);
       }
       return newSet;
@@ -292,6 +293,20 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
       completedDuration,
       percentage: total > 0 ? Math.round((completed / total) * 100) : 0
     };
+  };
+
+  const canCompletePhase = () => {
+    const stats = getTaskStats();
+    // Allow completion if no tasks available OR if at least one task is completed
+    return stats.total === 0 || stats.completed > 0;
+  };
+
+  const getCompletionText = () => {
+    const stats = getTaskStats();
+    if (stats.total === 0) {
+      return "No tasks available for this service tier - proceed to next phase";
+    }
+    return `${stats.completed} of ${stats.total} tasks completed (${stats.percentage}%)`;
   };
 
   const handleTaskStart = async (task: any) => {
@@ -507,7 +522,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
   const stats = getTaskStats();
 
   return (
-    <div className="workflow-content space-y-6">
+    <div className="w-full max-w-none overflow-x-hidden space-y-6">
       {/* Enhanced Service Execution Panel */}
       <div className="workflow-panel">
         <div className="panel-header border-b pb-4 mb-6">
@@ -639,21 +654,18 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         </div>
 
         {/* Phase Completion */}
-        <div className="phase-completion mt-8 p-6 bg-gradient-to-r from-success/10 to-success/5 rounded-lg border border-success/20">
-          <div className="flex items-center justify-between">
+        <div className="w-full mt-8 p-6 bg-gradient-to-r from-success/10 to-success/5 rounded-lg border border-success/20">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-lg font-semibold text-success mb-1">Service Execution Complete</h3>
               <p className="text-sm text-muted-foreground">
-                {stats.completed} of {stats.total} tasks completed ({stats.percentage}%)
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Tasks are recommendations - proceed when site work is complete
+                {getCompletionText()}
               </p>
             </div>
             <Button 
               onClick={onPhaseComplete}
               className="bg-success hover:bg-success/90"
-              disabled={stats.completed === 0}
+              disabled={!canCompletePhase()}
             >
               <CheckCircle className="w-4 h-4 mr-2" />
               Complete Phase

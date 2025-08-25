@@ -359,6 +359,17 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
   };
 
   const handleStepComplete = async (stepNumber: number) => {
+    // Validate step before allowing completion
+    if (!canCompleteStep(stepNumber)) {
+      const missing = getMissingRequirements(stepNumber);
+      toast({
+        title: 'Validation Failed',
+        description: `Please complete: ${missing.join(', ')}`,
+        variant: 'destructive'
+      });
+      return; // Prevent completion
+    }
+
     const newSkippedSteps = skippedSteps.filter(num => num !== stepNumber);
     
     setStepStatuses(prev => ({
@@ -477,38 +488,7 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     return stepStatuses[stepNumber] === 'active';
   };
 
-  // Reactive completion checking for steps 4-6
-  useEffect(() => {
-    // Step 4: Auto-complete when connection tests are attempted (regardless of result)
-    if (stepStatuses[4] === 'active' && canCompleteStep(4) && 
-        (step4Data.supervisorStatus !== 'not_tested' || step4Data.workbenchStatus !== 'not_tested')) {
-      
-      // Show warning if all tests failed
-      if (step4Data.supervisorStatus === 'failed' && step4Data.workbenchStatus === 'failed') {
-        toast({
-          title: "Warning: System Access Issues",
-          description: "All connection tests failed, but step completed. Review system access before proceeding.",
-          variant: "destructive"
-        });
-      }
-      
-      handleStepComplete(4);
-    }
-  }, [step4Data.supervisorStatus, step4Data.workbenchStatus, stepStatuses]);
-
-  useEffect(() => {
-    // Step 5: Auto-complete when analysis is done
-    if (stepStatuses[5] === 'active' && canCompleteStep(5)) {
-      handleStepComplete(5);
-    }
-  }, [step5Data.analysisData, step5Data.generatedSummary, stepStatuses]);
-
-  useEffect(() => {
-    // Step 6: Auto-complete when system status is collected
-    if (stepStatuses[6] === 'active' && canCompleteStep(6)) {
-      handleStepComplete(6);
-    }
-  }, [step6Data.activeAlarms, step6Data.criticalAlarms, stepStatuses]);
+  // Remove auto-completion - steps should only complete when user explicitly completes them
 
 
   const parseCSVFile = async (file: File) => {
