@@ -10,7 +10,8 @@ import {
   Clock,
   Camera,
   FileText,
-  ExternalLink
+  ExternalLink,
+  Bookmark
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,10 +19,25 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+interface RichSOPStep {
+  step_number: number;
+  content: string;
+  references?: number[];
+}
+
+interface SOPReference {
+  ref_number: number;
+  url: string;
+  title?: string;
+  display_text?: string;
+}
+
 interface TaskStep {
   stepNumber: number;
   title: string;
   description: string;
+  content?: string;
+  references?: number[];
   navigationPath?: string;
   visualGuide?: string;
   specificActions?: string[];
@@ -42,6 +58,12 @@ interface CarouselSOPViewerProps {
     safety_notes?: string;
     duration_minutes: number;
   };
+  sopData?: {
+    steps?: RichSOPStep[];
+    hyperlinks?: SOPReference[];
+    goal?: string;
+    best_practices?: string;
+  };
   onStepComplete: (stepNumber: number) => void;
   onAllStepsComplete: () => void;
   completedSteps: Set<number>;
@@ -50,6 +72,7 @@ interface CarouselSOPViewerProps {
 
 export const CarouselSOPViewer: React.FC<CarouselSOPViewerProps> = ({
   task,
+  sopData,
   onStepComplete,
   onAllStepsComplete,
   completedSteps,
@@ -59,8 +82,33 @@ export const CarouselSOPViewer: React.FC<CarouselSOPViewerProps> = ({
   const [steps, setSteps] = useState<TaskStep[]>([]);
 
   useEffect(() => {
-    // Parse pipe-separated steps into structured step objects
+    // Parse structured SOP steps or fallback to simple steps
     const parseSteps = (stepString: string): TaskStep[] => {
+      if (!stepString && !sopData?.steps) return [];
+      
+      // Priority 1: Use structured SOP data if available
+      if (sopData?.steps && Array.isArray(sopData.steps)) {
+        return sopData.steps.map((sopStep, index) => {
+          const stepNumber = sopStep.step_number || index + 1;
+          
+          // Extract references from content
+          const references = sopStep.references || extractReferences(sopStep.content || '');
+          
+          return {
+            stepNumber,
+            title: `Step ${stepNumber}`,
+            description: sopStep.content || '',
+            content: sopStep.content || '',
+            references,
+            navigationPath: task.navigation_path,
+            safetyNotes: task.safety_notes,
+            estimatedMinutes: Math.ceil(task.duration_minutes / sopData.steps.length),
+            screenshotPlaceholder: `/lovable-uploads/faf02e95-507e-4652-aa44-00cd9ee54480.png`
+          };
+        });
+      }
+      
+      // Priority 2: Parse simple pipe-separated steps
       if (!stepString) return [];
       
       const stepTexts = stepString.split('|').map(step => step.trim()).filter(Boolean);
@@ -120,7 +168,51 @@ export const CarouselSOPViewer: React.FC<CarouselSOPViewerProps> = ({
     if (firstIncomplete) {
       setCurrentStep(firstIncomplete.stepNumber);
     }
-  }, [task.sop_steps, task.navigation_path, task.safety_notes, task.duration_minutes, completedSteps]);
+  }, [task.sop_steps, task.navigation_path, task.safety_notes, task.duration_minutes, completedSteps, sopData]);
+
+  // Extract reference numbers from text [1], [2], etc.
+  const extractReferences = (text: string): number[] => {
+    const refMatches = text.match(/\[(\d+)\]/g);
+    if (!refMatches) return [];
+    return refMatches.map(match => parseInt(match.replace(/[\[\]]/g, '')));
+  };
+
+  // Render step content with clickable references
+  const renderStepContent = (step: TaskStep) => {
+    if (!step.content && !step.description) return null;
+
+    const content = step.content || step.description;
+    const refRegex = /\[(\d+)\]/g;
+    
+    return (
+      <div className="prose prose-sm max-w-none">
+        {content.split(refRegex).map((part, index) => {
+          // If it's a number (reference), make it clickable
+          if (index % 2 === 1) {
+            const refNum = parseInt(part);
+            const reference = sopData?.hyperlinks?.find(ref => ref.ref_number === refNum);
+            if (reference) {
+              return (
+                <Button
+                  key={index}
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 mx-1 text-primary hover:underline inline-flex items-center gap-1"
+                  onClick={() => window.open(reference.url, '_blank')}
+                >
+                  [{refNum}]
+                  <ExternalLink className="w-3 h-3" />
+                </Button>
+              );
+            }
+            return <span key={index} className="text-muted-foreground">[{refNum}]</span>;
+          }
+          // Regular text content
+          return <span key={index} dangerouslySetInnerHTML={{ __html: part }} />;
+        })}
+      </div>
+    );
+  };
 
   // Keyboard navigation
   useEffect(() => {
@@ -331,7 +423,7 @@ export const CarouselSOPViewer: React.FC<CarouselSOPViewerProps> = ({
                     <FileText className="w-4 h-4 text-primary" />
                     <span className="text-sm font-medium">Instructions</span>
                   </div>
-                  <p className="text-base leading-relaxed">{currentStepData.description}</p>
+                  {renderStepContent(currentStepData)}
                 </div>
                 
                 {/* Navigation Path */}
@@ -417,6 +509,35 @@ export const CarouselSOPViewer: React.FC<CarouselSOPViewerProps> = ({
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
+            
+            {/* Reference Links Section */}
+            {currentStepData.references && currentStepData.references.length > 0 && sopData?.hyperlinks && (
+              <div className="flex items-center justify-center gap-4 pt-4 border-t">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Bookmark className="w-4 h-4" />
+                  <span>References:</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {currentStepData.references.map((refNum) => {
+                    const reference = sopData.hyperlinks?.find(ref => ref.ref_number === refNum);
+                    if (!reference) return null;
+                    return (
+                      <Button
+                        key={refNum}
+                        variant="outline"
+                        size="sm"
+                        className="h-auto px-3 py-1 text-xs"
+                        onClick={() => window.open(reference.url, '_blank')}
+                      >
+                        <span>[{refNum}]</span>
+                        <span className="ml-1">{reference.title || reference.display_text || 'Reference'}</span>
+                        <ExternalLink className="w-3 h-3 ml-1" />
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             
             {/* Keyboard Shortcuts */}
             <div className="text-xs text-muted-foreground text-center pt-4 border-t">

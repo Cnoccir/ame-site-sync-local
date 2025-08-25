@@ -652,6 +652,7 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
                                    safety_notes: task.safety_notes,
                                    duration_minutes: task.estimated_duration
                                  }}
+                                 sopData={sopData}
                                  onStepComplete={handleStepComplete}
                                  onAllStepsComplete={() => {
                                    onTaskComplete(task);
