@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { ChevronDown, ChevronRight, Clock, CheckCircle2, Circle, Play } from 'lucide-react';
+import { ChevronDown, ChevronRight, Clock, CheckCircle2, Circle, Play, AlertTriangle, SkipForward } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,14 +9,16 @@ interface ProtocolStepProps {
   stepNumber: number;
   title: string;
   duration: number; // in minutes
-  status: 'pending' | 'active' | 'completed';
+  status: 'pending' | 'active' | 'completed' | 'skipped';
   isExpanded: boolean;
   onToggle: () => void;
   onStart?: () => void;
   onComplete?: () => void;
+  onSkip?: () => void;
   children: ReactNode;
   canStart?: boolean;
   canComplete?: boolean;
+  canSkip?: boolean;
 }
 
 export const ProtocolStep = ({
@@ -28,9 +30,11 @@ export const ProtocolStep = ({
   onToggle,
   onStart,
   onComplete,
+  onSkip,
   children,
   canStart = true,
-  canComplete = false
+  canComplete = false,
+  canSkip = false
 }: ProtocolStepProps) => {
   const getStatusIcon = () => {
     switch (status) {
@@ -38,6 +42,8 @@ export const ProtocolStep = ({
         return <CheckCircle2 className="w-6 h-6 text-success" />;
       case 'active':
         return <Play className="w-6 h-6 text-primary" />;
+      case 'skipped':
+        return <AlertTriangle className="w-6 h-6 text-warning" />;
       default:
         return <Circle className="w-6 h-6 text-muted-foreground" />;
     }
@@ -47,7 +53,8 @@ export const ProtocolStep = ({
     const variants = {
       pending: 'secondary',
       active: 'default',
-      completed: 'default'
+      completed: 'default',
+      skipped: 'destructive'
     } as const;
 
     return (
@@ -65,13 +72,15 @@ export const ProtocolStep = ({
         return <div className={`${baseClasses} bg-success text-success-foreground`}>{stepNumber}</div>;
       case 'active':
         return <div className={`${baseClasses} bg-primary text-primary-foreground`}>{stepNumber}</div>;
+      case 'skipped':
+        return <div className={`${baseClasses} bg-warning text-warning-foreground`}>{stepNumber}</div>;
       default:
         return <div className={`${baseClasses} bg-muted text-muted-foreground`}>{stepNumber}</div>;
     }
   };
 
   return (
-    <Card className={`transition-all duration-200 ${status === 'active' ? 'border-primary shadow-md' : ''}`}>
+    <Card className={`transition-all duration-200 ${status === 'active' ? 'border-primary shadow-md' : status === 'skipped' ? 'border-warning bg-warning/5' : ''}`}>
       <Collapsible open={isExpanded} onOpenChange={onToggle}>
         <CollapsibleTrigger asChild>
           <div className="p-4 cursor-pointer hover:bg-muted/50 transition-colors">
@@ -113,9 +122,24 @@ export const ProtocolStep = ({
                   Start Step
                 </Button>
               )}
-              {status === 'active' && canComplete && onComplete && (
-                <Button onClick={onComplete}>
-                  Complete Step
+              {status === 'active' && (
+                <>
+                  {canSkip && onSkip && (
+                    <Button onClick={onSkip} variant="outline" className="text-warning hover:text-warning">
+                      <SkipForward className="w-4 h-4 mr-2" />
+                      Skip Step
+                    </Button>
+                  )}
+                  {canComplete && onComplete && (
+                    <Button onClick={onComplete}>
+                      Complete Step
+                    </Button>
+                  )}
+                </>
+              )}
+              {status === 'skipped' && onStart && (
+                <Button onClick={onStart} variant="outline">
+                  Return to Step
                 </Button>
               )}
             </div>

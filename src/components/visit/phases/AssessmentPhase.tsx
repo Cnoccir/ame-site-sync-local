@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertTriangle, Network, BarChart3, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { AMEService } from '@/services/ameService';
 
 // Import assessment components
 
@@ -36,7 +37,7 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
   const [expandedStep, setExpandedStep] = useState(1);
   
   // Step completion states
-  const [stepStatuses, setStepStatuses] = useState({
+  const [stepStatuses, setStepStatuses] = useState<Record<number, 'pending' | 'active' | 'completed' | 'skipped'>>({
     1: 'pending',
     2: 'pending', 
     3: 'pending',
@@ -44,6 +45,9 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     5: 'pending',
     6: 'pending'
   });
+
+  // Track skipped steps
+  const [skippedSteps, setSkippedSteps] = useState<number[]>([]);
 
   // Completion tracking for reactive updates
   const [completionTriggers, setCompletionTriggers] = useState({
@@ -151,11 +155,24 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     setExpandedStep(stepNumber);
   };
 
-  const handleStepComplete = (stepNumber: number) => {
+  const handleStepComplete = async (stepNumber: number) => {
+    const newSkippedSteps = skippedSteps.filter(num => num !== stepNumber);
+    
     setStepStatuses(prev => ({
       ...prev,
       [stepNumber]: 'completed'
     }));
+    
+    setSkippedSteps(newSkippedSteps);
+    
+    // Save to database if there were skipped steps changes
+    if (newSkippedSteps.length !== skippedSteps.length) {
+      try {
+        await AMEService.saveSkippedSteps(visitId, newSkippedSteps);
+      } catch (error) {
+        console.error('Failed to save skipped steps:', error);
+      }
+    }
     
     // Auto-advance to next step
     if (stepNumber < 6) {
@@ -168,7 +185,37 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     if (stepNumber === 1) return true;
     return stepStatuses[stepNumber - 1] === 'completed';
   };
-
+  
+  const handleStepSkip = async (stepNumber: number) => {
+    const newSkippedSteps = [...skippedSteps.filter(num => num !== stepNumber), stepNumber];
+    
+    setStepStatuses(prev => ({
+      ...prev,
+      [stepNumber]: 'skipped'
+    }));
+    
+    setSkippedSteps(newSkippedSteps);
+    
+    // Save to database
+    try {
+      await AMEService.saveSkippedSteps(visitId, newSkippedSteps);
+    } catch (error) {
+      console.error('Failed to save skipped steps:', error);
+    }
+    
+    // Update current step to next available step
+    const nextStep = stepNumber + 1;
+    if (nextStep <= 6) {
+      setCurrentStep(nextStep);
+      setExpandedStep(nextStep);
+    }
+    
+    toast({
+      title: "Step Skipped",
+      description: `Step ${stepNumber} has been skipped. You can return to complete it later if needed.`,
+      variant: "default"
+    });
+  };
   const canCompleteStep = (stepNumber: number) => {
     switch (stepNumber) {
       case 1:
@@ -187,6 +234,11 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
       default:
         return false;
     }
+  };
+
+  const canSkipStep = (stepNumber: number): boolean => {
+    // Steps 4-6 can be skipped initially, can extend to others later
+    return [4, 5, 6].includes(stepNumber) && stepStatuses[stepNumber] === 'active';
   };
 
   // Reactive completion checking for steps 4-6
@@ -360,7 +412,20 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
       });
     }
   };
-
+  
+  // Warning about skipped steps
+  const hasSkippedSteps = skippedSteps.length > 0;
+  
+  const handlePhaseComplete = () => {
+    if (hasSkippedSteps) {
+      toast({
+        title: "Warning: Skipped Steps",
+        description: `You have ${skippedSteps.length} skipped step(s). Consider completing them before moving to the next phase.`,
+        variant: "destructive"
+      });
+    }
+    onPhaseComplete();
+  };
   const runDiagnostics = () => {
     setSystemStatusData({
       activeAlarms: Math.floor(Math.random() * 20),
@@ -371,7 +436,8 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
   };
 
   const isAssessmentComplete = () => {
-    return Object.values(stepStatuses).every(status => status === 'completed');
+    // Assessment is complete if all steps are either completed or skipped
+    return Object.values(stepStatuses).every(status => status === 'completed' || status === 'skipped');
   };
 
   return (
@@ -387,6 +453,21 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
         </div>
       </div>
 
+      {/* Warning about skipped steps */}
+      {hasSkippedSteps && (
+        <Card className="p-4 border-warning bg-warning/5">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-warning" />
+            <div>
+              <h4 className="font-medium text-warning">Skipped Steps</h4>
+              <p className="text-sm text-muted-foreground">
+                Steps {skippedSteps.join(', ')} were skipped. Consider completing them for thorough assessment.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
 
       {/* Protocol Steps */}
       <div className="space-y-4">
@@ -401,8 +482,10 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
             onToggle={() => setExpandedStep(expandedStep === step.number ? 0 : step.number)}
             onStart={() => handleStepStart(step.number)}
             onComplete={() => handleStepComplete(step.number)}
+            onSkip={() => handleStepSkip(step.number)}
             canStart={canStartStep(step.number)}
             canComplete={canCompleteStep(step.number)}
+            canSkip={canSkipStep(step.number)}
           >
             {/* Step Content */}
             {step.number === 1 && (
@@ -614,7 +697,7 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
       {/* Complete Assessment Button */}
       {isAssessmentComplete() && (
         <div className="flex justify-end pt-4">
-          <Button onClick={onPhaseComplete} size="lg" className="min-w-[200px]">
+          <Button onClick={handlePhaseComplete} size="lg" className="min-w-[200px]">
             Complete Assessment
           </Button>
         </div>

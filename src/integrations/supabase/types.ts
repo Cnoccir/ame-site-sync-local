@@ -1215,6 +1215,7 @@ export type Database = {
           phase_3_status: string | null
           phase_4_completed_at: string | null
           phase_4_status: string | null
+          skipped_steps: number[] | null
           started_at: string | null
           technician_id: string | null
           total_duration: number | null
@@ -1244,6 +1245,7 @@ export type Database = {
           phase_3_status?: string | null
           phase_4_completed_at?: string | null
           phase_4_status?: string | null
+          skipped_steps?: number[] | null
           started_at?: string | null
           technician_id?: string | null
           total_duration?: number | null
@@ -1273,6 +1275,7 @@ export type Database = {
           phase_3_status?: string | null
           phase_4_completed_at?: string | null
           phase_4_status?: string | null
+          skipped_steps?: number[] | null
           started_at?: string | null
           technician_id?: string | null
           total_duration?: number | null

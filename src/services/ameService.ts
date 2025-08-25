@@ -189,6 +189,7 @@ export class AMEService {
         .update({
           current_phase: progressData.currentPhase,
           auto_save_data: progressData.autoSaveData,
+          skipped_steps: progressData.skippedSteps || [],
           last_activity: timestamp
         })
         .eq('id', visitId);
@@ -208,6 +209,22 @@ export class AMEService {
       
       logger.debug('Visit progress saved', { visitId, currentPhase: progressData.currentPhase });
     }, 'saveVisitProgress', { additionalData: { visitId, sessionToken } });
+  }
+
+  static async saveSkippedSteps(visitId: string, skippedSteps: number[]): Promise<void> {
+    return errorHandler.withErrorHandling(async () => {
+      const { error } = await supabase
+        .from('ame_visits')
+        .update({
+          skipped_steps: skippedSteps,
+          last_activity: getCurrentISODate()
+        })
+        .eq('id', visitId);
+      
+      if (error) throw errorHandler.handleSupabaseError(error, 'saveSkippedSteps');
+      
+      logger.debug('Skipped steps saved', { visitId, skippedSteps });
+    }, 'saveSkippedSteps', { additionalData: { visitId, skippedSteps } });
   }
 
   static async completeVisitPhase(visitId: string, phase: number): Promise<void> {
