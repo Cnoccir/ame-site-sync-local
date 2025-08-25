@@ -156,19 +156,33 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
     }
   };
 
-  // Enhanced step parsing for rich content
-  const formatStepsList = (stepText: string | undefined): Array<{id: number, text: string}> => {
-    if (!stepText) return [];
+  // Enhanced step parsing for rich content with proper type handling
+  const formatStepsList = (stepInput: any): Array<{id: number, text: string}> => {
+    if (!stepInput) return [];
     
-    // Handle array format from database
+    // Ensure we have a string to work with
+    let stepText: string;
+    if (typeof stepInput === 'string') {
+      stepText = stepInput;
+    } else if (Array.isArray(stepInput)) {
+      // If it's already an array, process each item
+      return stepInput.map((step, index) => ({
+        id: index + 1,
+        text: step != null ? String(step) : `Step ${index + 1}`
+      })).filter(step => step.text.trim().length > 0);
+    } else {
+      stepText = String(stepInput);
+    }
+    
+    // Handle array format from database (JSON string)
     try {
       if (stepText.startsWith('[') && stepText.endsWith(']')) {
         const parsed = JSON.parse(stepText);
         if (Array.isArray(parsed)) {
           return parsed.map((step, index) => ({
             id: index + 1,
-            text: typeof step === 'string' ? step : step.content || step.text || String(step)
-          }));
+            text: step != null ? (typeof step === 'string' ? step : (step.content || step.text || String(step))) : `Step ${index + 1}`
+          })).filter(step => step.text.trim().length > 0);
         }
       }
     } catch (e) {
@@ -180,7 +194,7 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
     
     // First try to split on numbered patterns like "1.", "2.", etc.
     if (/\d+\.\s/.test(stepText)) {
-      steps = stepText.split(/(?=\d+\.\s)/).filter(s => s.trim().length > 0);
+      steps = stepText.split(/(?=\d+\.\s)/).filter(s => s && s.trim().length > 0);
     }
     // Then try HTML breaks
     else if (stepText.includes('<br>') || stepText.includes('<br/>')) {
@@ -203,7 +217,7 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
     }
     
     return steps
-      .map(step => step.trim())
+      .map(step => step != null ? String(step).trim() : '')
       .filter(step => step.length > 0)
       .map((step, index) => ({
         id: index + 1,
