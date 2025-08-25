@@ -600,19 +600,19 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
                             </div>
                           )}
                           
-                          {sopData.hyperlinks && (
+                          {sopData.hyperlinks && Array.isArray(sopData.hyperlinks) && sopData.hyperlinks.length > 0 && (
                             <div>
                               <h5 className="font-medium mb-2">External References</h5>
-                              {sopData.hyperlinks.split(',').map((link, index) => (
+                              {sopData.hyperlinks.map((link, index) => (
                                 <a 
                                   key={index}
-                                  href={link.trim()} 
+                                  href={typeof link === 'string' ? link : link.url || '#'} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
                                   className="flex items-center gap-2 text-blue-600 hover:text-blue-800 mb-2"
                                 >
                                   <ExternalLink className="w-4 h-4" />
-                                  {link.trim()}
+                                  {typeof link === 'string' ? link : link.title || link.url || 'External Link'}
                                 </a>
                               ))}
                             </div>
