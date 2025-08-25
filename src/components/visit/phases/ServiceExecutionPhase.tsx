@@ -29,6 +29,7 @@ interface TaskData {
   is_mandatory: boolean;
   phase: number;
   task_order: number;
+  prerequisites?: string;
 }
 
 interface VisitTask {
@@ -41,6 +42,7 @@ interface VisitTask {
   time_spent?: number;
   technician_notes?: string;
   created_at?: string;
+  notes?: string;
 }
 
 interface SOPData {
@@ -286,7 +288,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
     };
   };
 
-  const handleTaskStart = async (task: TaskData) => {
+  const handleTaskStart = async (task: any) => {
     if (!visitId) {
       console.error('❌ No visitId available');
       toast({
@@ -383,7 +385,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
     }
   };
 
-  const handleTaskComplete = async (task: TaskData) => {
+  const handleTaskComplete = async (task: any) => {
     if (!visitId) return;
 
     try {
@@ -566,176 +568,61 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
             </div>
           ) : (
             filteredTasks.map((task) => {
-              const status = getTaskStatus(task);
+              const visitTask = visitTasks.find(vt => vt.task_id === task.id);
               const isExpanded = expandedTasks.has(task.id);
-              const steps = parseSteps(task.sop_steps);
-              const qualityChecks = parseQualityChecks(task.quality_checks);
-              const isRunning = status === 'in_progress' && taskTimers[task.id];
+              const isActive = getTaskStatus(task) === 'in_progress';
+              
+              // Find matching SOP data and map it to IntegratedTaskCard format
+              const taskSOP = sopData.find(sop => 
+                sop.sop_id === task.task_id || 
+                sop.title.toLowerCase().includes(task.task_name.toLowerCase().split(' ')[0])
+              );
+
+              const mappedSOP = taskSOP ? {
+                id: taskSOP.id,
+                task_id: task.task_id,
+                title: taskSOP.title,
+                content: taskSOP.best_practices || '',
+                hyperlinks: Array.isArray(taskSOP.hyperlinks) ? taskSOP.hyperlinks.join(',') : '',
+                videos: '',
+                images: '',
+                pdfs: ''
+              } : undefined;
 
               return (
-                <Card key={task.id} className={cn(
-                  "task-card transition-all duration-200 hover:shadow-lg",
-                  status === 'completed' && "bg-success/5 border-success/20",
-                  status === 'in_progress' && "bg-info/5 border-info/20 shadow-md"
-                )}>
-                  <Collapsible 
-                    open={isExpanded} 
-                    onOpenChange={() => toggleTaskExpansion(task.id)}
-                  >
-                    <CollapsibleTrigger asChild>
-                      <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors">
-                        <div className="task-header flex items-center justify-between">
-                          <div className="task-info flex items-center gap-3">
-                            <div className="task-status">
-                              {getStatusIcon(status, !!isRunning)}
-                            </div>
-                            <div className="task-details">
-                              <div className="task-title-row flex items-center gap-2">
-                                <h3 className="task-name text-lg font-medium">{task.task_name}</h3>
-                                <Badge 
-                                  variant={task.is_mandatory ? "default" : "secondary"}
-                                  className="text-xs"
-                                >
-                                  {task.is_mandatory ? "Recommended" : "Optional"}
-                                </Badge>
-                              </div>
-                              <div className="task-meta flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                                <span className="flex items-center gap-1">
-                                  <Clock className="w-4 h-4" />
-                                  {task.duration_minutes}min
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Target className="w-4 h-4" />
-                                  {steps.length} steps
-                                </span>
-                                {task.skills_required && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {task.skills_required}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="task-controls flex items-center gap-2">
-                            {status === 'in_progress' && (
-                              <div className="task-timer bg-info/10 px-3 py-1 rounded-full text-sm font-mono">
-                                {getTaskTimer(task)}
-                              </div>
-                            )}
-                            <div className="expand-icon">
-                              {isExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
-                            </div>
-                          </div>
-                        </div>
-                      </CardHeader>
-                    </CollapsibleTrigger>
-
-                    <CollapsibleContent className="border-t bg-muted/20">
-                      <div className="p-4 space-y-4">
-                        {/* Navigation Path */}
-                        {task.navigation_path && (
-                          <div className="bg-info/10 border border-info/20 rounded-lg p-3">
-                            <div className="flex items-start gap-2">
-                              <Target className="w-4 h-4 text-info mt-0.5 flex-shrink-0" />
-                              <div>
-                                <p className="font-medium text-info text-sm">Navigation Path</p>
-                                <p className="text-sm text-info/80">{task.navigation_path}</p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Safety Notes */}
-                        {task.safety_notes && (
-                          <div className="bg-warning/10 border border-warning/20 rounded-lg p-3">
-                            <div className="flex items-start gap-2">
-                              <AlertTriangle className="w-4 h-4 text-warning mt-0.5 flex-shrink-0" />
-                              <div>
-                                <p className="font-medium text-warning text-sm">Safety Requirements</p>
-                                <p className="text-sm text-warning/80">{task.safety_notes}</p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Quality Checks */}
-                        {qualityChecks.length > 0 && (
-                          <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-                            <p className="font-medium text-primary text-sm mb-2">Quality Checks</p>
-                            <ul className="space-y-1">
-                              {qualityChecks.map((check, index) => (
-                                <li key={index} className="text-sm text-primary/80 flex items-start gap-2">
-                                  <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                                  {check}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
-                        {/* Task Actions */}
-                        <div className="flex gap-2 pt-3">
-                          {status === 'not_started' && (
-                            <>
-                              <Button 
-                                size="sm" 
-                                onClick={() => handleStartStepViewer(task)}
-                                className="flex-1"
-                              >
-                                <Play className="w-4 h-4 mr-1" />
-                                Start Task
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={() => handleViewSOP(task)}
-                              >
-                                <Book className="w-4 h-4 mr-1" />
-                                View SOP
-                              </Button>
-                            </>
-                          )}
-
-                          {status === 'in_progress' && (
-                            <>
-                              <Button 
-                                size="sm" 
-                                onClick={() => handleTaskComplete(task)}
-                                className="flex-1"
-                              >
-                                <CheckCircle className="w-4 h-4 mr-1" />
-                                Complete
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={() => handleViewSOP(task)}
-                              >
-                                <Book className="w-4 h-4 mr-1" />
-                                View SOP
-                              </Button>
-                            </>
-                          )}
-
-                          {status === 'completed' && (
-                            <div className="flex items-center gap-2 text-success">
-                              <CheckCircle className="w-4 h-4" />
-                              <span className="text-sm font-medium">Completed</span>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={() => handleViewSOP(task)}
-                              >
-                                <Book className="w-4 h-4 mr-1" />
-                                Review SOP
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                </Card>
+                <IntegratedTaskCard 
+                  key={task.id}
+                  task={{
+                    id: task.id,
+                    task_name: task.task_name,
+                    description: task.navigation_path || 'No description available',
+                    estimated_duration: task.duration_minutes,
+                    sop_steps: task.sop_steps,
+                    quality_checks: task.quality_checks,
+                    tools_required: task.skills_required || 'Standard tools',
+                    prerequisites: task.prerequisites || 'None',
+                    skills_required: task.skills_required || 'Basic',
+                    category: task.category_id || 'General'
+                  }}
+                  visitTask={visitTask ? { 
+                    ...visitTask, 
+                    notes: visitTask.technician_notes || null,
+                    started_at: visitTask.started_at || null,
+                    completed_at: visitTask.completed_at || null
+                  } : undefined}
+                  sopData={mappedSOP}
+                  isExpanded={isExpanded}
+                  isActive={isActive}
+                  completedSteps={completedSteps}
+                  onTaskStart={handleTaskStart}
+                  onTaskComplete={handleTaskComplete}
+                  onStepComplete={handleStepComplete}
+                  onExpand={(taskId) => {
+                    // Collapse all other tasks and expand this one
+                    setExpandedTasks(new Set([taskId]));
+                  }}
+                  onCollapse={() => setExpandedTasks(new Set())}
+                />
               );
             })
           )}
@@ -765,7 +652,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         </div>
       </div>
 
-      {/* These modals are now integrated into task cards */}
+      {/* All modals and step viewers are now integrated into task cards */}
     </div>
   );
 };

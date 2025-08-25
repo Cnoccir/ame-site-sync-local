@@ -48,9 +48,9 @@ interface VisitTask {
   visit_id: string;
   task_id: string;
   status: string;
-  started_at: string | null;
-  completed_at: string | null;
-  notes: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  notes?: string | null;
 }
 
 interface SOPData {
