@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, Package, Shield, AlertTriangle } from 'lucide-react';
+import { ChevronDown, ChevronRight, Package, Shield, AlertTriangle, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -162,27 +163,68 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
             <Package className="w-5 h-5" />
             <span>Tools & Equipment</span>
           </div>
-          <Button variant="default" size="sm">
-            Generate Full Recommended List
-          </Button>
+          {!showFullList && (
+            <Button 
+              variant="default" 
+              size="sm"
+              onClick={() => setShowFullList(true)}
+            >
+              Generate Full Recommended List
+            </Button>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {!showFullList && (
           <div>
             <h4 className="text-sm text-muted-foreground mb-3">Essential Tools (Default)</h4>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {getRequiredTools().map((tool) => (
-                <div key={tool.id} className="flex items-center justify-between py-2">
+                <div key={tool.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center space-x-3">
                     <Checkbox
                       id={tool.id}
                       checked={selectedTools.has(tool.id)}
                       onCheckedChange={() => toggleToolSelection(tool.id)}
                     />
-                    <label htmlFor={tool.id} className="text-sm font-medium cursor-pointer">
-                      {tool.tool_name}
-                    </label>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <label htmlFor={tool.id} className="text-sm font-medium cursor-pointer">
+                          {tool.tool_name}
+                        </label>
+                        {tool.description && (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                <Info className="h-3 w-3" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>{tool.tool_name}</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-2">
+                                <p className="text-sm text-muted-foreground">{tool.description}</p>
+                                <div className="flex items-center space-x-2">
+                                  <Badge variant="outline">Tool ID: {tool.tool_id}</Badge>
+                                  <Badge variant={
+                                    tool.safety_category === 'site_required' || tool.safety_category === 'required' 
+                                      ? 'destructive' : 
+                                    tool.safety_category === 'recommended' 
+                                      ? 'default' : 'outline'
+                                  }>
+                                    {tool.safety_category === 'site_required' || tool.safety_category === 'required' 
+                                      ? 'REQUIRED' : 
+                                     tool.safety_category === 'recommended' 
+                                      ? 'RECOMMENDED' : 'OPTIONAL'}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   <Badge variant="destructive" className="text-xs">
                     REQUIRED
@@ -191,34 +233,84 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
               ))}
               
               {tools.filter(tool => tool.safety_category === 'recommended').slice(0, 4).map((tool) => (
-                <div key={tool.id} className="flex items-center justify-between py-2">
+                <div key={tool.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center space-x-3">
                     <Checkbox
                       id={tool.id}
                       checked={selectedTools.has(tool.id)}
                       onCheckedChange={() => toggleToolSelection(tool.id)}
                     />
-                    <label htmlFor={tool.id} className="text-sm font-medium cursor-pointer">
-                      {tool.tool_name}
-                    </label>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <label htmlFor={tool.id} className="text-sm font-medium cursor-pointer">
+                          {tool.tool_name}
+                        </label>
+                        {tool.description && (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                <Info className="h-3 w-3" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>{tool.tool_name}</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-2">
+                                <p className="text-sm text-muted-foreground">{tool.description}</p>
+                                <div className="flex items-center space-x-2">
+                                  <Badge variant="outline">Tool ID: {tool.tool_id}</Badge>
+                                  <Badge variant="default">RECOMMENDED</Badge>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="default" className="text-xs">
                     RECOMMENDED
                   </Badge>
                 </div>
               ))}
 
               {tools.filter(tool => tool.safety_category === 'standard').slice(0, 2).map((tool) => (
-                <div key={tool.id} className="flex items-center justify-between py-2">
+                <div key={tool.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center space-x-3">
                     <Checkbox
                       id={tool.id}
                       checked={selectedTools.has(tool.id)}
                       onCheckedChange={() => toggleToolSelection(tool.id)}
                     />
-                    <label htmlFor={tool.id} className="text-sm font-medium cursor-pointer">
-                      {tool.tool_name}
-                    </label>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <label htmlFor={tool.id} className="text-sm font-medium cursor-pointer">
+                          {tool.tool_name}
+                        </label>
+                        {tool.description && (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                <Info className="h-3 w-3" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>{tool.tool_name}</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-2">
+                                <p className="text-sm text-muted-foreground">{tool.description}</p>
+                                <div className="flex items-center space-x-2">
+                                  <Badge variant="outline">Tool ID: {tool.tool_id}</Badge>
+                                  <Badge variant="outline">OPTIONAL</Badge>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   <Badge variant="outline" className="text-xs">
                     OPTIONAL
@@ -284,16 +376,51 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
                     <CollapsibleContent className="mt-2">
                       <div className="pl-6 space-y-2">
                         {categoryTools.map((tool) => (
-                          <div key={tool.id} className="flex items-center justify-between py-2">
+                          <div key={tool.id} className="flex items-center justify-between p-2 border rounded">
                             <div className="flex items-center space-x-3">
                               <Checkbox
                                 id={`full-${tool.id}`}
                                 checked={selectedTools.has(tool.id)}
                                 onCheckedChange={() => toggleToolSelection(tool.id)}
                               />
-                              <label htmlFor={`full-${tool.id}`} className="text-sm font-medium cursor-pointer">
-                                {tool.tool_name}
-                              </label>
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2">
+                                  <label htmlFor={`full-${tool.id}`} className="text-sm font-medium cursor-pointer">
+                                    {tool.tool_name}
+                                  </label>
+                                  {tool.description && (
+                                    <Dialog>
+                                      <DialogTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                          <Info className="h-3 w-3" />
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent>
+                                        <DialogHeader>
+                                          <DialogTitle>{tool.tool_name}</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="space-y-2">
+                                          <p className="text-sm text-muted-foreground">{tool.description}</p>
+                                          <div className="flex items-center space-x-2">
+                                            <Badge variant="outline">Tool ID: {tool.tool_id}</Badge>
+                                            <Badge variant={
+                                              tool.safety_category === 'site_required' || tool.safety_category === 'required' 
+                                                ? 'destructive' : 
+                                              tool.safety_category === 'recommended' 
+                                                ? 'default' : 'outline'
+                                            }>
+                                              {tool.safety_category === 'site_required' || tool.safety_category === 'required' 
+                                                ? 'REQUIRED' : 
+                                               tool.safety_category === 'recommended' 
+                                                ? 'RECOMMENDED' : 'OPTIONAL'}
+                                            </Badge>
+                                          </div>
+                                        </div>
+                                      </DialogContent>
+                                    </Dialog>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                             <Badge 
                               variant={
