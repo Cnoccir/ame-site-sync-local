@@ -38,6 +38,39 @@ export type Database = {
         }
         Relationships: []
       }
+      ame_activity_logs: {
+        Row: {
+          activity_type: string
+          created_at: string | null
+          description: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string | null
+          description: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string | null
+          description?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       ame_audit_logs: {
         Row: {
           action: string

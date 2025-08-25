@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WorkflowPhaseTracker } from './WorkflowPhaseTracker';
 import { CustomerInfoCard } from './CustomerInfoCard';
@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { AMEService } from '@/services/ameService';
+import { ActivityService } from '@/services/activityService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
@@ -35,6 +36,7 @@ interface WorkflowDashboardProps {
 
 export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const visitId = searchParams.get('visitId');
   const { user, isAuthenticated } = useAuth();
   
@@ -116,6 +118,13 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
     // Complete phase in database
     if (sessionData) {
       await completePhase(phaseId);
+      
+      // Log phase completion activity
+      await ActivityService.logPhaseCompletion(
+        phaseId, 
+        sessionData.visitId, 
+        customer.company_name
+      );
     }
     
     // Auto-advance to next phase
@@ -134,9 +143,8 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
   };
 
   const handleContinueVisit = (visit: any) => {
-    
-    // Navigate with the correct visitId parameter
-    window.location.href = `/visit/${customer.id}?visitId=${visit.id}`;
+    // Navigate using React Router to prevent page reload
+    navigate(`/visit/${customer.id}?visitId=${visit.id}`);
   };
 
   const handleStartNewVisit = async () => {
@@ -144,7 +152,7 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
     
     if (!technicianId) {
       console.error('No technician ID available');
-      window.location.href = `/customers`;
+      navigate('/customers');
       return;
     }
     
@@ -156,12 +164,15 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
       // Store session token in localStorage for recovery
       localStorage.setItem(`visit_session_${visit.id}`, sessionToken);
       
-      // Navigate with the new visitId
-      window.location.href = `/visit/${customer.id}?visitId=${visit.id}`;
+      // Log visit start activity
+      await ActivityService.logVisitStart(visit.id, customer.company_name);
+      
+      // Navigate with the new visitId using React Router
+      navigate(`/visit/${customer.id}?visitId=${visit.id}`);
     } catch (error) {
       console.error('Failed to start visit:', error);
       // Fallback to customers page
-      window.location.href = `/customers`;
+      navigate('/customers');
     } finally {
       setLoading(false);
     }
@@ -184,7 +195,7 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
             </p>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => window.location.href = '/auth'}>
+            <Button onClick={() => navigate('/auth')}>
               Login
             </Button>
           </CardContent>
@@ -272,7 +283,7 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
                 Start New Visit
               </Button>
               <Button 
-                onClick={() => window.location.href = '/customers'}
+                onClick={() => navigate('/customers')}
                 variant="outline"
               >
                 Back to Customers
@@ -385,9 +396,9 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction 
-                      onClick={() => {
+                    onClick={() => {
                         endVisit().then(() => {
-                          window.location.href = '/customers';
+                          navigate('/customers');
                         });
                       }}
                       className="bg-red-600 hover:bg-red-700"

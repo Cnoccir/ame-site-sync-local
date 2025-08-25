@@ -91,7 +91,7 @@ export const Dashboard = () => {
 
       {/* Content Grid - exact original layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RecentActivity activities={stats.recent_activity} />
+        <RecentActivity />
         <KeyLinks />
       </div>
     </div>
