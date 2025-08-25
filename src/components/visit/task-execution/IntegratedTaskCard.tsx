@@ -21,7 +21,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { TaskTimer } from './TaskTimer';
-import { RichSOPContent } from './RichSOPContent';
+import { CarouselSOPViewer } from './CarouselSOPViewer';
 import { toast } from 'sonner';
 
 interface Task {
@@ -374,101 +374,6 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
   const completedStepsCount = completedSteps.size;
   const progressPercentage = steps.length > 0 ? (completedStepsCount / steps.length) * 100 : 0;
 
-  // Enhanced SOP Steps rendering with rich content and carousel dots  
-  const renderSOPStepsCarousel = (steps: any, hyperlinks: any) => {
-    if (!steps || (Array.isArray(steps) && steps.length === 0)) {
-      return <p className="text-sm text-muted-foreground italic">No SOP steps available.</p>;
-    }
-
-    // Parse steps for RichSOPContent component - handle new structured format
-    let richSteps: Array<{step_number: number, content: string, references: number[]}> = [];
-    
-    if (Array.isArray(steps)) {
-      // New structured format from database
-      richSteps = steps.map((step, index) => ({
-        step_number: step.step_number || index + 1,
-        content: step.content || step.html_content || String(step),
-        references: Array.isArray(step.references) ? step.references : []
-      }));
-    } else if (typeof steps === 'string') {
-      try {
-        // Try parsing as JSON first (stringified array)
-        const parsed = JSON.parse(steps);
-        if (Array.isArray(parsed)) {
-          richSteps = parsed.map((step, index) => ({
-            step_number: step.step_number || index + 1,
-            content: step.content || String(step),
-            references: Array.isArray(step.references) ? step.references : []
-          }));
-        }
-      } catch (e) {
-        // Fallback: Parse HTML content for legacy format
-        const stepTexts = steps.split(/<br\s*\/?>\s*<br\s*\/?>/i).filter(s => s.trim());
-        richSteps = stepTexts.map((step, index) => {
-          const cleanStep = step.replace(/<br\s*\/?>/gi, '\n').trim();
-          const references = (cleanStep.match(/\[(\d+)\]/g) || []).map(match => parseInt(match.replace(/[\[\]]/g, '')));
-          return {
-            step_number: index + 1,
-            content: cleanStep,
-            references
-          };
-        });
-      }
-    }
-
-    // Parse hyperlinks for RichSOPContent component - handle new structured format
-    let richReferences: Array<{ref_number: number, url: string, title: string, display_text?: string}> = [];
-    
-    if (Array.isArray(hyperlinks)) {
-      // New structured format from database
-      richReferences = hyperlinks.map(link => ({
-        ref_number: link.ref_number || 1,
-        url: link.url || String(link),
-        title: link.title || link.display_text || 'Reference',
-        display_text: link.display_text
-      }));
-    } else if (typeof hyperlinks === 'string' && hyperlinks.trim()) {
-      try {
-        // Try parsing as JSON first (stringified array)
-        const parsed = JSON.parse(hyperlinks);
-        if (Array.isArray(parsed)) {
-          richReferences = parsed.map(link => ({
-            ref_number: link.ref_number || 1,
-            url: link.url || String(link),
-            title: link.title || link.display_text || 'Reference',
-            display_text: link.display_text
-          }));
-        }
-      } catch (e) {
-        // Fallback: Parse HTML/text format for legacy
-        const lines = hyperlinks.split(/<br\s*\/?>/i);
-        lines.forEach((line) => {
-          const trimmed = line.trim();
-          if (trimmed) {
-            const match = trimmed.match(/^(\d+)\.\s*(https?:\/\/[^\s]+)(?:#:~:text=(.+))?/);
-            if (match) {
-              const [, refNumber, url, anchorText] = match;
-              richReferences.push({
-                ref_number: parseInt(refNumber),
-                url: url.trim(),
-                title: anchorText ? decodeURIComponent(anchorText.replace(/[%,]/g, ' ')) : `Reference ${refNumber}`
-              });
-            }
-          }
-        });
-      }
-    }
-
-    return (
-      <RichSOPContent
-        steps={richSteps}
-        references={richReferences}
-        onStepComplete={handleStepComplete}
-        completedSteps={completedSteps}
-        className="max-h-96 overflow-y-auto"
-      />
-    );
-  };
 
   return (
     <Card className={`transition-all duration-300 ${isActive ? 'border-blue-500 shadow-lg' : ''} ${isExpanded ? '' : 'hover:shadow-md'}`}>
@@ -732,13 +637,31 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
                             </div>
                           )}
 
-                          {/* SOP Steps Carousel */}
-                          {sopData.steps && (
-                            <div>
-                              <h5 className="font-medium mb-3">Step-by-Step Procedure</h5>
-                              {renderSOPStepsCarousel(sopData.steps, sopData.hyperlinks)}
-                            </div>
-                          )}
+                           {/* SOP Steps Carousel */}
+                           {sopData.steps && (
+                             <div>
+                               <h5 className="font-medium mb-3">Step-by-Step Procedure</h5>
+                               <CarouselSOPViewer
+                                 task={{
+                                   id: task.id,
+                                   task_id: task.id,
+                                   task_name: task.task_name,
+                                   sop_steps: task.sop_steps || '',
+                                   navigation_path: task.navigation_path,
+                                   quality_checks: task.quality_checks || '',
+                                   safety_notes: task.safety_notes,
+                                   duration_minutes: task.estimated_duration
+                                 }}
+                                 onStepComplete={handleStepComplete}
+                                 onAllStepsComplete={() => {
+                                   onTaskComplete(task);
+                                   toast.success('All steps completed!');
+                                 }}
+                                 completedSteps={completedSteps}
+                                 onClose={() => {}}
+                               />
+                             </div>
+                           )}
 
                           {/* Best Practices */}
                           {sopData.best_practices && (
