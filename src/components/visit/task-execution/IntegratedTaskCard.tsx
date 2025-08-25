@@ -65,6 +65,20 @@ interface SOPData {
   hyperlinks?: any;
 }
 
+interface ParsedSOPStep {
+  id: number;
+  text: string;
+  area?: string;
+  detail?: string;
+  references?: number[];
+}
+
+interface ParsedReference {
+  id: number;
+  url: string;
+  title?: string;
+}
+
 interface IntegratedTaskCardProps {
   task: Task;
   visitTask?: VisitTask;
@@ -287,6 +301,67 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
     );
   };
 
+  // Parse SOP data with enhanced structure
+  const parseSOPSteps = (sopSteps: any): ParsedSOPStep[] => {
+    if (!sopSteps) return [];
+    
+    if (Array.isArray(sopSteps)) {
+      return sopSteps.map((step, index) => ({
+        id: index + 1,
+        text: typeof step === 'string' ? step : String(step),
+        references: extractReferences(typeof step === 'string' ? step : String(step))
+      }));
+    }
+    
+    if (typeof sopSteps === 'string') {
+      const steps = formatStepsList(sopSteps);
+      return steps.map(step => ({
+        ...step,
+        references: extractReferences(step.text)
+      }));
+    }
+    
+    return [];
+  };
+
+  // Extract reference numbers from text [1], [2], etc.
+  const extractReferences = (text: string): number[] => {
+    const refMatches = text.match(/\[(\d+)\]/g);
+    if (!refMatches) return [];
+    return refMatches.map(match => parseInt(match.replace(/[\[\]]/g, '')));
+  };
+
+  // Parse hyperlinks from SOP data
+  const parseHyperlinks = (hyperlinks: any): ParsedReference[] => {
+    if (!hyperlinks) return [];
+    
+    if (Array.isArray(hyperlinks)) {
+      return hyperlinks.map((link, index) => ({
+        id: index + 1,
+        url: typeof link === 'string' ? link : link.url || String(link),
+        title: typeof link === 'object' ? link.title : undefined
+      }));
+    }
+    
+    if (typeof hyperlinks === 'string') {
+      try {
+        const parsed = JSON.parse(hyperlinks);
+        if (Array.isArray(parsed)) {
+          return parsed.map((link, index) => ({
+            id: index + 1,
+            url: typeof link === 'string' ? link : link.url || String(link),
+            title: typeof link === 'object' ? link.title : undefined
+          }));
+        }
+      } catch (e) {
+        // Single URL string
+        return [{ id: 1, url: hyperlinks }];
+      }
+    }
+    
+    return [];
+  };
+
   // Parse steps from various sources
   const steps = useMemo(() => {
     // Try to get detailed steps from multiple sources
@@ -321,6 +396,11 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
       safetyNotes: task.safety_notes ? [task.safety_notes] : []
     }));
   }, [task, sopData]);
+
+  // Memoized SOP parsing
+  const sopSteps = useMemo(() => parseSOPSteps(sopData?.steps), [sopData?.steps]);
+  const sopReferences = useMemo(() => parseHyperlinks(sopData?.hyperlinks), [sopData?.hyperlinks]);
+  const sopGoal = sopData?.goal || 'No specific goal defined for this procedure';
 
   const completedStepsCount = completedSteps.size;
   const progressPercentage = steps.length > 0 ? (completedStepsCount / steps.length) * 100 : 0;
@@ -672,116 +752,128 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
 
                   <TabsContent value="steps" className="mt-4">
                     <div className="space-y-4">
-                      {steps.length > 0 ? (
-                        <>
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium">Task Progress</h4>
-                            <span className="text-sm text-muted-foreground">
-                              {completedStepsCount} of {steps.length} steps
-                            </span>
-                          </div>
-                          <Progress value={progressPercentage} className="w-full" />
-                          
-                          <div className="space-y-3">
-                            {steps.map((step, index) => {
-                              const stepNumber = index + 1;
-                              const isCurrentStep = stepNumber === currentStep;
-                              const isStepCompleted = completedSteps.has(stepNumber);
-                              
-                              return (
-                                <Card 
-                                  key={step.id} 
-                                  className={`p-4 ${isCurrentStep ? 'border-blue-500 bg-blue-50' : ''} ${isStepCompleted ? 'border-green-500 bg-green-50' : ''}`}
-                                >
-                                  <div className="flex items-start gap-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium">Task Steps</h4>
+                        <span className="text-sm text-muted-foreground">
+                          {completedStepsCount} of {steps.length} completed
+                        </span>
+                      </div>
+                      <Progress value={progressPercentage} className="w-full" />
+                      
+                      <div className="space-y-3">
+                        {steps.length > 0 ? (
+                          steps.map((step, index) => {
+                            const stepNumber = index + 1;
+                            const isStepCompleted = completedSteps.has(stepNumber);
+                            
+                            return (
+                              <Card 
+                                key={step.id} 
+                                className={`p-4 border transition-all ${isStepCompleted ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'}`}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div className="flex items-center gap-3">
+                                    <input
+                                      type="checkbox"
+                                      checked={isStepCompleted}
+                                      onChange={() => {
+                                        if (isStepCompleted) {
+                                          setCompletedSteps(prev => {
+                                            const newSet = new Set(prev);
+                                            newSet.delete(stepNumber);
+                                            return newSet;
+                                          });
+                                        } else {
+                                          handleStepComplete(stepNumber);
+                                        }
+                                      }}
+                                      className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                                    />
                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                                      isStepCompleted ? 'bg-green-500 text-white' : 
-                                      isCurrentStep ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
+                                      isStepCompleted ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
                                     }`}>
                                       {isStepCompleted ? <CheckCircle className="w-4 h-4" /> : stepNumber}
                                     </div>
-                                    <div className="flex-1">
-                                      <h5 className="font-medium">{step.title}</h5>
-                                      <div 
-                                        className="text-sm text-muted-foreground mt-1"
-                                        dangerouslySetInnerHTML={{ __html: step.description }}
-                                      />
-                                      
-                                      {step.navigationPath && (
-                                        <div className="mt-2 p-2 bg-blue-100 rounded text-sm">
-                                          <strong>Navigate:</strong> {step.navigationPath}
-                                        </div>
-                                      )}
-                                      
-                                      {step.specificActions && step.specificActions.length > 0 && (
-                                        <div className="mt-2">
-                                          <strong className="text-sm">Actions:</strong>
-                                          <ul className="list-disc list-inside text-sm text-muted-foreground">
-                                            {step.specificActions.map((action, actionIndex) => (
-                                              <li key={actionIndex}>{action}</li>
+                                  </div>
+                                  <div className="flex-1">
+                                    <h5 className="font-medium">{step.title}</h5>
+                                    <div 
+                                      className="text-sm text-muted-foreground mt-1"
+                                      dangerouslySetInnerHTML={{ __html: step.description }}
+                                    />
+                                    
+                                    {step.navigationPath && (
+                                      <div className="mt-2 p-2 bg-blue-100 rounded text-sm">
+                                        <strong>Navigate:</strong> {step.navigationPath}
+                                      </div>
+                                    )}
+                                    
+                                    {step.safetyNotes && step.safetyNotes.length > 0 && (
+                                      <div className="mt-2 p-2 bg-yellow-100 rounded text-sm flex items-start gap-2">
+                                        <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                                        <div>
+                                          <strong>Safety:</strong>
+                                          <ul className="list-disc list-inside">
+                                            {step.safetyNotes.map((note, noteIndex) => (
+                                              <li key={noteIndex}>{note}</li>
                                             ))}
                                           </ul>
                                         </div>
-                                      )}
-                                      
-                                      {step.safetyNotes && step.safetyNotes.length > 0 && (
-                                        <div className="mt-2 p-2 bg-yellow-100 rounded text-sm flex items-start gap-2">
-                                          <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
-                                          <div>
-                                            <strong>Safety:</strong>
-                                            <ul className="list-disc list-inside">
-                                              {step.safetyNotes.map((note, noteIndex) => (
-                                                <li key={noteIndex}>{note}</li>
-                                              ))}
-                                            </ul>
-                                          </div>
-                                        </div>
-                                      )}
-                                      
-                                      {isCurrentStep && !isStepCompleted && (
-                                        <Button 
-                                          size="sm" 
-                                          className="mt-3"
-                                          onClick={() => handleStepComplete(stepNumber)}
-                                        >
-                                          Mark Step Complete
-                                        </Button>
-                                      )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </Card>
+                            );
+                          })
+                        ) : (
+                          <div className="space-y-3">
+                            {formatStepsList(task.sop_steps || task.description || '').map((step, index) => {
+                              const stepNumber = index + 1;
+                              const isStepCompleted = completedSteps.has(stepNumber);
+                              
+                              return (
+                                <Card key={step.id} className={`p-4 border transition-all ${isStepCompleted ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}>
+                                  <div className="flex items-start gap-3">
+                                    <div className="flex items-center gap-3">
+                                      <input
+                                        type="checkbox"
+                                        checked={isStepCompleted}
+                                        onChange={() => {
+                                          if (isStepCompleted) {
+                                            setCompletedSteps(prev => {
+                                              const newSet = new Set(prev);
+                                              newSet.delete(stepNumber);
+                                              return newSet;
+                                            });
+                                          } else {
+                                            handleStepComplete(stepNumber);
+                                          }
+                                        }}
+                                        className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                                      />
+                                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                                        isStepCompleted ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
+                                      }`}>
+                                        {isStepCompleted ? <CheckCircle className="w-4 h-4" /> : stepNumber}
+                                      </div>
+                                    </div>
+                                    <div className="flex-1">
+                                      <h5 className="font-medium">Step {stepNumber}</h5>
+                                      <div 
+                                        className="text-sm text-muted-foreground mt-1"
+                                        dangerouslySetInnerHTML={{ 
+                                          __html: step.text.replace(/\[(\d+)\]/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-800 font-medium">[$1]</span>')
+                                        }}
+                                      />
                                     </div>
                                   </div>
                                 </Card>
                               );
                             })}
                           </div>
-                        </>
-                      ) : (
-                        <div className="space-y-4">
-                          <h4 className="font-medium">Task Steps</h4>
-                          <div className="space-y-3">
-                            {formatStepsList(task.sop_steps || '').length > 0 ? (
-                              <ol className="space-y-3">
-                                {formatStepsList(task.sop_steps || '').map((step, index) => (
-                                  <li key={step.id} className="flex items-start gap-3 p-3 border rounded-lg bg-gray-50">
-                                    <div className="w-7 h-7 bg-blue-500 text-white rounded-full flex items-center justify-center flex-shrink-0 font-medium text-sm">
-                                      {step.id}
-                                    </div>
-                                    <div className="flex-1">
-                                      <div 
-                                        className="text-sm leading-relaxed"
-                                        dangerouslySetInnerHTML={{ 
-                                          __html: step.text.replace(/\[(\d+)\]/g, '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-800 font-medium">[$1]</span>')
-                                        }}
-                                      />
-                                    </div>
-                                  </li>
-                                ))}
-                              </ol>
-                            ) : (
-                              <p className="text-sm text-muted-foreground italic">No specific steps defined for this task.</p>
-                            )}
-                          </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </TabsContent>
 
@@ -805,16 +897,16 @@ export const IntegratedTaskCard: React.FC<IntegratedTaskCardProps> = ({
                             </div>
                           </div>
 
-                          {/* Goal Section */}
-                          {sopData.goal && (
-                            <div className="bg-blue-50 rounded-lg p-4">
-                              <h5 className="font-medium mb-2 flex items-center gap-2 text-blue-800">
-                                <Target className="w-4 h-4" />
-                                Objective
-                              </h5>
-                              <p className="text-sm text-blue-700">{sopData.goal}</p>
-                            </div>
-                          )}
+                           {/* Goal Section */}
+                           <div className="bg-blue-50 rounded-lg p-4">
+                             <h5 className="font-medium mb-2 flex items-center gap-2 text-blue-800">
+                               <Target className="w-4 h-4" />
+                               Objective
+                             </h5>
+                             <p className="text-sm text-blue-700 leading-relaxed">
+                               {sopGoal}
+                             </p>
+                           </div>
 
                           {/* Tools Required */}
                           {sopData.tools_required && (
