@@ -22,6 +22,7 @@ import { PriorityDiscussion } from '@/components/assessment/PriorityDiscussion';
 import { NetworkHealthDashboard } from '@/components/assessment/NetworkHealthDashboard';
 import { DeviceInventoryTable } from '@/components/assessment/DeviceInventoryTable';
 import { NetworkSummaryGenerator } from '@/components/assessment/NetworkSummaryGenerator';
+import { TridiumDataImporter } from '@/components/assessment/TridiumDataImporter';
 
 interface AssessmentPhaseProps {
   onPhaseComplete: () => void;
@@ -436,113 +437,36 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
               <div className="space-y-4">
                 <h5 className="font-medium mb-3">Network Inventory Analysis</h5>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Upload Tridium CSV exports or enter network information manually.
+                  Upload Tridium CSV exports and follow the 4-step curation workflow.
                 </p>
                 
-                <Tabs value={step5Data.analysisMode || 'upload'} onValueChange={(mode) => 
-                  setStep5Data(prev => ({ ...prev, analysisMode: mode }))
-                }>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="upload">Upload CSV Files</TabsTrigger>
-                    <TabsTrigger value="manual">Manual Entry</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="upload" className="space-y-4">
-                    <FileUploader
-                      files={step5Data.uploadedFiles}
-                      onFilesChange={(files) => {
-                        setStep5Data(prev => ({ ...prev, uploadedFiles: files }));
-                        if (files.length > 0) {
-                          handleNetworkAnalysis();
-                        }
-                      }}
-                      acceptedTypes={['.csv']}
-                      maxFiles={5}
-                    />
-                    
-                    {step5Data.analysisData && (
-                      <div className="space-y-4">
-                        <Card className="p-4 bg-green-50">
-                          <h6 className="font-medium text-green-800 mb-2">Analysis Complete</h6>
-                          <div className="text-sm text-green-700 space-y-1">
-                            <p>• {step5Data.analysisData.totalStations} devices discovered</p>
-                            <p>• {step5Data.analysisData.onlineCount} online, {step5Data.analysisData.downCount} offline</p>
-                            <p>• {step5Data.analysisData.alarmCount} devices with alarms</p>
-                            <p>• Protocols: {step5Data.analysisData.protocolsFound.join(', ')}</p>
-                          </div>
-                        </Card>
-                        
-                        {step5Data.analysisData.devices && step5Data.analysisData.devices.length > 0 && (
-                          <Card className="p-4">
-                            <h6 className="font-medium mb-3">Device Inventory</h6>
-                            <div className="overflow-x-auto">
-                              <table className="w-full text-sm">
-                                <thead>
-                                  <tr className="border-b">
-                                    <th className="text-left p-2">Device Name</th>
-                                    <th className="text-left p-2">Status</th>
-                                    <th className="text-left p-2">Type</th>
-                                    <th className="text-left p-2">Source File</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {step5Data.analysisData.devices.slice(0, 10).map((device: any, index: number) => (
-                                    <tr key={index} className="border-b">
-                                      <td className="p-2">{device.Name || device.name || `Device ${index + 1}`}</td>
-                                      <td className="p-2">
-                                        <Badge variant={device.statusBadge || 'secondary'}>
-                                          {device.Status || device.status || 'Unknown'}
-                                        </Badge>
-                                      </td>
-                                      <td className="p-2">{device['Controller Type'] || device.Type || device.format}</td>
-                                      <td className="p-2">{device.sourceFile}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                              {step5Data.analysisData.devices.length > 10 && (
-                                <p className="text-xs text-muted-foreground mt-2">
-                                  Showing 10 of {step5Data.analysisData.devices.length} devices
-                                </p>
-                              )}
-                            </div>
-                          </Card>
-                        )}
-                      </div>
-                    )}
-                  </TabsContent>
-
-                  <TabsContent value="manual" className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-sm font-medium">Station Count</label>
-                        <Input
-                          type="number"
-                          placeholder="Number of stations"
-                          value={step5Data.manualStationCount}
-                          onChange={(e) => setStep5Data(prev => ({ ...prev, manualStationCount: e.target.value }))}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Network Protocols</label>
-                        <Input
-                          placeholder="e.g., BACnet, Modbus, LON"
-                          value={step5Data.manualProtocols || ''}
-                          onChange={(e) => setStep5Data(prev => ({ ...prev, manualProtocols: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Key Components</label>
-                      <Textarea
-                        placeholder="Main system components, controllers, network details..."
-                        value={step5Data.manualComponents}
-                        onChange={(e) => setStep5Data(prev => ({ ...prev, manualComponents: e.target.value }))}
-                        rows={3}
-                      />
-                    </div>
-                  </TabsContent>
-                </Tabs>
+                <TridiumDataImporter
+                  onAnalysisComplete={(result) => {
+                    setStep5Data(prev => ({ 
+                      ...prev, 
+                      analysisResult: result,
+                      analysisData: {
+                        totalStations: result.datasets.reduce((sum, ds) => sum + ds.rows.length, 0),
+                        onlineCount: result.datasets.reduce((sum, ds) => sum + ds.summary.statusBreakdown.ok, 0),
+                        downCount: result.datasets.reduce((sum, ds) => sum + ds.summary.statusBreakdown.down, 0),
+                        alarmCount: result.datasets.reduce((sum, ds) => sum + ds.summary.statusBreakdown.alarm, 0),
+                        protocolsFound: [...new Set(result.datasets.map(ds => ds.type))],
+                        devices: result.datasets.flatMap(ds => ds.rows.map(row => ({
+                          ...row.data,
+                          sourceFile: ds.filename,
+                          format: ds.type,
+                          statusBadge: row.parsedStatus?.badge.variant || 'secondary'
+                        })))
+                      }
+                    }));
+                  }}
+                  onDataSelected={(summaryText) => {
+                    setStep5Data(prev => ({ 
+                      ...prev, 
+                      generatedSummary: summaryText 
+                    }));
+                  }}
+                />
               </div>
             )}
 
