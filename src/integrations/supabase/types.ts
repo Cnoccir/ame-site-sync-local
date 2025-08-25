@@ -1688,6 +1688,63 @@ export type Database = {
         }
         Relationships: []
       }
+      system_access_tests: {
+        Row: {
+          connection_notes: string | null
+          created_at: string
+          id: string
+          platform_password_hash: string | null
+          platform_test_result: Json | null
+          platform_username: string | null
+          supervisor_ip: string | null
+          supervisor_password_hash: string | null
+          supervisor_test_result: Json | null
+          supervisor_username: string | null
+          system_version: string | null
+          updated_at: string
+          visit_id: string
+          workbench_password_hash: string | null
+          workbench_test_result: Json | null
+          workbench_username: string | null
+        }
+        Insert: {
+          connection_notes?: string | null
+          created_at?: string
+          id?: string
+          platform_password_hash?: string | null
+          platform_test_result?: Json | null
+          platform_username?: string | null
+          supervisor_ip?: string | null
+          supervisor_password_hash?: string | null
+          supervisor_test_result?: Json | null
+          supervisor_username?: string | null
+          system_version?: string | null
+          updated_at?: string
+          visit_id: string
+          workbench_password_hash?: string | null
+          workbench_test_result?: Json | null
+          workbench_username?: string | null
+        }
+        Update: {
+          connection_notes?: string | null
+          created_at?: string
+          id?: string
+          platform_password_hash?: string | null
+          platform_test_result?: Json | null
+          platform_username?: string | null
+          supervisor_ip?: string | null
+          supervisor_password_hash?: string | null
+          supervisor_test_result?: Json | null
+          supervisor_username?: string | null
+          system_version?: string | null
+          updated_at?: string
+          visit_id?: string
+          workbench_password_hash?: string | null
+          workbench_test_result?: Json | null
+          workbench_username?: string | null
+        }
+        Relationships: []
+      }
       system_connections: {
         Row: {
           connection_type: string
@@ -2259,6 +2316,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      hash_password: {
+        Args: { password_text: string }
+        Returns: string
       }
       hnsw_bit_support: {
         Args: { "": unknown }

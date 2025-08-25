@@ -182,7 +182,8 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
       case 3:
         return step3Data.panelsAccessible && step3Data.wiringCondition && step3Data.environmentalOk;
       case 4:
-        return step4Data.supervisorStatus === 'success' || step4Data.workbenchStatus === 'success';
+        // Allow completion with warnings if tests are run (success or failed)
+        return step4Data.supervisorStatus !== 'not_tested' || step4Data.workbenchStatus !== 'not_tested';
       case 5:
         return step5Data.analysisData !== null || Boolean(step5Data.generatedSummary);
       case 6:
@@ -194,9 +195,19 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
 
   // Reactive completion checking for steps 4-6
   useEffect(() => {
-    // Step 4: Auto-complete when connection tests succeed
+    // Step 4: Auto-complete when connection tests are attempted (regardless of result)
     if (stepStatuses[4] === 'active' && canCompleteStep(4) && 
-        (step4Data.supervisorStatus === 'success' || step4Data.workbenchStatus === 'success')) {
+        (step4Data.supervisorStatus !== 'not_tested' || step4Data.workbenchStatus !== 'not_tested')) {
+      
+      // Show warning if all tests failed
+      if (step4Data.supervisorStatus === 'failed' && step4Data.workbenchStatus === 'failed') {
+        toast({
+          title: "Warning: System Access Issues",
+          description: "All connection tests failed, but step completed. Review system access before proceeding.",
+          variant: "destructive"
+        });
+      }
+      
       handleStepComplete(4);
     }
   }, [step4Data.supervisorStatus, step4Data.workbenchStatus, stepStatuses]);
@@ -465,6 +476,7 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
                     setCompletionTriggers(prev => ({ ...prev, 4: prev[4] + 1 }));
                   }
                 }}
+                visitId={visitId}
               />
             )}
 
