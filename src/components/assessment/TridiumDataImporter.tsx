@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Upload, FileText, AlertTriangle, CheckCircle, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { TridiumCSVParser } from '@/utils/tridiumParser';
-import { TridiumDataset, TridiumAnalysisResult } from '@/types/tridium';
+import { TridiumDataset, TridiumAnalysisResult, TridiumDataTypes } from '@/types/tridium';
 import { TridiumDataTable } from './TridiumDataTable';
 import { TridiumSummaryGenerator } from './TridiumSummaryGenerator';
 import { logger } from '@/utils/logger';
@@ -112,6 +112,47 @@ export const TridiumDataImporter: React.FC<TridiumDataImporterProps> = ({
     onDataSelected?.(summary);
   }, [onDataSelected]);
 
+  const handleParserTypeChange = useCallback((datasetId: string, parserType: string) => {
+    const dataset = datasets.find(ds => ds.id === datasetId);
+    if (!dataset) return;
+
+    // Simple format update - just change the display format
+    setDatasets(prev => prev.map(ds => ds.id === datasetId ? {
+      ...ds,
+      format: parserType,
+      type: getTypeFromFormat(parserType)
+    } : ds));
+    
+    toast({
+      title: "Parser Type Updated",
+      description: `File format changed to ${getFormatDisplayName(parserType)}`,
+      variant: "default"
+    });
+  }, [datasets, toast]);
+
+  const getFormatDisplayName = (format: string) => {
+    const names: Record<string, string> = {
+      'N2Export': 'N2 Network Devices',
+      'BacnetExport': 'BACnet Devices', 
+      'ResourceExport': 'System Resources',
+      'NiagaraNetExport': 'Niagara Stations',
+      'PlatformDetails': 'Platform Information',
+      'Unknown': 'Unknown Format'
+    };
+    return names[format] || 'Unknown Format';
+  };
+
+  const getTypeFromFormat = (format: string): keyof TridiumDataTypes => {
+    const typeMap: Record<string, keyof TridiumDataTypes> = {
+      'N2Export': 'networkDevices',
+      'BacnetExport': 'bacnetDevices',
+      'ResourceExport': 'resourceMetrics',
+      'NiagaraNetExport': 'niagaraStations',
+      'PlatformDetails': 'platformDetails'
+    };
+    return typeMap[format] || 'unknown';
+  };
+
   const handleExportResults = useCallback(() => {
     if (datasets.length === 0) return;
     
@@ -186,6 +227,22 @@ export const TridiumDataImporter: React.FC<TridiumDataImporterProps> = ({
             <p className="text-muted-foreground mb-4">
               Drag and drop CSV files here, or click to browse
             </p>
+            
+            {/* File Naming Guidelines */}
+            <div className="bg-muted/50 rounded-lg p-4 mb-4 text-left">
+              <h4 className="font-medium text-sm mb-2">📁 File Naming Guidelines (for auto-detection):</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-muted-foreground">
+                <div>• N2 Export: Contains "Controller Type", "Status", "Address" columns</div>
+                <div>• BACnet Export: Contains "Device ID", "Vendor", "Type" columns</div>
+                <div>• Resource Export: Contains exactly "Name" and "Value" columns</div>
+                <div>• Niagara Export: Contains "Fox Port" or "Path" columns</div>
+                <div>• Platform Details: .txt files with platform information</div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2 italic">
+                💡 Don't worry about naming - you can manually select the parser type after upload
+              </p>
+            </div>
+            
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>Supported formats: Network Devices, BACnet Exports, Resource Metrics, Niagara Stations</p>
               <p>Accepted file types: .csv, .xlsx, .txt (Platform Details)</p>
@@ -221,31 +278,53 @@ export const TridiumDataImporter: React.FC<TridiumDataImporterProps> = ({
                 </Button>
               </div>
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className="space-y-3">
               {datasets.map(dataset => (
-                <Button
-                  key={dataset.id}
-                  variant={activeDataset === dataset.id ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setActiveDataset(dataset.id)}
-                  className="flex items-center gap-2"
-                >
-                  <div className="flex flex-col items-start">
-                    <div className="flex items-center gap-1">
+                <div key={dataset.id} className="border rounded-lg p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Button
+                      variant={activeDataset === dataset.id ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setActiveDataset(dataset.id)}
+                      className="flex items-center gap-2"
+                    >
                       {dataset.metadata.parseErrors.length === 0 ? (
                         <CheckCircle className="w-3 h-3 text-green-500" />
                       ) : (
                         <AlertTriangle className="w-3 h-3 text-yellow-500" />
                       )}
                       <span className="text-sm">{dataset.filename}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{dataset.format || dataset.metadata.detectedFormat || 'Unknown'}</span>
-                      <span>•</span>
-                      <span>{dataset.rows.length} rows</span>
-                    </div>
+                    </Button>
+                    
+                    {dataset.format === 'Unknown' && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Parser Type:</span>
+                        <select 
+                          className="text-xs border rounded px-2 py-1"
+                          onChange={(e) => handleParserTypeChange(dataset.id, e.target.value)}
+                          defaultValue=""
+                        >
+                          <option value="">Select Type</option>
+                          <option value="N2Export">N2 Network Export</option>
+                          <option value="BacnetExport">BACnet Device Export</option>
+                          <option value="ResourceExport">Resource Metrics</option>
+                          <option value="NiagaraNetExport">Niagara Network Export</option>
+                          <option value="PlatformDetails">Platform Details</option>
+                        </select>
+                      </div>
+                    )}
                   </div>
-                </Button>
+                  
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <span className="font-medium">
+                      {getFormatDisplayName(dataset.format || dataset.metadata.detectedFormat || 'Unknown')}
+                    </span>
+                    <span>•</span>
+                    <span>{dataset.rows.length} rows</span>
+                    <span>•</span>
+                    <span>{dataset.columns?.length || 0} columns</span>
+                  </div>
+                </div>
               ))}
             </div>
           </CardHeader>
