@@ -19,10 +19,17 @@ export class TridiumCSVParser {
       identifier: ['Name', 'Type', 'Device ID', 'Status'],
       statusColumn: 'Status',
       keyColumn: 'Name',
-      complexColumns: ['Exts', 'Protocol Rev'],
+      complexColumns: ['Vendor', 'Model', 'Health', 'Enabled'],
       type: 'bacnetDevices' as keyof TridiumDataTypes
     },
     'NiagaraNetExport': {
+      identifier: ['Name', 'Type', 'Address', 'Status'],
+      statusColumn: 'Status',
+      keyColumn: 'Name',
+      hierarchical: true,
+      type: 'niagaraStations' as keyof TridiumDataTypes
+    },
+    'NiagaraPathExport': {
       identifier: ['Path', 'Name', 'Type', 'Status'],
       statusColumn: 'Status',
       keyColumn: 'Name',
@@ -52,7 +59,11 @@ export class TridiumCSVParser {
       const headers = this.parseCSVLine(lines[0]);
       const format = this.detectFormat(headers);
       
-      logger.info('Detected format', { format: format?.type });
+      logger.info('Detected format', { 
+        format: format?.type, 
+        formatName: format?.name, 
+        headers: headers.slice(0, 5) 
+      });
 
       const columns = this.createColumns(headers);
       const rows: TridiumDataRow[] = [];
@@ -101,7 +112,7 @@ export class TridiumCSVParser {
       return {
         id: `dataset-${Date.now()}`,
         filename,
-        type: format?.type || 'networkDevices',
+        type: format?.type || 'resourceMetrics',
         columns,
         rows,
         summary,
@@ -154,12 +165,38 @@ export class TridiumCSVParser {
   }
 
   private static detectFormat(headers: string[]) {
+    // Normalize headers for case-insensitive matching
+    const normalizedHeaders = headers.map(h => h.toLowerCase().trim());
+    
+    // Try exact matches first
     for (const [formatName, config] of Object.entries(this.supportedFormats)) {
-      const matches = config.identifier.filter(col => headers.includes(col));
-      if (matches.length >= config.identifier.length * 0.75) {
+      const normalizedIdentifiers = config.identifier.map(id => id.toLowerCase().trim());
+      const exactMatches = normalizedIdentifiers.filter(id => normalizedHeaders.includes(id));
+      
+      // For ResourceExport, require exact 2-column match
+      if (formatName === 'ResourceExport' && headers.length === 2 && exactMatches.length === 2) {
+        return { ...config, name: formatName };
+      }
+      
+      // For other formats, require all required columns
+      if (formatName !== 'ResourceExport' && exactMatches.length === normalizedIdentifiers.length) {
         return { ...config, name: formatName };
       }
     }
+    
+    // Fallback: check for partial matches with high threshold
+    for (const [formatName, config] of Object.entries(this.supportedFormats)) {
+      const normalizedIdentifiers = config.identifier.map(id => id.toLowerCase().trim());
+      const partialMatches = normalizedIdentifiers.filter(id => 
+        normalizedHeaders.some(h => h.includes(id) || id.includes(h))
+      );
+      
+      // Require at least 80% match for fallback detection
+      if (partialMatches.length >= Math.ceil(normalizedIdentifiers.length * 0.8)) {
+        return { ...config, name: formatName };
+      }
+    }
+    
     return null;
   }
 
