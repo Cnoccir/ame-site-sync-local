@@ -136,6 +136,11 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
 
   const stats = getToolStats();
 
+  console.log('Debug: Tools loaded:', tools.length, tools);
+  console.log('Debug: Required tools:', getRequiredTools().length, getRequiredTools());
+  console.log('Debug: Loading state:', loading);
+  console.log('Debug: Show full list:', showFullList);
+
   if (loading) {
     return (
       <Card>
