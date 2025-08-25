@@ -739,6 +739,42 @@ export type Database = {
           },
         ]
       }
+      ame_service_tiers: {
+        Row: {
+          color: string
+          created_at: string | null
+          description: string | null
+          display_name: string
+          id: string
+          task_count: number | null
+          tier_code: string
+          tier_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          color: string
+          created_at?: string | null
+          description?: string | null
+          display_name: string
+          id?: string
+          task_count?: number | null
+          tier_code: string
+          tier_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string
+          created_at?: string | null
+          description?: string | null
+          display_name?: string
+          id?: string
+          task_count?: number | null
+          tier_code?: string
+          tier_name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       ame_sops_normalized: {
         Row: {
           best_practices: string | null
@@ -795,6 +831,36 @@ export type Database = {
           },
         ]
       }
+      ame_task_categories: {
+        Row: {
+          category_name: string
+          color: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_essential: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          category_name: string
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_essential?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          category_name?: string
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_essential?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       ame_tasks_normalized: {
         Row: {
           category_id: string | null
@@ -808,12 +874,14 @@ export type Database = {
           prerequisites: string | null
           quality_checks: string | null
           safety_notes: string | null
+          service_tiers: Json | null
           skills_required: string | null
           sop_steps: string | null
           sop_template_sheet: string | null
           task_id: string
           task_name: string
           task_order: number | null
+          tools_required: Json | null
           version: string | null
         }
         Insert: {
@@ -828,12 +896,14 @@ export type Database = {
           prerequisites?: string | null
           quality_checks?: string | null
           safety_notes?: string | null
+          service_tiers?: Json | null
           skills_required?: string | null
           sop_steps?: string | null
           sop_template_sheet?: string | null
           task_id: string
           task_name: string
           task_order?: number | null
+          tools_required?: Json | null
           version?: string | null
         }
         Update: {
@@ -848,12 +918,14 @@ export type Database = {
           prerequisites?: string | null
           quality_checks?: string | null
           safety_notes?: string | null
+          service_tiers?: Json | null
           skills_required?: string | null
           sop_steps?: string | null
           sop_template_sheet?: string | null
           task_id?: string
           task_name?: string
           task_order?: number | null
+          tools_required?: Json | null
           version?: string | null
         }
         Relationships: [
@@ -1376,6 +1448,136 @@ export type Database = {
           visit_id?: string
         }
         Relationships: []
+      }
+      device_aggregations: {
+        Row: {
+          aggregation_name: string
+          created_at: string
+          critical_count: number | null
+          device_types: Json | null
+          id: string
+          offline_count: number | null
+          protocols_found: string[] | null
+          status_summary: Json | null
+          total_devices: number | null
+          total_files: number | null
+          updated_at: string
+          visit_id: string | null
+        }
+        Insert: {
+          aggregation_name: string
+          created_at?: string
+          critical_count?: number | null
+          device_types?: Json | null
+          id?: string
+          offline_count?: number | null
+          protocols_found?: string[] | null
+          status_summary?: Json | null
+          total_devices?: number | null
+          total_files?: number | null
+          updated_at?: string
+          visit_id?: string | null
+        }
+        Update: {
+          aggregation_name?: string
+          created_at?: string
+          critical_count?: number | null
+          device_types?: Json | null
+          id?: string
+          offline_count?: number | null
+          protocols_found?: string[] | null
+          status_summary?: Json | null
+          total_devices?: number | null
+          total_files?: number | null
+          updated_at?: string
+          visit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_aggregations_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "ame_visits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_inventory: {
+        Row: {
+          address: string | null
+          controller_type: string | null
+          created_at: string
+          device_id: string | null
+          device_name: string
+          device_type: string | null
+          id: string
+          is_critical: boolean | null
+          is_online: boolean | null
+          location: string | null
+          model: string | null
+          parsed_status: Json | null
+          protocol: string | null
+          raw_data: Json | null
+          source_file: string | null
+          source_format: string | null
+          status: string | null
+          updated_at: string
+          vendor: string | null
+          visit_id: string | null
+        }
+        Insert: {
+          address?: string | null
+          controller_type?: string | null
+          created_at?: string
+          device_id?: string | null
+          device_name: string
+          device_type?: string | null
+          id?: string
+          is_critical?: boolean | null
+          is_online?: boolean | null
+          location?: string | null
+          model?: string | null
+          parsed_status?: Json | null
+          protocol?: string | null
+          raw_data?: Json | null
+          source_file?: string | null
+          source_format?: string | null
+          status?: string | null
+          updated_at?: string
+          vendor?: string | null
+          visit_id?: string | null
+        }
+        Update: {
+          address?: string | null
+          controller_type?: string | null
+          created_at?: string
+          device_id?: string | null
+          device_name?: string
+          device_type?: string | null
+          id?: string
+          is_critical?: boolean | null
+          is_online?: boolean | null
+          location?: string | null
+          model?: string | null
+          parsed_status?: Json | null
+          protocol?: string | null
+          raw_data?: Json | null
+          source_file?: string | null
+          source_format?: string | null
+          status?: string | null
+          updated_at?: string
+          vendor?: string | null
+          visit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_inventory_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "ame_visits"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       document_metadata: {
         Row: {
@@ -2412,6 +2614,12 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "technician" | "user"
+      inventory_report_type:
+        | "simple_inventory"
+        | "detailed_inventory"
+        | "critical_issues"
+        | "protocol_summary"
+        | "site_overview"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2540,6 +2748,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "technician", "user"],
+      inventory_report_type: [
+        "simple_inventory",
+        "detailed_inventory",
+        "critical_issues",
+        "protocol_summary",
+        "site_overview",
+      ],
     },
   },
 } as const
