@@ -236,11 +236,45 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
         // Don't auto-expand - respect user navigation
       }
       
-      // Load step data
-      if (savedData.step1Data) setStep1Data(savedData.step1Data);
-      if (savedData.step2Data) setStep2Data(savedData.step2Data);
-      if (savedData.step3Data) setStep3Data(savedData.step3Data);
-      if (savedData.step4Data) setStep4Data(savedData.step4Data);
+      // Load step data with safe defaults for new fields
+      if (savedData.step1Data) {
+        setStep1Data(prev => ({
+          ...prev,
+          ...savedData.step1Data,
+          contactNumber: savedData.step1Data.contactNumber || '',
+          contactEmail: savedData.step1Data.contactEmail || '',
+          communicationPreference: savedData.step1Data.communicationPreference || 'call',
+          onSiteContactVerified: savedData.step1Data.onSiteContactVerified || false
+        }));
+      }
+      if (savedData.step2Data) {
+        setStep2Data(prev => ({
+          ...prev,
+          ...savedData.step2Data,
+          safetyRequirements: savedData.step2Data.safetyRequirements || '',
+          siteHazards: savedData.step2Data.siteHazards || ''
+        }));
+      }
+      if (savedData.step3Data) {
+        setStep3Data(prev => ({
+          ...prev,
+          ...savedData.step3Data,
+          buildingAccessType: savedData.step3Data.buildingAccessType || '',
+          buildingAccessDetails: savedData.step3Data.buildingAccessDetails || ''
+        }));
+      }
+      if (savedData.step4Data) {
+        setStep4Data(prev => ({
+          ...prev,
+          ...savedData.step4Data,
+          platformUsername: savedData.step4Data.platformUsername || '',
+          platformPassword: savedData.step4Data.platformPassword || '',
+          webSupervisorUrl: savedData.step4Data.webSupervisorUrl || '',
+          vpnRequired: savedData.step4Data.vpnRequired || false,
+          vpnDetails: savedData.step4Data.vpnDetails || '',
+          remoteAccessResults: savedData.step4Data.remoteAccessResults || {}
+        }));
+      }
       if (savedData.step5Data) setStep5Data(savedData.step5Data);
       if (savedData.step6Data) setStep6Data(savedData.step6Data);
       if (savedData.priorityData) setPriorityData(savedData.priorityData);
@@ -386,7 +420,7 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
   const canCompleteStep = (stepNumber: number) => {
     switch (stepNumber) {
       case 1:
-        return step1Data.contactPerson.trim() !== '' && step1Data.contactNumber.trim() !== '';
+        return (step1Data.contactPerson?.trim() || '') !== '' && (step1Data.contactNumber?.trim() || '') !== '';
       case 2:
         return step2Data.ppeAvailable && step2Data.hazardsReviewed && step2Data.emergencyProcedures;
       case 3:
@@ -397,7 +431,7 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
       case 5:
         return step5Data.analysisData !== null || Boolean(step5Data.generatedSummary);
       case 6:
-        return step6Data.activeAlarms !== '' && step6Data.criticalAlarms !== '';
+        return (step6Data.activeAlarms?.trim() || '') !== '' && (step6Data.criticalAlarms?.trim() || '') !== '';
       default:
         return false;
     }
@@ -407,8 +441,8 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
     const missing = [];
     switch (stepNumber) {
       case 1:
-        if (!step1Data.contactPerson.trim()) missing.push('Contact Person');
-        if (!step1Data.contactNumber.trim()) missing.push('Contact Number');
+        if (!(step1Data.contactPerson?.trim())) missing.push('Contact Person');
+        if (!(step1Data.contactNumber?.trim())) missing.push('Contact Number');
         break;
       case 2:
         if (!step2Data.ppeAvailable) missing.push('PPE Available');
@@ -431,8 +465,8 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
         }
         break;
       case 6:
-        if (!step6Data.activeAlarms) missing.push('Active Alarms count');
-        if (!step6Data.criticalAlarms) missing.push('Critical Alarms count');
+        if (!(step6Data.activeAlarms?.trim())) missing.push('Active Alarms count');
+        if (!(step6Data.criticalAlarms?.trim())) missing.push('Critical Alarms count');
         break;
     }
     return missing;
