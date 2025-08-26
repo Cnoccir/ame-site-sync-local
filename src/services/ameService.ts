@@ -5,6 +5,7 @@ import { errorHandler } from '@/utils/errorHandler';
 import { getCurrentISODate, getCurrentDateString, generateVisitExpiration } from '@/utils/dateHelpers';
 import { generateUUID, generateSessionToken } from '@/utils/idGenerators';
 import { VISIT_STATUS, PHASE_STATUS } from '@/utils/constants';
+import { filterContentByTier } from '@/types/serviceTiers';
 
 /**
  * Service for AME maintenance system database operations
@@ -415,20 +416,27 @@ export class AMEService {
   }
   
   static async getTasksByServiceTier(serviceTier: string): Promise<any[]> {
-    // Get inherited tiers for this service level
-    const inheritedTiers = this.getInheritedTiers(serviceTier);
-    
-    // Query tasks that are available to any of the inherited tiers
+    // Get all tasks first
     const { data, error } = await supabase
       .from('ame_tasks_normalized')
       .select('*')
-      .overlaps('service_tiers', inheritedTiers)
-      .order('tier_order', { ascending: true })
       .order('task_order', { ascending: true });
     
     if (error) throw error;
     
-    return (data || []).map(task => ({
+    // Get inherited tiers for filtering
+    const inheritedTiers = this.getInheritedTiers(serviceTier);
+    
+    // Filter tasks based on task_id prefixes (C = CORE, A = ASSURE, G = GUARDIAN)
+    const filteredTasks = (data || []).filter(task => {
+      const taskId = task.task_id || '';
+      if (taskId.startsWith('C')) return inheritedTiers.includes('CORE');
+      if (taskId.startsWith('A')) return inheritedTiers.includes('ASSURE');
+      if (taskId.startsWith('G')) return inheritedTiers.includes('GUARDIAN');
+      return inheritedTiers.includes('CORE'); // Default fallback
+    });
+    
+    return filteredTasks.map(task => ({
       ...task,
       service_tier: serviceTier,
       category_name: task.task_name || 'General'
