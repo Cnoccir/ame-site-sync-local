@@ -430,13 +430,20 @@ export class AMEService {
     // Filter tasks based on task_id prefixes (C = CORE, A = ASSURE, G = GUARDIAN)
     const filteredTasks = (data || []).filter(task => {
       const taskId = task.task_id || '';
-      if (taskId.startsWith('C')) return inheritedTiers.includes('CORE');
-      if (taskId.startsWith('A')) return inheritedTiers.includes('ASSURE');
-      if (taskId.startsWith('G')) return inheritedTiers.includes('GUARDIAN');
-      return false; // Don't include tasks that don't match any prefix
+      let includeTask = false;
+      
+      if (taskId.startsWith('C') && inheritedTiers.includes('CORE')) {
+        includeTask = true;
+      } else if (taskId.startsWith('A') && inheritedTiers.includes('ASSURE')) {
+        includeTask = true;
+      } else if (taskId.startsWith('G') && inheritedTiers.includes('GUARDIAN')) {
+        includeTask = true;
+      }
+      
+      return includeTask;
     });
     
-    console.log(`Service tier: ${serviceTier}, Inherited tiers: ${inheritedTiers.join(', ')}, Filtered tasks: ${filteredTasks.length}`);
+    console.log(`Service tier: ${serviceTier}, Inherited tiers: [${inheritedTiers.join(', ')}], Total tasks: ${(data || []).length}, Filtered tasks: ${filteredTasks.length}`);
     
     return filteredTasks.map(task => ({
       ...task,
