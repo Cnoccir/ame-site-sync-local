@@ -98,9 +98,10 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
     checkForActiveVisits();
   }, [visitId, customer.id, technicianId]);
 
-  // Sync with session data
+  // Initialize from session data only on first load
   useEffect(() => {
-    if (sessionData) {
+    if (sessionData && currentPhase === 1) {
+      // Only set current phase from session data if we're still on the default phase
       setCurrentPhase(sessionData.currentPhase);
       
       // Calculate completed phases based on current phase
@@ -110,7 +111,7 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
       }
       setCompletedPhases(completed);
     }
-  }, [sessionData]);
+  }, [sessionData]); // Removed currentPhase dependency to prevent bounce back
 
   const handlePhaseComplete = async (phaseId: number) => {
     setCompletedPhases(prev => [...prev, phaseId]);
