@@ -1096,8 +1096,11 @@ export type Database = {
           maintenance_notes: string | null
           minimum_stock: number | null
           request_method: string | null
+          required_for_tasks: Json | null
           safety_category: string | null
+          service_tiers: Json | null
           status: string | null
+          system_types: Json | null
           tool_id: string
           tool_name: string
           vendor_link: string | null
@@ -1115,8 +1118,11 @@ export type Database = {
           maintenance_notes?: string | null
           minimum_stock?: number | null
           request_method?: string | null
+          required_for_tasks?: Json | null
           safety_category?: string | null
+          service_tiers?: Json | null
           status?: string | null
+          system_types?: Json | null
           tool_id: string
           tool_name: string
           vendor_link?: string | null
@@ -1134,8 +1140,11 @@ export type Database = {
           maintenance_notes?: string | null
           minimum_stock?: number | null
           request_method?: string | null
+          required_for_tasks?: Json | null
           safety_category?: string | null
+          service_tiers?: Json | null
           status?: string | null
+          system_types?: Json | null
           tool_id?: string
           tool_name?: string
           vendor_link?: string | null

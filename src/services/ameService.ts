@@ -467,7 +467,8 @@ export class AMEService {
     const { data, error } = await supabase
       .from('ame_tools_normalized')
       .select('*')
-      .overlaps('service_tiers', inheritedTiers)
+      .or(inheritedTiers.map(tier => `service_tiers.cs.["${tier}"]`).join(','))
+      .eq('status', 'active')
       .order('tool_name');
     
     if (error) throw error;
