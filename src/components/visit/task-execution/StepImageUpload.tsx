@@ -89,10 +89,10 @@ export const StepImageUpload = ({
 
     setUploading(true);
     try {
-      // Resize image
+      // Resize image for better performance
       const resizedFile = await resizeImage(file);
       
-      // Generate filename
+      // Generate filename for user screenshots (different path than admin SOP images)
       const timestamp = Date.now();
       const fileName = `visit-screenshots/step-${stepNumber}-${timestamp}.jpg`;
 
@@ -119,7 +119,7 @@ export const StepImageUpload = ({
         description: `Step ${stepNumber} image uploaded successfully`,
       });
     } catch (error: any) {
-      console.error('Upload error:', error);
+      console.error('User screenshot upload error:', error);
       toast({
         title: 'Upload Failed',
         description: error.message || 'Failed to upload image',

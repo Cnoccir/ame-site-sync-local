@@ -13,6 +13,7 @@ import {
   ExternalLink,
   Bookmark
 } from 'lucide-react';
+import { StepImageUpload } from './StepImageUpload';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -59,10 +60,12 @@ interface CarouselSOPViewerProps {
     duration_minutes: number;
   };
   sopData?: {
+    sop_id?: string;
     steps?: RichSOPStep[];
     hyperlinks?: SOPReference[];
     goal?: string;
     best_practices?: string;
+    step_images?: Record<string, string>;
   };
   onStepComplete: (stepNumber: number) => void;
   onAllStepsComplete: () => void;
@@ -80,6 +83,7 @@ export const CarouselSOPViewer: React.FC<CarouselSOPViewerProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [steps, setSteps] = useState<TaskStep[]>([]);
+  const [stepImages, setStepImages] = useState<Record<number, string>>({});
 
   useEffect(() => {
     // Parse structured SOP steps or fallback to simple steps
@@ -103,7 +107,7 @@ export const CarouselSOPViewer: React.FC<CarouselSOPViewerProps> = ({
             navigationPath: task.navigation_path,
             safetyNotes: task.safety_notes,
             estimatedMinutes: Math.ceil(task.duration_minutes / sopData.steps.length),
-            screenshotPlaceholder: `/lovable-uploads/faf02e95-507e-4652-aa44-00cd9ee54480.png`
+            screenshotPlaceholder: sopData?.step_images?.[stepNumber.toString()] || `/lovable-uploads/faf02e95-507e-4652-aa44-00cd9ee54480.png`
           };
         });
       }
@@ -155,7 +159,7 @@ export const CarouselSOPViewer: React.FC<CarouselSOPViewerProps> = ({
           specificActions: specificActions.length > 0 ? specificActions : undefined,
           safetyNotes,
           estimatedMinutes: Math.ceil(task.duration_minutes / stepTexts.length),
-          screenshotPlaceholder: `/lovable-uploads/faf02e95-507e-4652-aa44-00cd9ee54480.png` // Generic placeholder
+          screenshotPlaceholder: sopData?.step_images?.[stepNumber.toString()] || `/lovable-uploads/faf02e95-507e-4652-aa44-00cd9ee54480.png`
         };
       });
     };
@@ -386,33 +390,39 @@ export const CarouselSOPViewer: React.FC<CarouselSOPViewerProps> = ({
 
             {/* Visual Guide Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Screenshot Placeholder */}
+              {/* Visual Guide Section */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Camera className="w-4 h-4 text-muted-foreground" />
                   <span className="text-sm font-medium text-muted-foreground">Visual Guide</span>
                 </div>
+                
+                {/* Admin SOP Image or User Screenshot */}
                 <div className="relative aspect-video bg-muted rounded-lg border overflow-hidden">
+                  {/* Display admin SOP image (fallback) or user screenshot (priority) */}
                   <img 
-                    src={currentStepData.screenshotPlaceholder}
-                    alt={`Screenshot for ${currentStepData.title}`}
-                    className="w-full h-full object-cover"
+                    src={stepImages[currentStepData.stepNumber] || currentStepData.screenshotPlaceholder}
+                    alt={`Visual guide for ${currentStepData.title}`}
+                    className="w-full h-full object-contain"
                     onError={(e) => {
-                      // Fallback to placeholder if image fails to load
+                      // Fallback to SVG placeholder if both images fail
                       e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmNWY5Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY0NzQ4YiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkNhcHR1cmUgU2NyZWVuc2hvdCBIZXJlPC90ZXh0Pjwvc3ZnPg==';
                     }}
                   />
-                  <div className="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="bg-background/90 backdrop-blur-sm"
-                    >
-                      <Camera className="w-4 h-4 mr-2" />
-                      Update Screenshot
-                    </Button>
-                  </div>
                 </div>
+                
+                {/* Step Image Upload Component */}
+                <StepImageUpload
+                  stepNumber={currentStepData.stepNumber}
+                  currentImageUrl={stepImages[currentStepData.stepNumber]}
+                  onImageUpdated={(imageUrl) => {
+                    setStepImages(prev => ({
+                      ...prev,
+                      [currentStepData.stepNumber]: imageUrl || undefined
+                    }));
+                  }}
+                  isCompact={true}
+                />
               </div>
 
               {/* Step Details */}

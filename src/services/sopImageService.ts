@@ -137,7 +137,11 @@ export class SOPImageService {
         .eq('sop_id', sopId)
         .single();
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.warn('SOP not found, creating new step_images entry:', fetchError);
+        // If SOP doesn't exist, just continue - this is for admin uploads
+        return;
+      }
 
       const stepImages = sop.step_images || {};
       stepImages[stepNumber.toString()] = imageUrl;

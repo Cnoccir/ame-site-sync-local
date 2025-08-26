@@ -50,6 +50,7 @@ export const SOPImageUpload = ({
         description: `Step ${stepNumber} image uploaded and optimized successfully`,
       });
     } catch (error: any) {
+      console.error('Admin image upload error:', error);
       toast({
         title: 'Upload Failed',
         description: error.message || 'Failed to upload image',
