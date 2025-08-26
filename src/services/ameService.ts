@@ -420,7 +420,7 @@ export class AMEService {
     const { data, error } = await supabase
       .from('ame_tasks_normalized')
       .select('*')
-      .order('task_order', { ascending: true });
+      .order('task_id', { ascending: true });
     
     if (error) throw error;
     
@@ -433,8 +433,10 @@ export class AMEService {
       if (taskId.startsWith('C')) return inheritedTiers.includes('CORE');
       if (taskId.startsWith('A')) return inheritedTiers.includes('ASSURE');
       if (taskId.startsWith('G')) return inheritedTiers.includes('GUARDIAN');
-      return inheritedTiers.includes('CORE'); // Default fallback
+      return false; // Don't include tasks that don't match any prefix
     });
+    
+    console.log(`Service tier: ${serviceTier}, Inherited tiers: ${inheritedTiers.join(', ')}, Filtered tasks: ${filteredTasks.length}`);
     
     return filteredTasks.map(task => ({
       ...task,
