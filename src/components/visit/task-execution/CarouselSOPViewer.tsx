@@ -107,7 +107,7 @@ export const CarouselSOPViewer: React.FC<CarouselSOPViewerProps> = ({
             navigationPath: task.navigation_path,
             safetyNotes: task.safety_notes,
             estimatedMinutes: Math.ceil(task.duration_minutes / sopData.steps.length),
-            screenshotPlaceholder: sopData?.step_images?.[stepNumber.toString()] || `/lovable-uploads/faf02e95-507e-4652-aa44-00cd9ee54480.png`
+            screenshotPlaceholder: sopData?.step_images?.[stepNumber.toString()] || `/images/placeholder-step.png`
           };
         });
       }
@@ -159,7 +159,7 @@ export const CarouselSOPViewer: React.FC<CarouselSOPViewerProps> = ({
           specificActions: specificActions.length > 0 ? specificActions : undefined,
           safetyNotes,
           estimatedMinutes: Math.ceil(task.duration_minutes / stepTexts.length),
-          screenshotPlaceholder: sopData?.step_images?.[stepNumber.toString()] || `/lovable-uploads/faf02e95-507e-4652-aa44-00cd9ee54480.png`
+          screenshotPlaceholder: sopData?.step_images?.[stepNumber.toString()] || `/images/placeholder-step.png`
         };
       });
     };

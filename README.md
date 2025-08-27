@@ -1,54 +1,36 @@
-# Welcome to your Lovable project
+# AME Site Sync - Local Development Version
 
-## Project info
+## Project Overview
 
-**URL**: https://lovable.dev/projects/aa544469-b64b-4e24-9cf1-d29c02de6d97
+This is a local development version of the AME Site Sync application, designed for building automation maintenance management. This project has been cleaned of external dependencies and can be run independently for testing and development.
 
-## How can I edit this code?
+## Getting Started
 
-There are several ways of editing your application.
+### Prerequisites
 
-**Use Lovable**
+- Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/aa544469-b64b-4e24-9cf1-d29c02de6d97) and start prompting.
+### Development Setup
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Follow these steps to set up the development environment:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Step 1: Navigate to the project directory
+cd ame-site-sync-local
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Step 2: Install the necessary dependencies
+npm install
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 3: Start the development server
 npm run dev
+
+# Step 4: Build for production (optional)
+npm run build
 ```
 
-**Edit a file directly in GitHub**
+### Environment Configuration
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Make sure to configure your environment variables in the `.env` file for Supabase integration.
 
 ## What technologies are used for this project?
 
@@ -60,14 +42,18 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
-## How can I deploy this project?
+## Deployment
 
-Simply open [Lovable](https://lovable.dev/projects/aa544469-b64b-4e24-9cf1-d29c02de6d97) and click on Share -> Publish.
+This is a local development version. For production deployment:
 
-## Can I connect a custom domain to my Lovable project?
+1. Run `npm run build` to create a production build
+2. Deploy the `dist` folder to your preferred hosting service
+3. Configure environment variables on your hosting platform
 
-Yes, you can!
+## Features
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- Building automation maintenance management
+- Customer management system
+- Task execution and tracking
+- Network analysis and reporting
+- Supabase integration for data persistence
