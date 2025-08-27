@@ -36,7 +36,7 @@ export function DeviceInventoryAggregator({
   const summary = React.useMemo(() => {
     const totalDevices = datasets.reduce((sum, dataset) => sum + dataset.rows.length, 0);
     const protocols = [...new Set(datasets.map(dataset => 
-      DeviceInventoryService['detectProtocol'](dataset.type, dataset.filename)
+      DeviceInventoryService['detectProtocol'](dataset.format as any, dataset.filename)
     ))];
     const files = datasets.map(d => d.filename);
     
@@ -196,193 +196,219 @@ export function DeviceInventoryAggregator({
   }, [inventoryReport, aggregationName, toast]);
 
   return (
-    <div className="space-y-6">
-      {/* Network Inventory Analysis */}
-      <Card className="border-l-4 border-l-primary">
-        <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-          <CardHeader className="pb-3">
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full justify-between p-0 h-auto font-normal">
-                <div className="flex items-center gap-2">
-                  <Merge className="h-5 w-5 text-primary" />
-                  <div className="text-left">
-                    <CardTitle className="text-lg">Network Inventory Analysis</CardTitle>
-                    <CardDescription className="text-sm">
-                      Multi-file device aggregation with deduplication
-                    </CardDescription>
-                  </div>
-                </div>
-                {isDetailsOpen ? (
-                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                )}
-              </Button>
-            </CollapsibleTrigger>
-          </CardHeader>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="w-5 h-5" />
+              Network Inventory Analysis
+            </CardTitle>
+            <CardDescription>
+              Multi-file device aggregation with deduplication
+            </CardDescription>
+          </div>
+          <Badge variant="outline">
+            {summary.totalDevices} devices from {datasets.length} files
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Summary Statistics */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center p-4 bg-primary/5 rounded-lg">
+            <div className="text-2xl font-bold text-primary">{summary.totalDevices}</div>
+            <div className="text-sm text-muted-foreground">Total Devices</div>
+          </div>
+          <div className="text-center p-4 bg-blue-50 rounded-lg">
+            <div className="text-2xl font-bold text-blue-600">{datasets.length}</div>
+            <div className="text-sm text-muted-foreground">Source Files</div>
+          </div>
+          <div className="text-center p-4 bg-green-50 rounded-lg">
+            <div className="text-2xl font-bold text-green-600">{summary.protocols.length}</div>
+            <div className="text-sm text-muted-foreground">Protocols</div>
+          </div>
+          <div className="text-center p-4 bg-purple-50 rounded-lg">
+            <div className="text-2xl font-bold text-purple-600">{aggregatedDevices.length}</div>
+            <div className="text-sm text-muted-foreground">Unique Devices</div>
+          </div>
+        </div>
 
-          <CollapsibleContent>
-            <CardContent className="space-y-6">
+        {/* Aggregation Controls */}
+        <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="w-full justify-between">
+              <span className="flex items-center gap-2">
+                <Merge className="h-4 w-4" />
+                Aggregate & Analyze Devices
+              </span>
+              {isDetailsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="aggregation-name">Aggregation Name</Label>
                 <Input
                   id="aggregation-name"
                   value={aggregationName}
                   onChange={(e) => setAggregationName(e.target.value)}
-                  placeholder="Enter a name for this device aggregation"
+                  placeholder="Enter aggregation name..."
                 />
               </div>
-
-              {/* Summary Information */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-primary">{summary.totalDevices}</div>
-                  <div className="text-sm text-muted-foreground font-medium">Total Devices</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600">{datasets.length}</div>
-                  <div className="text-sm text-muted-foreground font-medium">Source Files</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-green-600">{summary.protocols.length}</div>
-                  <div className="text-sm text-muted-foreground font-medium">Protocols</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-purple-600">{aggregatedDevices.length}</div>
-                  <div className="text-sm text-muted-foreground font-medium">Unique Devices</div>
-                </div>
+              <div className="flex items-end">
+                <Button onClick={handleAggregateDevices} disabled={isProcessing} className="w-full">
+                  {isProcessing ? 'Processing...' : 'Aggregate & Analyze Devices'}
+                </Button>
               </div>
-
-              <Collapsible defaultOpen={false}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="outline" size="sm" className="mb-3">
-                    <FileText className="h-4 w-4 mr-2" />
-                    View Source Details
-                    <ChevronDown className="h-4 w-4 ml-2" />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4">
-                  {/* Source Files */}
-                  <div className="p-4 border rounded-lg bg-muted/30">
-                    <Label className="text-sm font-semibold">Source Files ({datasets.length})</Label>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {summary.files.map((filename, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">{filename}</Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Protocols */}
-                  <div className="p-4 border rounded-lg bg-muted/30">
-                    <Label className="text-sm font-semibold">Detected Protocols ({summary.protocols.length})</Label>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {summary.protocols.map((protocol, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">{protocol}</Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Status Breakdown */}
-                  <div className="p-4 border rounded-lg bg-muted/30">
-                    <Label className="text-sm font-semibold">Status Overview</Label>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {Object.entries(summary.statusBreakdown).map(([status, count]) => (
-                        <Badge 
-                          key={status} 
-                          variant={status === 'ok' ? 'default' : status === 'down' ? 'destructive' : 'secondary'}
-                          className="text-xs"
-                        >
-                          {status.toUpperCase()}: {count}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-
-              <Button 
-                onClick={handleAggregateDevices} 
-                disabled={isProcessing || datasets.length === 0}
-                className="w-full h-12 text-base"
-                size="lg"
-              >
-                <Database className="h-5 w-5 mr-2" />
-                {isProcessing ? 'Processing Devices...' : 'Aggregate & Analyze Devices'}
-              </Button>
-            </CardContent>
+            </div>
           </CollapsibleContent>
         </Collapsible>
-      </Card>
 
-      {/* Inventory Report Generation */}
-      {aggregatedDevices.length > 0 && (
-        <Card className="border-l-4 border-l-green-500">
-          <Collapsible open={isReportOpen} onOpenChange={setIsReportOpen}>
-            <CardHeader className="pb-3">
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="w-full justify-between p-0 h-auto font-normal">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-green-600" />
-                    <div className="text-left">
-                      <CardTitle className="text-lg">Simple Inventory Report</CardTitle>
-                      <CardDescription className="text-sm">
-                        Generate and manage device inventory reports
-                      </CardDescription>
-                    </div>
+        {/* Network Device Review - Integrated as collapsible section */}
+        {aggregatedDevices.length > 0 && (
+          <Collapsible>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between">
+                <span className="flex items-center gap-2">
+                  <Database className="h-4 w-4" />
+                  Network Device Review
+                </span>
+                <Badge variant="secondary">
+                  {aggregatedDevices.length} of {summary.totalDevices} devices • 0 selected for report
+                </Badge>
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-4">
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h4 className="font-medium">Device Selection</h4>
+                    <p className="text-sm text-muted-foreground">Select devices to include in inventory report</p>
                   </div>
-                  {isReportOpen ? (
-                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </Button>
-              </CollapsibleTrigger>
-            </CardHeader>
-
-            <CollapsibleContent>
-              <CardContent className="space-y-6">
-                <div className="flex flex-wrap gap-3">
-                  <Button 
-                    onClick={handleGenerateInventoryReport} 
-                    variant="default"
-                    size="lg"
-                    className="flex-1 min-w-[200px]"
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    Generate Report
-                  </Button>
-                  
-                  {inventoryReport && (
-                    <>
-                      <Button onClick={handleSaveReport} variant="outline" size="lg">
-                        <Save className="h-4 w-4 mr-2" />
-                        Save Report
-                      </Button>
-                      <Button onClick={handleDownloadReport} variant="outline" size="lg">
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </Button>
-                    </>
-                  )}
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline">Select All (0)</Button>
+                    <Button size="sm" variant="outline">Clear Selection</Button>
+                    <Button size="sm" variant="outline">Critical Issues (1)</Button>
+                    <Button size="sm" variant="outline">Controllers (0)</Button>
+                  </div>
                 </div>
-
-                {inventoryReport && (
-                  <div className="space-y-3">
-                    <Label className="text-base font-semibold">Generated Report Preview</Label>
-                    <div className="border rounded-lg bg-muted/30">
-                      <Textarea
-                        value={inventoryReport}
-                        readOnly
-                        className="min-h-[400px] font-mono text-sm border-0 bg-transparent resize-none"
-                      />
-                    </div>
-                  </div>
+                
+                {/* Device Table */}
+                <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                  <table className="w-full border-collapse border border-gray-200">
+                    <thead className="sticky top-0 bg-gray-50">
+                      <tr>
+                        <th className="border border-gray-300 px-2 py-1 text-left w-12">Select</th>
+                        <th className="border border-gray-300 px-2 py-1 text-left">Device Name</th>
+                        <th className="border border-gray-300 px-2 py-1 text-left">Status</th>
+                        <th className="border border-gray-300 px-2 py-1 text-left">Type/Protocol</th>
+                        <th className="border border-gray-300 px-2 py-1 text-left">Address/ID</th>
+                        <th className="border border-gray-300 px-2 py-1 text-left">Fox Port</th>
+                        <th className="border border-gray-300 px-2 py-1 text-left">Host Model</th>
+                        <th className="border border-gray-300 px-2 py-1 text-left">Version</th>
+                        <th className="border border-gray-300 px-2 py-1 text-left">Source File</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {aggregatedDevices.slice(0, 50).map((device, index) => (
+                        <tr key={device.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="border border-gray-300 px-2 py-1">
+                            <input type="checkbox" className="rounded" />
+                          </td>
+                          <td className="border border-gray-300 px-2 py-1 font-medium">
+                            {device.deviceName || 'Unknown'}
+                          </td>
+                          <td className="border border-gray-300 px-2 py-1">
+                            <Badge
+                              variant={device.status === 'Online' ? 'default' : device.status === 'Alarm' ? 'destructive' : 'secondary'}
+                              className="text-xs"
+                            >
+                              {device.status || 'Unknown'}
+                            </Badge>
+                          </td>
+                          <td className="border border-gray-300 px-2 py-1 text-sm">
+                            {device.deviceType || device.protocol || 'Unknown'}
+                          </td>
+                          <td className="border border-gray-300 px-2 py-1 text-sm font-mono">
+                            {device.address || device.deviceId || 'N/A'}
+                          </td>
+                          <td className="border border-gray-300 px-2 py-1 text-sm">
+                            {device.metadata?.foxPort || 'N/A'}
+                          </td>
+                          <td className="border border-gray-300 px-2 py-1 text-sm">
+                            {device.metadata?.hostModel || device.deviceModel || 'N/A'}
+                          </td>
+                          <td className="border border-gray-300 px-2 py-1 text-sm">
+                            {device.version || 'N/A'}
+                          </td>
+                          <td className="border border-gray-300 px-2 py-1 text-xs text-muted-foreground">
+                            {device.sourceFile || 'N/A'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {aggregatedDevices.length > 50 && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Showing first 50 devices of {aggregatedDevices.length} total.
+                  </p>
                 )}
-              </CardContent>
+              </div>
             </CollapsibleContent>
           </Collapsible>
-        </Card>
-      )}
-    </div>
+        )}
+
+        {/* Inventory Report Generation */}
+        {aggregatedDevices.length > 0 && (
+          <Collapsible open={isReportOpen} onOpenChange={setIsReportOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between">
+                <span className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Generate Analysis Summary
+                </span>
+                {isReportOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-4">
+              <div className="flex gap-2">
+                <Button onClick={handleGenerateInventoryReport} variant="outline">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Generate Report
+                </Button>
+                <Button onClick={handleSaveReport} disabled={!inventoryReport} variant="outline">
+                  <Save className="w-4 h-4 mr-2" />
+                  Save to Database
+                </Button>
+                <Button onClick={handleDownloadReport} disabled={!inventoryReport} variant="outline">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Report
+                </Button>
+              </div>
+              
+              {inventoryReport && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Generated Inventory Report</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Textarea
+                      value={inventoryReport}
+                      onChange={(e) => setInventoryReport(e.target.value)}
+                      className="min-h-[300px] font-mono text-sm"
+                      placeholder="Generated report will appear here..."
+                    />
+                  </CardContent>
+                </Card>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+      </CardContent>
+    </Card>
   );
 }

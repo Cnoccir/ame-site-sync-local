@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, Clock, Shield, Wrench, FileText, Save } from 'lucide-react';
+import { CheckCircle, Clock, Shield, Wrench, FileText, Save, ExternalLink, Target } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Customer } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { ToolManagement } from '@/components/ToolManagement';
 import { useAutoSave } from '@/hooks/useAutoSave';
-import { RequiredField } from '@/components/ui/required-field';
+import { generateToolRecommendations } from '@/services/toolLibraryService';
 
 interface PreVisitPhaseProps {
   customer: Customer;
@@ -26,8 +27,21 @@ export const PreVisitPhase = ({ customer, onPhaseComplete, sessionData, updateAu
     documentation: false
   });
   
+  // Project handoff documentation state
+  const [projectFolderUrl, setProjectFolderUrl] = useState(customer.drive_folder_url || '');
+  const [projectManager, setProjectManager] = useState('');
+  const [leadTechnician, setLeadTechnician] = useState('');
+  const [documentationChecks, setDocumentationChecks] = useState({
+    asBuiltDrawings: false,
+    floorPlans: false,
+    sequenceOfOperations: false,
+    submittals: false,
+    networkDiagram: false
+  });
+  
   const [safetyAcknowledgment, setSafetyAcknowledgment] = useState(false);
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
+  const [toolRecommendations, setToolRecommendations] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
@@ -62,6 +76,22 @@ export const PreVisitPhase = ({ customer, onPhaseComplete, sessionData, updateAu
         setSelectedTools(savedData.selectedTools);
       }
       
+      if (savedData.projectFolderUrl) {
+        setProjectFolderUrl(savedData.projectFolderUrl);
+      }
+      
+      if (savedData.projectManager) {
+        setProjectManager(savedData.projectManager);
+      }
+      
+      if (savedData.leadTechnician) {
+        setLeadTechnician(savedData.leadTechnician);
+      }
+      
+      if (savedData.documentationChecks) {
+        setDocumentationChecks(savedData.documentationChecks);
+      }
+      
       setTimeout(() => setLoading(false), 100);
     }
   }, [sessionData, setLoading]);
@@ -73,10 +103,14 @@ export const PreVisitPhase = ({ customer, onPhaseComplete, sessionData, updateAu
         reviewItems,
         safetyAcknowledgment,
         selectedTools,
+        projectFolderUrl,
+        projectManager,
+        leadTechnician,
+        documentationChecks,
         lastUpdated: new Date().toISOString()
       }
     });
-  }, [reviewItems, safetyAcknowledgment, selectedTools, debouncedSave]);
+  }, [reviewItems, safetyAcknowledgment, selectedTools, projectFolderUrl, projectManager, leadTechnician, documentationChecks, debouncedSave]);
 
   const allItemsChecked = Object.values(reviewItems).every(Boolean) && safetyAcknowledgment;
 
@@ -182,6 +216,116 @@ export const PreVisitPhase = ({ customer, onPhaseComplete, sessionData, updateAu
         </CardContent>
       </Card>
 
+      {/* Project Handoff Documentation */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <ExternalLink className="w-5 h-5" />
+            Project Folder & Documentation
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* Project Folder URL */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Project Folder Link</label>
+              <div className="flex gap-2">
+                <Input 
+                  placeholder="SharePoint, Google Drive, or Network Drive URL" 
+                  value={projectFolderUrl}
+                  onChange={(e) => setProjectFolderUrl(e.target.value)}
+                  className="flex-1"
+                />
+                {projectFolderUrl && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="px-3"
+                    onClick={() => window.open(projectFolderUrl, '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+            
+            {/* Project Team */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Project Manager</label>
+                <Input 
+                  placeholder="PM Name" 
+                  value={projectManager}
+                  onChange={(e) => setProjectManager(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Lead Technician</label>
+                <Input 
+                  placeholder="Lead Tech Name" 
+                  value={leadTechnician}
+                  onChange={(e) => setLeadTechnician(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            
+            {/* Documentation Checklist */}
+            <div className="pt-2 border-t">
+              <h4 className="text-sm font-medium mb-3">Verify Project Folder Contains:</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="flex items-center space-x-2 text-sm">
+                  <Checkbox 
+                    checked={documentationChecks.asBuiltDrawings}
+                    onCheckedChange={(checked) => 
+                      setDocumentationChecks(prev => ({...prev, asBuiltDrawings: checked as boolean}))
+                    }
+                  />
+                  <span>As-Built Drawings</span>
+                </label>
+                <label className="flex items-center space-x-2 text-sm">
+                  <Checkbox 
+                    checked={documentationChecks.floorPlans}
+                    onCheckedChange={(checked) => 
+                      setDocumentationChecks(prev => ({...prev, floorPlans: checked as boolean}))
+                    }
+                  />
+                  <span>Floor Plans</span>
+                </label>
+                <label className="flex items-center space-x-2 text-sm">
+                  <Checkbox 
+                    checked={documentationChecks.sequenceOfOperations}
+                    onCheckedChange={(checked) => 
+                      setDocumentationChecks(prev => ({...prev, sequenceOfOperations: checked as boolean}))
+                    }
+                  />
+                  <span>Sequence of Operations</span>
+                </label>
+                <label className="flex items-center space-x-2 text-sm">
+                  <Checkbox 
+                    checked={documentationChecks.submittals}
+                    onCheckedChange={(checked) => 
+                      setDocumentationChecks(prev => ({...prev, submittals: checked as boolean}))
+                    }
+                  />
+                  <span>Equipment Submittals</span>
+                </label>
+                <label className="flex items-center space-x-2 text-sm">
+                  <Checkbox 
+                    checked={documentationChecks.networkDiagram}
+                    onCheckedChange={(checked) => 
+                      setDocumentationChecks(prev => ({...prev, networkDiagram: checked as boolean}))
+                    }
+                  />
+                  <span>Network Diagram</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Preparation Checklist */}
       <Card>
         <CardHeader>
@@ -190,32 +334,26 @@ export const PreVisitPhase = ({ customer, onPhaseComplete, sessionData, updateAu
         <CardContent>
           <div className="space-y-4">
             {reviewItemsList.map((item) => (
-              <RequiredField 
-                key={item.key} 
-                required={true} 
-                completed={reviewItems[item.key]}
-              >
-                <div className="flex items-start space-x-3 p-3 rounded-lg border border-card-border hover:bg-muted/50 transition-colors">
-                  <Checkbox
-                    id={item.key}
-                    checked={reviewItems[item.key]}
-                    onCheckedChange={(checked) => handleItemChange(item.key, checked as boolean)}
-                    className="mt-1"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2">
-                      <item.icon className="w-4 h-4 text-primary" />
-                      <label htmlFor={item.key} className="font-medium text-foreground cursor-pointer">
-                        {item.label}
-                      </label>
-                      {reviewItems[item.key] && (
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
+              <div key={item.key} className="flex items-start space-x-3 p-3 rounded-lg border border-card-border hover:bg-muted/50 transition-colors">
+                <Checkbox
+                  id={item.key}
+                  checked={reviewItems[item.key]}
+                  onCheckedChange={(checked) => handleItemChange(item.key, checked as boolean)}
+                  className="mt-1"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2">
+                    <item.icon className="w-4 h-4 text-primary" />
+                    <label htmlFor={item.key} className="font-medium text-foreground cursor-pointer">
+                      {item.label}
+                    </label>
+                    {reviewItems[item.key] && (
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                    )}
                   </div>
+                  <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
                 </div>
-              </RequiredField>
+              </div>
             ))}
           </div>
         </CardContent>

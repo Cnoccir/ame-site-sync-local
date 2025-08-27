@@ -24,6 +24,11 @@ interface Device {
   'Device ID'?: string;
   Model?: string;
   Vendor?: string;
+  'Fox Port'?: string;
+  'Host Model'?: string;
+  Version?: string;
+  'Firmware Rev'?: string;
+  'App SW Version'?: string;
   isOnline?: boolean;
   isDown?: boolean;
   hasAlarm?: boolean;
@@ -333,51 +338,70 @@ export const TridiumDataTable: React.FC<TridiumDataTableProps> = ({
                 <TableHead>Status</TableHead>
                 <TableHead>Type/Format</TableHead>
                 <TableHead>Address/ID</TableHead>
+                <TableHead>Fox Port</TableHead>
+                <TableHead>Host Model</TableHead>
+                <TableHead>Version</TableHead>
                 <TableHead>Source File</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredDevices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                     No devices found matching current filters
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredDevices.map((device) => (
-                  <TableRow key={device.id} className="hover:bg-muted/50">
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedIds.has(device.id)}
-                        onCheckedChange={(checked) => handleDeviceSelection(device.id, checked as boolean)}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {device.Name || device.name || `Device ${device.id}`}
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(device)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="text-sm">
-                          {device['Controller Type'] || device.Type || 'Unknown'}
+                filteredDevices.map((device) => {
+                  // Get version from multiple possible fields
+                  const getVersion = (device: Device) => {
+                    return device.Version || device['Firmware Rev'] || device['App SW Version'] || '-';
+                  };
+
+                  return (
+                    <TableRow key={device.id} className="hover:bg-muted/50">
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.has(device.id)}
+                          onCheckedChange={(checked) => handleDeviceSelection(device.id, checked as boolean)}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {device.Name || device.name || `Device ${device.id}`}
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(device)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="text-sm">
+                            {device['Controller Type'] || device.Type || 'Unknown'}
+                          </div>
+                          {device.format && (
+                            <Badge variant="outline" className="text-xs">
+                              {getFormatName(device.format)}
+                            </Badge>
+                          )}
                         </div>
-                        {device.format && (
-                          <Badge variant="outline" className="text-xs">
-                            {getFormatName(device.format)}
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {device.Address || device.address || device['Device ID'] || '-'}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {device.sourceFile || 'Unknown'}
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {device.Address || device.address || device['Device ID'] || '-'}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {device['Fox Port'] || '-'}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {device['Host Model'] || device.Model || '-'}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {getVersion(device)}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {device.sourceFile || 'Unknown'}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

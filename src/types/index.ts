@@ -200,5 +200,68 @@ export interface ActivityItem {
   user: string;
 }
 
+// Enhanced Pre-Visit Phase Interfaces
+export interface SiteIntelligence {
+  siteIdentity: {
+    nickname: string;
+    siteNumber: string;
+    systemType: 'N4' | 'FX' | 'Mixed-ALC' | 'EBI-Honeywell' | 'Other';
+    serviceTier: 'CORE' | 'ASSURE' | 'GUARDIAN';
+  };
+  teamAssignment: {
+    primaryTech: string;
+    secondaryTech?: string;
+    lastVisitBy: string;
+    lastVisitDate: Date;
+    siteExperience: 'first_time' | 'familiar' | 'expert';
+  };
+  documentation: {
+    projectFolderUrl?: string;
+    submittalsAvailable: boolean;
+    asBuiltDrawings: boolean;
+    floorPlans: boolean;
+    sequenceOfOperations: boolean;
+    lastDocumentUpdate?: Date;
+    documentationScore: number; // 0-100 completeness score
+  };
+}
+
+export interface ToolRecommendation {
+  toolId: string;
+  toolName: string;
+  reason: 'required_for_system' | 'service_tier' | 'common_issue' | 'site_specific';
+  priority: 'essential' | 'recommended' | 'optional';
+  reasoning: string;
+  isPreSelected: boolean;
+}
+
+export interface DocumentStatus {
+  type: 'submittals' | 'as_built' | 'floor_plans' | 'sop' | 'project_folder';
+  available: boolean;
+  url?: string;
+  lastUpdated?: Date;
+  quality: 'excellent' | 'good' | 'fair' | 'poor' | 'missing';
+}
+
+export interface TeamContext {
+  primaryTechnician: {
+    id: string;
+    name: string;
+    experience: string;
+  };
+  secondaryTechnician?: {
+    id: string;
+    name: string;
+    experience: string;
+  };
+  lastVisit: {
+    technicianId: string;
+    technicianName: string;
+    date: Date;
+    notes?: string;
+  };
+  siteExperience: 'first_time' | 'familiar' | 'expert';
+}
+
 // Service tier types are now centralized in serviceTiers.ts
 export type { ServiceTierConfig } from './serviceTiers';

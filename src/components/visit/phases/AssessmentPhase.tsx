@@ -25,9 +25,12 @@ import { NetworkAnalysisResults } from '@/components/assessment/NetworkAnalysisR
 import { SystemStatusCard } from '@/components/assessment/SystemStatusCard';
 import { PriorityDiscussion } from '@/components/assessment/PriorityDiscussion';
 import { NetworkHealthDashboard } from '@/components/assessment/NetworkHealthDashboard';
+import { EnhancedNetworkHealthDashboard } from '@/components/health/NetworkHealthDashboard';
 import { DeviceInventoryTable } from '@/components/assessment/DeviceInventoryTable';
 import { NetworkSummaryGenerator } from '@/components/assessment/NetworkSummaryGenerator';
 import { TridiumDataImporter } from '@/components/assessment/TridiumDataImporter';
+import { NetworkTopologyService } from '@/services/networkTopologyService';
+import { EnhancedTridiumDataset } from '@/types/tridium';
 
 interface AssessmentPhaseProps {
   onPhaseComplete: () => void;

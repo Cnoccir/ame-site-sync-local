@@ -12,6 +12,9 @@ export interface DeviceRecord {
   vendor?: string;
   model?: string;
   location?: string;
+  fox_port?: string;
+  host_model?: string;
+  version?: string;
   health_score?: number;
   raw_data: Record<string, any>;
   source_file: string;
@@ -67,18 +70,21 @@ export class DeviceInventoryService {
     return dataset.rows.map(row => ({
       id: row.id,
       name: row.data.Name || row.data.name || `Device_${row.id}`,
-      type: row.data.Type || row.data.type || dataset.type,
+      type: row.data.Type || row.data.type || row.data['Controller Type'] || 'Unknown',
       status: row.parsedStatus?.status || row.data.Status || row.data.status || 'unknown',
       address: row.data.Address || row.data.address || row.data['IP Address'],
-      protocol: this.detectProtocol(dataset.type, dataset.filename),
+      protocol: this.detectProtocol(dataset.format as any, dataset.filename),
       device_id: row.data['Device ID'] || row.data.device_id,
       vendor: row.data.Vendor || row.data.vendor,
       model: row.data.Model || row.data.model,
       location: row.data.Location || row.data.location,
+      fox_port: row.data['Fox Port'] || row.data.fox_port,
+      host_model: row.data['Host Model'] || row.data.host_model,
+      version: row.data.Version || row.data.version || row.data['Firmware Rev'] || row.data['App SW Version'],
       health_score: this.calculateHealthScore(row),
       raw_data: row.data,
       source_file: dataset.filename,
-      source_format: dataset.type,
+      source_format: dataset.format,
       aggregation_id: aggregationId,
       visit_id: visitId
     }));
@@ -184,6 +190,9 @@ export class DeviceInventoryService {
     if (device.vendor) score += 1;
     if (device.model) score += 1;
     if (device.location) score += 1;
+    if (device.fox_port) score += 1;
+    if (device.host_model) score += 1;
+    if (device.version) score += 1;
     if (device.health_score !== undefined) score += 1;
     return score;
   }
@@ -191,9 +200,9 @@ export class DeviceInventoryService {
   /**
    * Detect protocol from dataset type and filename
    */
-  private static detectProtocol(type: string, filename: string): string {
-    const lowerType = type.toLowerCase();
-    const lowerFilename = filename.toLowerCase();
+  private static detectProtocol(typeOrFormat: string | undefined, filename: string): string {
+    const lowerType = (typeOrFormat || '').toLowerCase();
+    const lowerFilename = (filename || '').toLowerCase();
     
     if (lowerType.includes('bacnet') || lowerFilename.includes('bacnet')) return 'BACnet';
     if (lowerType.includes('niagara') || lowerFilename.includes('niagara')) return 'Niagara';
@@ -223,8 +232,8 @@ export class DeviceInventoryService {
    */
   private static generateAggregationMetadata(datasets: TridiumDataset[]) {
     const files = datasets.map(d => d.filename);
-    const formats = [...new Set(datasets.map(d => d.type))];
-    const protocols = [...new Set(datasets.map(d => this.detectProtocol(d.type, d.filename)))];
+    const formats = [...new Set(datasets.map(d => d.format))] as string[];
+    const protocols = [...new Set(datasets.map(d => this.detectProtocol(d.format as any, d.filename)))] as string[];
     
     let totalDevices = 0;
     const statusBreakdown: Record<string, number> = {};
@@ -240,7 +249,7 @@ export class DeviceInventoryService {
       });
       
       // Count protocol breakdown
-      const protocol = this.detectProtocol(dataset.type, dataset.filename);
+      const protocol = this.detectProtocol(dataset.format as any, dataset.filename);
       protocolBreakdown[protocol] = (protocolBreakdown[protocol] || 0) + dataset.rows.length;
     });
     
@@ -276,11 +285,11 @@ export class DeviceInventoryService {
     // Device Inventory by Protocol
     Object.entries(groupedByProtocol).forEach(([protocol, protocolDevices]) => {
       report += `## ${protocol} Devices (${protocolDevices.length})\n\n`;
-      report += `| Name | Type | Status | Address | Device ID |\n`;
-      report += `|------|------|--------|---------|----------|\n`;
+      report += `| Name | Type | Status | Address | Device ID | Host Model | Fox Port | Version |\n`;
+      report += `|------|------|--------|---------|----------|------------|----------|---------|\n`;
       
       protocolDevices.forEach(device => {
-        report += `| ${device.name} | ${device.type} | ${device.status.toUpperCase()} | ${device.address || 'N/A'} | ${device.device_id || 'N/A'} |\n`;
+        report += `| ${device.name} | ${device.type} | ${device.status.toUpperCase()} | ${device.address || 'N/A'} | ${device.device_id || 'N/A'} | ${device.host_model || 'N/A'} | ${device.fox_port || 'N/A'} | ${device.version || 'N/A'} |\n`;
       });
       report += '\n';
     });

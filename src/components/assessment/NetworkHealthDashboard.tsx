@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Activity, 
   AlertTriangle, 
@@ -14,12 +15,29 @@ import {
   Network, 
   Clock,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Server,
+  Wifi,
+  Database,
+  Users,
+  BarChart3,
+  Shield,
+  Zap
 } from 'lucide-react';
 import { TridiumDataset } from '@/types/tridium';
+import { AggregationStorageService } from '@/services/AggregationStorageService';
+import { SystemHealthAggregationService } from '@/services/SystemHealthAggregationService';
+import type { 
+  SiteHealthSummary, 
+  StationHealthSummary, 
+  SystemAlert as AggregationAlert,
+  Station,
+  Device
+} from '@/types/aggregation';
 
 interface NetworkHealthDashboardProps {
   datasets: TridiumDataset[];
+  siteId?: string;
   onAnalysisComplete: (healthMetrics: any) => void;
 }
 
@@ -31,6 +49,7 @@ interface HealthMetric {
   threshold?: number;
   description: string;
   trend?: 'up' | 'down' | 'stable';
+  icon?: React.ReactNode;
 }
 
 interface SystemAlert {
@@ -40,13 +59,26 @@ interface SystemAlert {
   timestamp?: Date;
 }
 
+interface AggregatedDashboardData {
+  siteHealthSummary: SiteHealthSummary | null;
+  stationHealthSummaries: StationHealthSummary[];
+  stations: Station[];
+  devices: Device[];
+  alerts: AggregationAlert[];
+  aggregatedStats: any;
+}
+
 export const NetworkHealthDashboard: React.FC<NetworkHealthDashboardProps> = ({
   datasets,
+  siteId = 'default_site',
   onAnalysisComplete
 }) => {
+  const [dashboardData, setDashboardData] = useState<AggregatedDashboardData | null>(null);
   const [healthMetrics, setHealthMetrics] = useState<HealthMetric[]>([]);
   const [systemAlerts, setSystemAlerts] = useState<SystemAlert[]>([]);
   const [analysisStarted, setAnalysisStarted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
 
   // Parse resource metrics from datasets
   const resourceData = useMemo(() => {

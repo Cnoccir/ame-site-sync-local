@@ -84,7 +84,11 @@ const columnPresets = {
   },
   'technical-details': {
     name: 'Technical Details',
-    columns: ['Name', 'Address', 'Model', 'Vendor', 'Firmware Rev', 'Status']
+    columns: ['Name', 'Address', 'Model', 'Host Model', 'Vendor', 'Fox Port', 'Version', 'Firmware Rev', 'Status']
+  },
+  'network-details': {
+    name: 'Network Details',
+    columns: ['Name', 'Fox Port', 'Host Model', 'Address', 'Version', 'Status']
   },
   'problem-focus': {
     name: 'Problem Focus',
@@ -116,9 +120,10 @@ export const DeviceInventoryTable: React.FC<DeviceInventoryTableProps> = ({
   // Initialize visible columns
   React.useEffect(() => {
     if (currentDataset && tableState.visibleColumns.size === 0) {
+      const priorityColumns = ['Name', 'Status', 'Type', 'Address', 'Controller Type', 'Fox Port', 'Host Model', 'Version'];
       const defaultColumns = new Set(
         currentDataset.columns
-          .filter(col => ['Name', 'Status', 'Type', 'Address', 'Controller Type'].includes(col.key))
+          .filter(col => priorityColumns.includes(col.key))
           .map(col => col.key)
       );
       setTableState(prev => ({ ...prev, visibleColumns: defaultColumns }));
