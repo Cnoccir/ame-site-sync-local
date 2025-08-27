@@ -1,0 +1,44 @@
+﻿Name,Value
+capacityLicensing.recountLastFail,never
+capacityLicensing.recountLastFailReason,
+capacityLicensing.recountLastRun,19-Aug-25 2:08 PM EDT
+component.count,71732
+cpu.usage,5%
+engine.queue.actions,0 (Peak 29103)
+engine.queue.longTimers,121 (Peak 218)
+engine.queue.mediumTimers,21 (Peak 276)
+engine.queue.shortTimers,2 (Peak 9)
+engine.scan.lifetime,.000 ms
+engine.scan.peak,157.000 ms
+engine.scan.peakInterscan,1812.000 ms
+engine.scan.recent,.000 ms
+engine.scan.timeOfPeak,02-Aug-25 9:10 AM EDT
+engine.scan.timeOfPeakInterscan,24-Jul-25 2:00 PM EDT
+engine.scan.usage,0%
+globalCapacity.devices,0 (Limit: 0)
+globalCapacity.histories,"7,172 (Limit: none)"
+globalCapacity.links,"128,573 (Limit: none)"
+globalCapacity.networks,1 (Limit: none)
+globalCapacity.points,0 (Limit: 0)
+globalCapacity.schedules,28 (Limit: none)
+heap.free,477 MB
+heap.max,910 MB
+heap.total,803 MB
+heap.used,342 MB
+history.count,7172
+mem.total,32386 MB
+mem.used,8254 MB
+resources.category.alarm,5.000 kRU
+resources.category.component,"2,416.869 kRU"
+resources.category.device,50.000 kRU
+resources.category.history,"71,696.800 kRU"
+resources.category.network,100.000 kRU
+resources.category.proxyExt,"7,269.250 kRU"
+resources.limit,none
+resources.total,"81,537.919 kRU"
+time.current,19-Aug-25 2:12 PM EDT
+time.start,24-Jul-25 11:08 AM EDT
+time.uptime,"26 days, 3 hours, 3 minutes, 33 seconds"
+version.java,Java HotSpot(TM) 64-Bit Server VM 25.351-b10
+version.niagara,4.12.1.16
+version.os,amd64 Windows Server 2022 10.0

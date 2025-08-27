@@ -1,0 +1,85 @@
+Task_ID,Task_Name,System_Family,Vendor_Flavor,Phase,Service_Tiers,Frequency,Estimated_Duration_min,Audience_Level,Initial_Steps,SOP_Refs,Acceptance_Criteria,Artifacts,Prerequisites,Tools_Required,Safety_Tags,Reference_Links,Notes,Owner,Last_Updated,Version
+C001,Platform & Station Backup,Niagara,,Prep,CORE,Quarterly,,2," • Open Backup Utility in Workbench
+ • 2. Connect to Platform of Niagara host
+ • 3. Select running Station and click ""Backup Station""
+ • 4. Name backup with format: [CustomerName]_[YYYY-MM-DD]_PMBackup",SOP_C001,Backup completes; .dist opens without error; copy stored off-device,.dist file attached; backup log entry,,"Workbench, External storage drive, Cloud access","Ensure system stability during backup process
+Verify backup storage security",Tridium Niagara 4 Platform Guide (backup concepts): https://downloads.onesight.solutions/Tridium/Niagara%204%20Documentation/docPlatform/docPlatform.pdf | JACE-8000 Backup & Restore Guide: https://support.innon.com/Tridium%20Niagara/Jace8000/Documents/jace-8000_backup_and_restore_guide.pdf | JACE-9000 Backup & Restore Guide: https://support.innon.com/Tridium%20Niagara/Jace9000/Documents/jace-9000_backup_and_restore_guide_2024-10-03-11-52-02.pdf | Niagara Provisioning Guide (backup via jobs): https://downloads.onesight.solutions/Tridium/Niagara%204%20Documents/docProvisioning.pdf,,,2025-08-26,v2.2
+C002,Performance Verification,Niagara,,Health_Sweep,CORE,Monthly,,2," • Right-click Station and select Views → Station Summary
+ • 2. Check CPU Usage (should be <80% sustained)
+ • 3. Check Heap Memory (should be <75% after garbage collection)
+ • 4. Verify License Capacities not exceeded",SOP_C002,No unexpected high CPU/memory; no critical faults; comms nominal,,,"Workbench, System monitoring tools",Monitor system performance impact during diagnostics,,,,2025-08-26,v2.2
+C003,Active Alarm Resolution,Niagara,,Health_Sweep,CORE,Monthly,,2," • Open Alarm Console in Workbench
+ • 2. Sort alarms by priority (Critical first)
+ • 3. For each critical alarm:
+ • a) Record alarm text and time",SOP_C003,All critical alarms addressed; test alarm delivered; stale alarms cleared,Alarm test email/sms screenshot; console export,,"Workbench, Diagnostic tools",Verify alarm acknowledgment doesn't compromise safety systems,JCI Facility Explorer Supervisory Products Networking TB (Alarm Console): https://docs.johnsoncontrols.com/bas/api/khub/documents/CEot5NVNmxDPHRv~b5wJ4A/content,,,2025-08-26,v2.2
+C004,Schedule & Setpoint Verification,Niagara,,Prep,CORE,,,2," • Review all active schedules
+ • 2. Verify schedule times match occupancy
+ • 3. Check holiday/exception calendars
+ • 4. Review temperature setpoints for each mode",SOP_C004,Task completes without errors; customer briefed; notes updated,,,"Workbench, Building occupancy schedule",Ensure schedule changes don't compromise comfort or equipment safety,,,,2025-08-26,v2.2
+C005,Override Point Cleanup,Niagara,,Deep_Dive,CORE,,,2," • Open Point Manager and filter for overrides
+ • 2. Document all points in override
+ • 3. Investigate reason for each override
+ • 4. Release unnecessary overrides",SOP_C005,Task completes without errors; customer briefed; notes updated,,,"Workbench, Override documentation",Verify override release doesn't impact critical systems,,,,2025-08-26,v2.2
+C006,Critical Sensor Check,Niagara,,Prep,CORE,Quarterly,,2," • Identify critical sensors (OAT, space temps, pressures)
+ • 2. Compare sensor readings to reference
+ • 3. Check for sensor drift or stuck values
+ • 7. Check sensor wiring and connections",SOP_C006,Key sensors within tolerance or offset applied/replacement scheduled,Calibration sheet; offsets applied; before/after readings,,"Calibrated thermometer, Multimeter, Reference instruments",Use lockout/tagout procedures when working on sensor circuits,,,,2025-08-26,v2.2
+C007,User Account Security Audit,Niagara,,Deep_Dive,CORE,Annually,,2," • 3. Check roles and permissions
+ • 5. Verify strong password policies
+ • 6. Check password expiration settings",SOP_C007,No default/unused accounts; strong password policy enforced; lockout tested,,,"Workbench, Security checklist",Maintain system access integrity during security changes,Niagara 4 Hardening Guide (2025): https://www.tridium.com/content/dam/tridium/en/documents/document-lists/niagara/tri-Niagara4-Hardening-Guide-en-2025.pdf | Passphrase reset/how‑to (Niagara 4): https://help.onesight.solutions/kb/niagara4-passphrase-reset-windows/,,,2025-08-26,v2.2
+C008,Documentation Update,Niagara,,Wrap_Up,CORE,Annually,,2," • 3. Document setpoint modifications
+ • 5. Record any hardware changes
+ • 7. Save all documentation to customer folder
+ • 8. Upload to cloud storage",SOP_C008,Documents updated and stored in customer folder,Updated point list; riser; PDFs,,"Workbench, Documentation templates",Ensure documentation accurately reflects current system configuration,,,,2025-08-26,v2.2
+A001,Device Communication Health,Niagara,,Health_Sweep,ASSURE,Monthly,,2," • 2. Verify all devices show ""online"" status
+ • 3. For offline devices:
+ • a) Attempt ping/refresh
+ • b) Check device power",SOP_A001,No unexpected high CPU/memory; no critical faults; comms nominal,Device status export; offline list,C002,"Workbench, Network tools, Multimeter",Use proper ESD protection when handling network devices,,,,2025-08-26,v2.2
+A002,Temperature Sensor Calibration,Niagara,,Prep,ASSURE,Quarterly,,2," • Identify sensors for calibration
+ • 3. Compare BAS reading to reference
+ • 5. Apply calibration in Niagara
+ • 6. Verify corrected reading",SOP_A002,Key sensors within tolerance or offset applied/replacement scheduled,Calibration sheet; offsets applied; before/after readings,C006,"NIST-traceable thermometer, Calibration log","Follow lockout/tagout procedures
+Use appropriate PPE",,,,2025-08-26,v2.2
+A003,Valve & Actuator Testing,Niagara,,Prep,ASSURE,,,2," • Plan testing to minimize disruption
+ • 2. Override output to 0% (closed)
+ • 3. Verify physical closure
+ • 4. Override to 50% and verify",SOP_A003,Task completes without errors; customer briefed; notes updated,,C005,"Workbench, Radio/phone for coordination","Coordinate with facility personnel
+Verify fail-safe operation",,,,2025-08-26,v2.2
+A004,Control Loop Performance,Niagara,,Prep,ASSURE,,,2," • Identify critical control loops
+ • 2. Review current PID settings
+ • a) P-gain for response
+ • c) D-time if required",SOP_A004,Task completes without errors; customer briefed; notes updated,,C004,"Workbench, Trending tools, Tuning guide",Monitor system stability during tuning changes,,,,2025-08-26,v2.2
+A005,History Database Maintenance,Niagara,,Prep,ASSURE,,,2," • Check history database size
+ • 2. Review retention policies
+ • 4. Clear old records per policy
+ • 5. Verify space recovered",SOP_A005,Task completes without errors; customer briefed; notes updated,,C001,"Workbench, External storage",Verify critical history data is backed up before purging,"EC‑Net 4 Histories Guide (Niagara 4 derivative): https://docs-be.distech-controls.com/bundle/Histories-EC-Net4_UG/raw/resource/enus/Histories%20EC-Net4_UG.pdf | Video – Export Niagara 4 Histories to CSV: https://www.youtube.com/watch?v=mjLNOBrE2bo | Niagara Forum Tech Troubleshooting (Engine Hogs, ~6000 histories): https://www.tridium.com/content/dam/tridium/en/documents/niagara-forum-2023/NF23-Technical-Troubleshooting-Niagara.pdf",,,2025-08-26,v2.2
+A006,Security Certificate Check,Niagara,,Deep_Dive,ASSURE,Annually,,2," • 5. Check allowed hosts list
+ • 7. Test secure connections",SOP_A006,No default/unused accounts; strong password policy enforced; lockout tested,,C007,"Workbench, Certificate documentation",Maintain secure communications during certificate updates,Niagara 4 Hardening Guide (2025): https://www.tridium.com/content/dam/tridium/en/documents/document-lists/niagara/tri-Niagara4-Hardening-Guide-en-2025.pdf | Passphrase reset/how‑to (Niagara 4): https://help.onesight.solutions/kb/niagara4-passphrase-reset-windows/,,,2025-08-26,v2.2
+A007,Energy Trend Analysis,Niagara,,Prep,ASSURE,,,2," • 2. Compare to previous periods
+ • 3. Identify unusual patterns
+ • 6. Review setback effectiveness
+ • 7. Calculate efficiency metrics",SOP_A007,Task completes without errors; customer briefed; notes updated,,A005,"Workbench, Spreadsheet software",Consider building occupancy when analyzing energy patterns,"EC‑Net 4 Histories Guide (Niagara 4 derivative): https://docs-be.distech-controls.com/bundle/Histories-EC-Net4_UG/raw/resource/enus/Histories%20EC-Net4_UG.pdf | Video – Export Niagara 4 Histories to CSV: https://www.youtube.com/watch?v=mjLNOBrE2bo | Niagara Forum Tech Troubleshooting (Engine Hogs, ~6000 histories): https://www.tridium.com/content/dam/tridium/en/documents/niagara-forum-2023/NF23-Technical-Troubleshooting-Niagara.pdf",,,2025-08-26,v2.2
+G001,PID Loop Tuning & Optimization,Niagara,,Deep_Dive,GUARDIAN,,,2," • Identify loops for optimization
+ • 2. Document current parameters
+ • 3. Implement systematic tuning:
+ • a) Set I and D to minimum",SOP_G001,Task completes without errors; customer briefed; notes updated,,A004,"Workbench, Tuning software, Reference guides",Monitor critical parameters during tuning process,,,,2025-08-26,v2.2
+G002,Advanced Analytics Configuration,Niagara,,Prep,GUARDIAN,,,2," • Review existing analytics rules
+ • 2. Check rule performance/accuracy
+ • 4. Add new FDD rules:
+ • a) Simultaneous heating/cooling",SOP_G002,Task completes without errors; customer briefed; notes updated,,A007,"Workbench, Analytics module",Verify analytics rules don't create false alarms,,,,2025-08-26,v2.2
+G003,Security Vulnerability Assessment,Niagara,,Deep_Dive,GUARDIAN,Annually,,2," • 2. Review vulnerability report
+ • 3. Check for default passwords
+ • 4. Verify encryption settings
+ • 6. Check for unnecessary services",SOP_G003,No default/unused accounts; strong password policy enforced; lockout tested,,A006,"Security scanner, Vulnerability checklist",Maintain system integrity during security assessment,Niagara 4 Hardening Guide (2025): https://www.tridium.com/content/dam/tridium/en/documents/document-lists/niagara/tri-Niagara4-Hardening-Guide-en-2025.pdf | Passphrase reset/how‑to (Niagara 4): https://help.onesight.solutions/kb/niagara4-passphrase-reset-windows/,,,2025-08-26,v2.2
+G004,Network Performance Optimization,Niagara,,Deep_Dive,GUARDIAN,Annually,,2," • 2. Check bandwidth utilization
+ • 3. Identify bottlenecks
+ • 5. Implement COV where possible
+ • 7. Test optimizations",SOP_G004,All devices online or work orders opened for offline nodes,Device status export; offline list,A001,"Network analyzer, Performance monitor",Maintain network stability during optimization,,,,2025-08-26,v2.2
+G005,Graphics & HMI Enhancement,Niagara,,Wrap_Up,GUARDIAN,,,2," • Review existing graphics
+ • 2. Identify enhancement needs
+ • 4. Add navigation improvements
+ • 5. Implement mobile compatibility",SOP_G005,Task completes without errors; customer briefed; notes updated,,G002,"Px Editor, Graphics tools",Ensure critical system information remains easily accessible,,,,2025-08-26,v2.2
+G006,Preventive Maintenance Scheduling,Niagara,,Deep_Dive,GUARDIAN,,,2," • Review equipment maintenance needs
+ • 2. Create PM schedules in BAS
+ • 3. Configure maintenance alarms
+ • 4. Set up runtime tracking",SOP_G006,Task completes without errors; customer briefed; notes updated,,G001,"Workbench, Maintenance templates",Ensure maintenance schedules don't compromise system reliability,,,,2025-08-26,v2.2

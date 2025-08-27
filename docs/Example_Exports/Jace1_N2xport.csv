@@ -1,0 +1,85 @@
+﻿Name,Status,Address,Controller Type
+DX_1A,{ok},1,DX
+DX_1B,{ok},2,DX
+UNT1_197,{ok},197,UNT
+UNT_4_FitnessCenter_Ahu1,{ok},4,UNT
+UNT_5_FitnessCenter_Ahu2,{ok},5,UNT
+S1_95,{ok},95,VND
+S1_96,{ok},96,VND
+S1_97,{ok},97,VND
+S1_98,{ok},98,VND
+S1_99,{ok},99,VND
+S1_101,{ok},101,VMA
+S1_102,{ok},102,VMA
+S1_103,{ok},103,VMA
+S1_104,{down},104,Unknown code:177
+S1_105,{ok},105,VMA
+S1_106,{ok},106,VMA
+S1_107,{ok},107,VMA
+S1_108,{unackedAlarm},108,VND
+S1_109,{ok},109,VND
+S1_111,{ok},111,VMA
+S1_118,{down},118,Unknown code:177
+S1_210,{ok},130,VMA
+S1_211,{ok},131,VMA
+S1_213,{ok},133,VMA
+S1_214,{ok},134,VMA
+S1_215,{ok},135,VMA
+S1_216,{ok},136,VMA
+S1_221,{ok},141,VMA
+S1_222,{down},142,Unknown code:177
+S1_223,{down},143,Unknown code:177
+S1_224,{ok},144,VMA
+S1_225,{ok},145,VMA
+S1_226,{down},146,Unknown code:177
+S1_227,{ok},147,VMA
+S1_228,{ok},148,VMA
+S1_229,{ok},149,VMA
+S1_230,{down},150,Unknown code:177
+S1_231,{ok},151,VMA
+S1_232,{ok},152,VMA
+S1_233,{ok},153,VMA
+S1_234,{ok},154,VMA
+S1_235,{ok},155,VMA
+S1_236,{down},156,Unknown code:177
+S1_237,"{down,alarm,unackedAlarm}",157,VMA
+S1_301,"{down,alarm,unackedAlarm}",159,VMA
+S1_302,{ok},160,VMA
+S1_303,{down},161,Unknown code:177
+S1_314,{ok},172,VMA
+S1_315,"{down,alarm,unackedAlarm}",173,Unknown code:0
+S1_318,{ok},176,VMA
+S1_319,{ok},177,VMA
+S1_320,{down},178,Unknown code:177
+S1_336,{ok},194,VMA
+S1_338,{down},196,Unknown code:177
+S1_316,{ok},174,VND
+S1_317,{unackedAlarm},175,VND
+S4_324,{ok},201,VND
+S1_331,{ok},26,VND
+S1_311,{ok},10,VAV
+S1_308,{ok},18,VAV
+S1_309,{ok},19,VAV
+S1_310,{ok},20,VND
+S1_312,{ok},22,VND
+S1_333,{ok},24,VAV
+S1_332,{ok},25,VAV
+S1_330,{ok},27,VND
+S1_329,{ok},28,VAV
+S1_304,{ok},14,VND
+S1_305,{ok},15,VND
+S1_306,{ok},16,VND
+S1_307,{ok},17,VND
+S1_313,{ok},23,VND
+S1_326,{ok},31,VAV
+S1_325,{ok},32,VAV
+S1_322,{down},33,VND
+S1_323,{ok},34,VND
+S1_329A,{ok},41,VND
+S1_321,{ok},35,VND
+S1_335,{unackedAlarm},36,VND
+S1_328,{ok},29,VND
+S1_327,{ok},30,VND
+S1_337,{ok},37,VND
+S1_334,{ok},38,VND
+S1_324,{ok},40,VND

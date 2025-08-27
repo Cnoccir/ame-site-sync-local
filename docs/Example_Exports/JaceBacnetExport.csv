@@ -1,0 +1,47 @@
+﻿Name,Type,Exts,Device ID,Status,Netwk,MAC Addr,Max APDU,Segmentation,Vendor,Model,Protocol Rev,Firmware Rev,App SW Version,Encoding,Health,Enabled,Use Cov,Use Cov Property,Max Cov Subscriptions,Cov Subscriptions
+STM_BLR,Bacnet Device,BacnetDevice {STM_BLR},device:5006,{ok},1000,6,480,Segmented Both,JCI,MS-FEC2611-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,false,true,max,0
+HWS_CNTl_PANEL,Bacnet Device,BacnetDevice {HWS_CNTl_PANEL},device:5007,{ok},1000,7,480,Segmented Both,JCI,MS-FEC2611-0,9,6.2.2.6,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,false,true,max,0
+CHWS_CP,Bacnet Device,BacnetDevice {CHWS_CP},device:5008,{ok},1000,8,480,Segmented Both,JCI,MS-FEC2611-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+AHU_2_1,Bacnet Device,BacnetDevice {AHU_2_1},device:5010,{ok},1000,10,480,Segmented Both,JCI,MS-FEC2611-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+AHU_2_2,Bacnet Device,BacnetDevice {AHU_2_2},device:5011,{ok},1000,11,480,Segmented Both,JCI,MS-FEC2611-0,9,6.2.2.6,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+SF_2_2,Bacnet Device,BacnetDevice {SF_2_2},device:5013,{ok},1000,13,480,Segmented Both,JCI,MS-FEC2611-0,9,6.2.2.6,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+EXHAUST_FANS,Bacnet Device,BacnetDevice {EXHAUST_FANS},device:5014,{ok},1000,14,480,Segmented Both,JCI,MS-FEC2611-0,9,6.2.2.6,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+SVAV_D_2_1,Bacnet Device,BacnetDevice {SVAV_D_2_1},device:5015,{ok},1000,15,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.2.6,10.1,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+SVAV_D_2_2,Bacnet Device,BacnetDevice {SVAV_D_2_2},device:5016,{ok},1000,16,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.2.6,10.1,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+SVAV_D_2_3,Bacnet Device,BacnetDevice {SVAV_D_2_3},device:5017,{unackedAlarm},1000,17,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.2.6,10.1,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+SVAV_D_2_4,Bacnet Device,BacnetDevice {SVAV_D_2_4},device:5018,{ok},1000,18,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.2.6,10.1,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_2_2,Bacnet Device,BacnetDevice {VAV_2_2},device:5019,{ok},1000,19,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.2.6,10.1,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_C_2_1,Bacnet Device,BacnetDevice {VAV_C_2_1},device:5020,{ok},1000,20,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_C_1_6,Bacnet Device,BacnetDevice {VAV_C_1_6},device:5021,{ok},1000,21,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_C_1_9,Bacnet Device,BacnetDevice {VAV_C_1_9},device:5022,{ok},1000,22,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_C_1_12,Bacnet Device,BacnetDevice {VAV_C_1_12},device:5023,{ok},1000,23,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_C_1_13,Bacnet Device,BacnetDevice {VAV_C_1_13},device:5024,{ok},1000,24,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_A_1_1,Bacnet Device,BacnetDevice {VAV_A_1_1},device:5025,{ok},1000,25,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_A_1_2,Bacnet Device,BacnetDevice {VAV_A_1_2},device:5026,{ok},1000,26,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_A_1_3,Bacnet Device,BacnetDevice {VAV_A_1_3},device:5027,{ok},1000,27,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_A_1_4,Bacnet Device,BacnetDevice {VAV_A_1_4},device:5028,{ok},1000,28,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_A_1_5,Bacnet Device,BacnetDevice {VAV_A_1_5},device:5029,{ok},1000,29,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_A_1_7,Bacnet Device,BacnetDevice {VAV_A_1_7},device:5030,{ok},1000,30,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_A_1_8,Bacnet Device,BacnetDevice {VAV_A_1_8},device:5031,{ok},1000,31,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_A_1_10,Bacnet Device,BacnetDevice {VAV_A_1_10},device:5032,{ok},1000,32,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_A_1_11,Bacnet Device,BacnetDevice {VAV_A_1_11},device:5033,{unackedAlarm},1000,33,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_A_1_14,Bacnet Device,BacnetDevice {VAV_A_1_14},device:5034,{ok},1000,34,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_A_1_15,Bacnet Device,BacnetDevice {VAV_A_1_15},device:5035,{ok},1000,35,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_C_C_2,Bacnet Device,BacnetDevice {VAV_C_C_2},device:5036,{ok},1000,36,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_C_C_3,Bacnet Device,BacnetDevice {VAV_C_C_3},device:5037,{ok},1000,37,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_C_C_4,Bacnet Device,BacnetDevice {VAV_C_C_4},device:5038,{ok},1000,38,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_D_C_6,Bacnet Device,BacnetDevice {VAV_D_C_6},device:5039,{ok},1000,39,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_A_C_5,Bacnet Device,BacnetDevice {VAV_A_C_5},device:5040,{ok},1000,40,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+VAV_B_C_1,Bacnet Device,BacnetDevice {VAV_B_C_1},device:5041,{ok},1000,41,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+TSI_PresSura_5042,Bacnet Device,BacnetDevice {TSI_PresSura_5042},device:5042,{ok},1000,42,480,No Segmentation,TSI Incorporated,RPM10,8,1.18.0,1.5,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,false,false,max,0
+TSI_PresSura_5044,Bacnet Device,BacnetDevice {TSI_PresSura_5044},device:5044,{ok},1000,44,480,No Segmentation,TSI Incorporated,RPM10,8,1.18.0,1.5,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,false,false,max,0
+VAV_E_SC_1,Bacnet Device,BacnetDevice {VAV_E_SC_1},device:5046,{ok},1000,46,480,Segmented Both,JCI,MS-VMA1630-0,9,6.2.0.1054,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+TSI_PresSura_5047,Bacnet Device,BacnetDevice {TSI_PresSura_5047},device:5047,{ok},1000,47,480,No Segmentation,TSI Incorporated,RPM10,8,1.18.0,1.5,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,false,false,max,0
+TSI_PresSura_5048,Bacnet Device,BacnetDevice {TSI_PresSura_5048},device:5048,{ok},1000,48,480,No Segmentation,TSI Incorporated,RPM10,8,1.19.0,1.5,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,false,false,max,0
+TSI_PresSura_5049,Bacnet Device,BacnetDevice {TSI_PresSura_5049},device:5049,{ok},1000,49,480,No Segmentation,TSI Incorporated,RPM10,8,1.18.0,1.5,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,false,false,max,0
+TSI_PresSura_5050,Bacnet Device,BacnetDevice {TSI_PresSura_5050},device:5050,{ok},1000,50,480,No Segmentation,TSI Incorporated,RPM10,8,1.19.0,1.5,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,false,false,max,0
+TSI_PresSura_5051,Bacnet Device,BacnetDevice {TSI_PresSura_5051},device:5051,{ok},1000,51,480,No Segmentation,TSI Incorporated,RPM10,8,1.19.0,1.5,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,false,false,max,0
+TSI_PresSura_5052,Bacnet Device,BacnetDevice {TSI_PresSura_5052},device:5052,{unackedAlarm},1000,52,480,No Segmentation,TSI Incorporated,RPM10,8,1.19.0,1.5,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,false,false,max,0
+AHU_3_1,Bacnet Device,BacnetDevice {AHU_3_1},device:5004,{unackedAlarm},1000,4,480,Segmented Both,JCI,MS-FEC2611-0,9,6.2.2.6,10.2,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0
+LG HVAC Device9000,Bacnet Device,BacnetDevice {LG$20HVAC$20Device9000},device:9000,{unackedAlarm},10001,192.168.1.102:0xBAC0,1476,Segmented Transmit,LG Electronics Inc.,BNU-BN,7,ramdisk-5.14.1-128MB-bacnet,1.0,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,false,max,0
+TANDEM_CHILLER,Bacnet Device,BacnetDevice {TANDEM_CHILLER},device:5009,{unackedAlarm},1000,9,480,No Segmentation,Carel S.p.A.,PCO1000BD0,4,A2.0.4 - B2.0.4,2.15.4,Iso10646 _ U T F8,Ok [19-Aug-25 10:11 PM EDT],true,true,true,max,0

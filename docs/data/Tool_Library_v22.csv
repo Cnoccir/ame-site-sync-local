@@ -1,0 +1,68 @@
+Tool_Name,Type,Primary_Purpose,Applicable_Tiers,System_Fit,Phase,Onsite_or_Remote,Audience_Level,Must_Have_for,Nice_to_Have_for,License_Type,Owner,Notes,Last_Updated,Version
+PPE Gear Bags (Blue/Orange),Software,PPE Gear Bags containing: hard hat; safety glasses; high-visibility vest; gloves; ear protection,"CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,PPE Gear Bags containing: hard hat; safety glasses; high-visibility vest; gloves; ear protection,2025-08-26,v2.2
+Ladders & Safety Harnesses,Software,Ladders (of appropriate height) & certified safety harnesses for elevated work,"CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,Ladders (of appropriate height) & certified safety harnesses for elevated work,2025-08-26,v2.2
+Pneumatic Service Kit,Software,"Pneumatic Service Kit (gauge, tubing, fittings, aspirator bulb) for calibrating legacy pneumatic controls","ASSURE,GUARDIAN",Any,Deep_Dive,Onsite,2,,GUARDIAN,,,"Pneumatic Service Kit (gauge, tubing, fittings, aspirator bulb) for calibrating legacy pneumatic controls",2025-08-26,v2.2
+LED Headlamp,Software,LED headlamp for hands-free illumination,"CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,LED headlamp for hands-free illumination,2025-08-26,v2.2
+Digital Multimeter,Software,Fluke 87V or ruggedized 87V MAX True-RMS multimeter,"CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,Fluke 87V or ruggedized 87V MAX True-RMS multimeter,2025-08-26,v2.2
+Temperature/Humidity Meter,Software,Fluke 971 Thermo-Hygrometer for temperature and humidity readings,"CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,Fluke 971 Thermo-Hygrometer for temperature and humidity readings,2025-08-26,v2.2
+Infrared Thermometer,Software,Raytek MiniTemp RAYMT4U or Fluke 62 MAX infrared thermometer,"CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,Raytek MiniTemp RAYMT4U or Fluke 62 MAX infrared thermometer,2025-08-26,v2.2
+Clamp Meter,Software,Fluke 376 or 902 FC clamp meter,"CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,Fluke 376 or 902 FC clamp meter,2025-08-26,v2.2
+Digital Manometer,Software,Dwyer 475-1-FM digital manometer,"ASSURE,GUARDIAN",Any,,Onsite,2,,GUARDIAN,,,Dwyer 475-1-FM digital manometer,2025-08-26,v2.2
+Assorted Insulated Hand-Tool Set,Software,"Insulated screwdrivers, pliers, nut drivers, adjustable wrenches, hex keys, Torx bits","CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,"Insulated screwdrivers, pliers, nut drivers, adjustable wrenches, hex keys, Torx bits",2025-08-26,v2.2
+Wire Stripper,Software,Klein Tools wire stripper for precise stripping,"CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,Klein Tools wire stripper for precise stripping,2025-08-26,v2.2
+Crimp Tool,Software,Thomas & Betts crimp tool for connector installation,"CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,Thomas & Betts crimp tool for connector installation,2025-08-26,v2.2
+Electrical Tape,Software,3M Scotch 33+ electrical tape,"CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,3M Scotch 33+ electrical tape,2025-08-26,v2.2
+Wire Connectors,Software,Assorted wire nuts (e.g. blue),"CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,Assorted wire nuts (e.g. blue),2025-08-26,v2.2
+Torpedo Level,Software,Compact torpedo level for quick leveling checks,"CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,Compact torpedo level for quick leveling checks,2025-08-26,v2.2
+Thermostat Service Wrench,Software,"JC 5309 flexible wrench; T-4000-119 ""Blue"" thermostat tool","CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,"JC 5309 flexible wrench; T-4000-119 ""Blue"" thermostat tool",2025-08-26,v2.2
+Laptop Computer,Software,"Primary laptop with Ethernet, USB, and Wi-Fi interfaces","CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,"Primary laptop with Ethernet, USB, and Wi-Fi interfaces",2025-08-26,v2.2
+Ethernet Cable Tester,Software,T3 Innovation TT550 Tri Tester Pro or Fluke LinkIQ,"CORE,ASSURE,GUARDIAN",Any,Deep_Dive,Onsite,2,CORE,GUARDIAN,,,T3 Innovation TT550 Tri Tester Pro or Fluke LinkIQ,2025-08-26,v2.2
+RJ-45 Crimp Tool,Software,Bomar/Ideal EZ-RJ45 crimper,"CORE,ASSURE,GUARDIAN",Any,Deep_Dive,Onsite,2,CORE,GUARDIAN,,,Bomar/Ideal EZ-RJ45 crimper,2025-08-26,v2.2
+EZ RJ-45 Connectors,Software,EZ RJ-45 connectors for quick terminations,"CORE,ASSURE,GUARDIAN",Any,Deep_Dive,Onsite,2,CORE,GUARDIAN,,,EZ RJ-45 connectors for quick terminations,2025-08-26,v2.2
+Portable Network Switch,Software,4- or 5-port USB-powered mini switch,"CORE,ASSURE,GUARDIAN",Any,Deep_Dive,Onsite,2,CORE,GUARDIAN,,,4- or 5-port USB-powered mini switch,2025-08-26,v2.2
+Portable Wi-Fi Router,Software,TP-Link AC750 mini router for ad-hoc networks,"CORE,ASSURE,GUARDIAN",Any,Deep_Dive,Onsite,2,CORE,GUARDIAN,,,TP-Link AC750 mini router for ad-hoc networks,2025-08-26,v2.2
+USB Flash Drive,Software,32 GB+ rugged USB flash drive,"CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,32 GB+ rugged USB flash drive,2025-08-26,v2.2
+JCI Mobile Access Portal (MAP) Gateway,Software,TL-MAP1810-0Px gateway for mobile commissioning,"ASSURE,GUARDIAN",Any,,Onsite,2,,GUARDIAN,,,TL-MAP1810-0Px gateway for mobile commissioning,2025-08-26,v2.2
+JCI Handheld VAV Balancing Tool,Software,NS-ATV7003-0 network sensor handheld tool,"ASSURE,GUARDIAN",Any,,Onsite,2,,GUARDIAN,,,NS-ATV7003-0 network sensor handheld tool,2025-08-26,v2.2
+Honeywell Connect Mobile (HCM) App,Software,Bluetooth commissioning app for Spyder Model 7 VAVs,"ASSURE,GUARDIAN",Any,,Onsite,2,,GUARDIAN,,,Bluetooth commissioning app for Spyder Model 7 VAVs,2025-08-26,v2.2
+LON Interface & Software,Software,"LN-Builder, LN plug-ins, Tridium LON driver with USB LON adapter","ASSURE,GUARDIAN",Any,,Onsite,2,,GUARDIAN,,,"LN-Builder, LN plug-ins, Tridium LON driver with USB LON adapter",2025-08-26,v2.2
+Serial Adapters,Software,USB-to-RS-232/485 adapters with terminal-emulator software,"ASSURE,GUARDIAN",Any,,Onsite,2,,GUARDIAN,,,USB-to-RS-232/485 adapters with terminal-emulator software,2025-08-26,v2.2
+Tridium Niagara Workbench,Software,Niagara Workbench N4 v4.10/4.11,"CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,Niagara Workbench N4 v4.10/4.11,2025-08-26,v2.2
+Honeywell Spyder Tool,Software,Niagara module for legacy Honeywell Spyder controllers,"ASSURE,GUARDIAN",Any,,Onsite,2,,GUARDIAN,,,Niagara module for legacy Honeywell Spyder controllers,2025-08-26,v2.2
+Johnson Controls CCT/PCT,Software,Controller Configuration Tool and Programmable Controller Tool,"ASSURE,GUARDIAN",Any,,Onsite,2,,GUARDIAN,,,Controller Configuration Tool and Programmable Controller Tool,2025-08-26,v2.2
+System Configuration Tool,Software,Niagara System Configuration Tool,"CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,Niagara System Configuration Tool,2025-08-26,v2.2
+Application Loading Tool,Software,Niagara Application Loading Tool,"ASSURE,GUARDIAN",Any,,Onsite,2,,GUARDIAN,,,Niagara Application Loading Tool,2025-08-26,v2.2
+Niagara Licensing Portals,Software,Online licensing and platform administration tools,"ASSURE,GUARDIAN",Any,,Onsite,2,,GUARDIAN,,,Online licensing and platform administration tools,2025-08-26,v2.2
+Platform/Administrator Tool,Software,Niagara platform and administrator management,"ASSURE,GUARDIAN",Any,,Onsite,2,,GUARDIAN,,,Niagara platform and administrator management,2025-08-26,v2.2
+Microsoft Visio,Software,Diagramming tool for system design,"CORE,ASSURE,GUARDIAN",Any,Prep,Onsite,2,CORE,GUARDIAN,,,Diagramming tool for system design,2025-08-26,v2.2
+Microsoft Office Suite,Software,"Word, Excel, and PowerPoint for reporting","CORE,ASSURE,GUARDIAN",Any,Prep,Onsite,2,CORE,GUARDIAN,,,"Word, Excel, and PowerPoint for reporting",2025-08-26,v2.2
+PDF Tools,Software,Adobe Reader and CutePDF for PDF handling,"CORE,ASSURE,GUARDIAN",Any,Prep,Onsite,2,CORE,GUARDIAN,,,Adobe Reader and CutePDF for PDF handling,2025-08-26,v2.2
+VPN Client,Software,Cisco AnyConnect VPN client,"CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,Cisco AnyConnect VPN client,2025-08-26,v2.2
+Email & Collaboration Apps,Software,"Outlook, Microsoft Teams, Slack","CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,"Outlook, Microsoft Teams, Slack",2025-08-26,v2.2
+Anti-virus Software,Software,Endpoint protection software,"CORE,ASSURE,GUARDIAN",Any,,Onsite,2,CORE,GUARDIAN,,,Endpoint protection software,2025-08-26,v2.2
+7-Zip,Software,File compression and decompression utility,GUARDIAN,Any,,Onsite,2,,GUARDIAN,,,File compression and decompression utility,2025-08-26,v2.2
+WinSCP,Software,SFTP/FTP file transfer client,GUARDIAN,Any,,Onsite,2,,GUARDIAN,,,SFTP/FTP file transfer client,2025-08-26,v2.2
+FileZilla,Software,FTP file transfer client,GUARDIAN,Any,,Onsite,2,,GUARDIAN,,,FTP file transfer client,2025-08-26,v2.2
+Network Scanning Tools,Software,"Advanced IP Scanner, ping utilities",GUARDIAN,Any,,Onsite,2,,GUARDIAN,,,"Advanced IP Scanner, ping utilities",2025-08-26,v2.2
+JCI Knowledge Exchange Portal & FSC Solutions DB,Software,JCI online knowledge portals,"CORE,ASSURE,GUARDIAN",Any,Prep,Onsite,2,CORE,GUARDIAN,,,JCI online knowledge portals,2025-08-26,v2.2
+Honeywell & Niagara Support Knowledge Bases,Software,Honeywell technical support and Niagara Community Forums,"CORE,ASSURE,GUARDIAN",Any,Prep,Onsite,2,CORE,GUARDIAN,,,Honeywell technical support and Niagara Community Forums,2025-08-26,v2.2
+FAN-410 Quick Reference App,Software,Mobile quick reference for FAN-410 installation,"ASSURE,GUARDIAN",Any,,Onsite,2,,GUARDIAN,,,Mobile quick reference for FAN-410 installation,2025-08-26,v2.2
+Vendor Mobile Apps,Software,JCI thermostat and Honeywell system mobile apps,"ASSURE,GUARDIAN",Any,,Onsite,2,,GUARDIAN,,,JCI thermostat and Honeywell system mobile apps,2025-08-26,v2.2
+Niagara Workbench (N4),Software,Niagara engineering & station access,CORE;ASSURE;GUARDIAN,Niagara N4 (All flavors),Prep,Remote,2,CORE,ASSURE,Licensed,,Vendor IDE for all Niagara flavors,2025-08-26,v2.2
+WEBs Workbench (Honeywell flavor),Software,Vendor-flavor Niagara Workbench,CORE;ASSURE;GUARDIAN,Niagara N4 (Honeywell WEBs),Prep,Remote,2,CORE,ASSURE,Licensed,,Match site flavor for module compatibility,2025-08-26,v2.2
+FX Workbench / FX Supervisor (JCI),Software,Vendor-flavor Niagara Workbench/Supervisor,CORE;ASSURE;GUARDIAN,Niagara N4 (JCI FX),Prep,Remote,2,CORE,ASSURE,Licensed,,For Facility Explorer sites,2025-08-26,v2.2
+VPN Client (AnyConnect/FortiClient/GlobalProtect),Software,Secure remote access per customer IT,CORE;ASSURE;GUARDIAN,Any,Prep,Remote,2,CORE,ASSURE,Licensed,,Coordinate with IT for access profiles,2025-08-26,v2.2
+Password Manager (1Password/Bitwarden),Software,Store credentials (no passwords in tickets),CORE;ASSURE;GUARDIAN,Any,Prep,Remote,1,CORE,,Licensed,,Reference credential storage location not plain text,2025-08-26,v2.2
+Remote Desktop (RDP/AnyDesk/Jump),Software,Secure jump-host or remote server access,CORE;ASSURE;GUARDIAN,Any,Prep,Remote,2,CORE,,Licensed,,Use per customer policy,2025-08-26,v2.2
+Basic Network Tools (ping/tracert/ipconfig),Software,Connectivity checks and basic diagnostics,CORE;ASSURE;GUARDIAN,Any,Health_Sweep,Remote,1,CORE,,Free,,Command-line essentials,2025-08-26,v2.2
+Angry IP Scanner / Advanced IP Scanner,Software,Quick discovery of IP devices / conflicts,CORE;ASSURE;GUARDIAN,Any,Health_Sweep,Remote,1,CORE,ASSURE,Free,,Fast scans for device presence,2025-08-26,v2.2
+YABE (Yet Another BACnet Explorer),Software,BACnet device discovery & property browse,CORE;ASSURE;GUARDIAN,Any,Health_Sweep,Remote,2,CORE,ASSURE,Free,,Read-only explore to avoid writes on production,2025-08-26,v2.2
+Wireshark,Software,Packet capture for BACnet/IP & network issues,ASSURE;GUARDIAN,Any,Deep_Dive,Remote,3,,GUARDIAN,Free,,Use display filters; coordinate with IT,2025-08-26,v2.2
+Nmap / iperf3,Software,Port scan & throughput tests,ASSURE;GUARDIAN,Any,Deep_Dive,Remote,3,,GUARDIAN,Free,,Use per change-management policy,2025-08-26,v2.2
+USB–RS485 Adapter (FTDI-based),Hardware,MS/TP troubleshooting and capture,ASSURE;GUARDIAN,Any,Deep_Dive,Onsite,2,,GUARDIAN,Hardware,,Stable drivers; pair with serial terminal,2025-08-26,v2.2
+Serial Terminal (RealTerm/Tera Term),Software,Serial session for controllers or gateways,ASSURE;GUARDIAN,Any,Deep_Dive,Onsite,2,,GUARDIAN,Free,,Logging enabled for captures,2025-08-26,v2.2
+BACnet MSTP Analyzer / Sniffer,Hardware,Visualize RS-485 signal quality & errors,GUARDIAN,Any,Deep_Dive,Onsite,3,,GUARDIAN,Hardware,,For trunk-level issues/CRC errors,2025-08-26,v2.2
+OpenSSL/Keytool,Software,Cert/key mgmt for HTTPS/FOXs,GUARDIAN,Niagara N4 (All flavors),Deep_Dive,Remote,3,,GUARDIAN,Free,,"Cert renewals, CSR generation",2025-08-26,v2.2
+WinSCP/SFTP Client,Software,"Pull backups, logs, and exports",CORE;ASSURE;GUARDIAN,Niagara N4 (All flavors),Wrap_Up,Remote,1,CORE,ASSURE,Free,,Tie to backup SOP,2025-08-26,v2.2
+7-Zip,Software,Archive backups & export bundles,CORE;ASSURE;GUARDIAN,Any,Wrap_Up,Remote,1,CORE,,Free,,Compress & checksum,2025-08-26,v2.2
+Diagramming (draw.io/Visio),Software,Update risers & diagrams,ASSURE;GUARDIAN,Any,Wrap_Up,Remote,1,,ASSURE,Free/Licensed,,Standardize stencil set,2025-08-26,v2.2
