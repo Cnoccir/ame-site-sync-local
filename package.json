@@ -5,7 +5,7 @@
   "description": "Local development version of AME Site Sync - Building Automation Maintenance Management",
   "type": "module",
   "scripts": {
-    "dev": "git fetch origin --quiet && vite",
+    "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",

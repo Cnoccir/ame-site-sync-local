@@ -62,25 +62,32 @@ export class AMEService {
   
   static async createCustomer(customer: Omit<Customer, 'id' | 'created_at' | 'updated_at'>): Promise<Customer> {
     return errorHandler.withErrorHandling(async () => {
+      // IMPORTANT: Route creation through RPC so we don't try to insert JSON objects/unknown columns
+      const { data: newId, error: rpcError } = await supabase
+        .rpc('create_customer_full', { form: customer as any });
+
+      if (rpcError) throw errorHandler.handleSupabaseError(rpcError, 'createCustomer');
+
+      // Fetch the newly created customer row (plain table shape expected by the app)
       const { data, error } = await supabase
         .from('ame_customers')
-        .insert(customer)
-        .select()
+        .select('*')
+        .eq('id', newId)
         .single();
-      
+
       if (error) throw errorHandler.handleSupabaseError(error, 'createCustomer');
-      
+
       // Create Google Drive project folder after customer creation
       try {
         const { GoogleDriveFolderService } = await import('./googleDriveFolderService');
         await GoogleDriveFolderService.ensureProjectFolderExists(data);
       } catch (folderError) {
         logger.warn('Failed to create Google Drive folder for customer', folderError, {
-          customerId: data.id,
-          companyName: data.company_name
+          customerId: (data as any).id,
+          companyName: (data as any).company_name
         });
       }
-      
+
       return data as Customer;
     }, 'createCustomer');
   }

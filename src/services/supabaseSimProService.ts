@@ -11,6 +11,14 @@ export interface SimProCustomerSuggestion {
   email?: string;
   service_tier?: string;
   similarity_score?: number;
+  match_type?: string;
+  match_value?: string;
+  contract_number?: string;
+  latest_contract_number?: string;
+  latest_contract_email?: string;
+  latest_contract_name?: string;
+  has_active_contracts?: boolean;
+  total_contract_value?: number;
 }
 
 export interface SimProCustomerAutoFill {
@@ -28,6 +36,10 @@ export interface SimProCustomerAutoFill {
   total_contract_value?: number;
   active_contract_count?: number;
   latest_contract_email?: string;
+  latest_contract_number?: string;
+  latest_contract_name?: string;
+  latest_start_date?: string;
+  latest_end_date?: string;
 }
 
 export class SupabaseSimProService {
@@ -40,17 +52,16 @@ export class SupabaseSimProService {
     }
 
     try {
-      // First try the RPC function
+      // Try the original legacy search function only
       const { data, error } = await supabase.rpc('search_simpro_customers_by_name', {
         search_name: query.trim()
       });
-
+      
       if (error) {
-        console.warn('RPC function not available, falling back to table query:', error);
-        // Fallback to direct table query
+        console.warn('Legacy search failed, using table query fallback:', error);
         return await this.fallbackSearchByName(query.trim());
       }
-
+      
       return data || [];
     } catch (error) {
       console.error('Error in searchCustomersByName:', error);
@@ -95,29 +106,16 @@ export class SupabaseSimProService {
     }
 
     try {
-      const { data, error } = await supabase.rpc('get_simpro_customer_autofill', {
-        customer_id: customerId
-      });
-
-      if (error) {
-        console.warn('RPC function not available, falling back to table query:', error);
-        return await this.fallbackGetCustomerAutofill(customerId);
-      }
-
-      // The function returns an array with one object, extract the nested object
-      if (data && data.length > 0 && data[0].get_simpro_customer_autofill) {
-        return data[0].get_simpro_customer_autofill;
-      }
-
+      // Use the working fallback method directly (includes contract data)
       return await this.fallbackGetCustomerAutofill(customerId);
     } catch (error) {
       console.error('Error in getCustomerAutofill:', error);
-      return await this.fallbackGetCustomerAutofill(customerId);
+      return null;
     }
   }
 
   /**
-   * Get a combined search result with both name-based and multi-field search
+   * Get a combined search result with comprehensive matching
    */
   static async searchCustomersCombined(query: string): Promise<SimProCustomerSuggestion[]> {
     if (!query || query.trim().length < 2) {
@@ -125,7 +123,7 @@ export class SupabaseSimProService {
     }
 
     try {
-      // Run both searches in parallel
+      // Use the original working method - search by name first, then multi-field
       const [nameResults, multiResults] = await Promise.all([
         this.searchCustomersByName(query),
         this.searchCustomersMulti(query)
@@ -180,12 +178,16 @@ export class SupabaseSimProService {
     return {
       company_name: simProData.company_name || '',
       site_name: simProData.company_name || '', // Use company name as default site name
+      site_nickname: simProData.latest_contract_number || '', // Use contract number as site nickname for Google Drive search
       site_address: this.formatFullAddress(simProData),
       service_tier: simProData.service_tier || 'CORE',
       contact_email: simProData.email || simProData.latest_contract_email || '',
       primary_contact_name: '', // Not available in SimPro data
       contact_phone: '', // Not available in SimPro data
-      contract_status: simProData.has_active_contracts ? 'Active' : 'Inactive'
+      contract_status: simProData.has_active_contracts ? 'Active' : 'Inactive',
+      contract_number: simProData.latest_contract_number || '', // New field from enhanced search
+      contract_value: simProData.total_contract_value || 0,  // Add contract value
+      contract_name: simProData.latest_contract_name || '' // Add contract name
     };
   }
 
@@ -211,7 +213,7 @@ export class SupabaseSimProService {
       const { data, error } = await supabase
         .from('simpro_customers')
         .select('simpro_customer_id, company_name, mailing_address, mailing_city, mailing_state, mailing_zip, email, service_tier')
-        .or(`company_name.ilike.%${query}%,company_name.ilike.${query}%`)
+        .ilike('company_name', `%${query}%`)
         .not('company_name', 'is', null)
         .limit(10);
 
@@ -242,19 +244,55 @@ export class SupabaseSimProService {
    */
   private static async fallbackSearchMulti(query: string): Promise<SimProCustomerSuggestion[]> {
     try {
-      const { data, error } = await supabase
-        .from('simpro_customers')
-        .select('simpro_customer_id, company_name, mailing_address, mailing_city, mailing_state, mailing_zip, email, service_tier')
-        .or(`company_name.ilike.%${query}%,mailing_address.ilike.%${query}%,mailing_city.ilike.%${query}%`)
-        .not('company_name', 'is', null)
-        .limit(10);
+      // Search across multiple fields by running separate queries and combining results
+      const [nameResults, addressResults, cityResults] = await Promise.all([
+        supabase
+          .from('simpro_customers')
+          .select('simpro_customer_id, company_name, mailing_address, mailing_city, mailing_state, mailing_zip, email, service_tier')
+          .ilike('company_name', `%${query}%`)
+          .not('company_name', 'is', null)
+          .limit(10),
+        supabase
+          .from('simpro_customers')
+          .select('simpro_customer_id, company_name, mailing_address, mailing_city, mailing_state, mailing_zip, email, service_tier')
+          .ilike('mailing_address', `%${query}%`)
+          .not('company_name', 'is', null)
+          .limit(10),
+        supabase
+          .from('simpro_customers')
+          .select('simpro_customer_id, company_name, mailing_address, mailing_city, mailing_state, mailing_zip, email, service_tier')
+          .ilike('mailing_city', `%${query}%`)
+          .not('company_name', 'is', null)
+          .limit(10)
+      ]);
 
-      if (error) {
-        console.error('Error in fallback multi search:', error);
+      // Check for errors
+      if (nameResults.error || addressResults.error || cityResults.error) {
+        console.error('Error in fallback multi search:', {
+          name: nameResults.error,
+          address: addressResults.error,
+          city: cityResults.error
+        });
         return [];
       }
 
-      return (data || []).map(customer => ({
+      // Combine and deduplicate results
+      const allResults = [
+        ...(nameResults.data || []),
+        ...(addressResults.data || []),
+        ...(cityResults.data || [])
+      ];
+
+      // Remove duplicates based on simpro_customer_id
+      const uniqueResults = allResults.reduce((acc, customer) => {
+        const id = customer.simpro_customer_id?.toString() || '';
+        if (id && !acc.find(c => c.simpro_customer_id?.toString() === id)) {
+          acc.push(customer);
+        }
+        return acc;
+      }, [] as typeof allResults);
+
+      return uniqueResults.slice(0, 10).map(customer => ({
         id: customer.simpro_customer_id?.toString() || '',
         company_name: customer.company_name || '',
         mailing_address: customer.mailing_address || '',
@@ -276,12 +314,32 @@ export class SupabaseSimProService {
    */
   private static async fallbackGetCustomerAutofill(customerId: string): Promise<SimProCustomerAutoFill | null> {
     try {
-      // Get customer data
-      const { data: customerData, error: customerError } = await supabase
-        .from('simpro_customers')
-        .select('*')
-        .eq('simpro_customer_id', customerId)
-        .single();
+      // Try with simpro_customer_id first (most common case)
+      let customerData = null;
+      let customerError = null;
+      
+      // Check if customerId is a UUID
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(customerId);
+      
+      if (isUUID) {
+        // Search by UUID
+        const result = await supabase
+          .from('simpro_customers')
+          .select('*')
+          .eq('id', customerId)
+          .single();
+        customerData = result.data;
+        customerError = result.error;
+      } else {
+        // Search by simpro_customer_id
+        const result = await supabase
+          .from('simpro_customers')
+          .select('*')
+          .eq('simpro_customer_id', customerId)
+          .single();
+        customerData = result.data;
+        customerError = result.error;
+      }
 
       if (customerError) {
         console.error('Error getting customer data for autofill:', customerError);
@@ -292,11 +350,12 @@ export class SupabaseSimProService {
         return null;
       }
 
-      // Get contract data
+      // Get contract data using the customer's UUID
       const { data: contractData, error: contractError } = await supabase
         .from('simpro_customer_contracts')
-        .select('contract_value, contract_status, email')
-        .eq('customer_id', customerId);
+        .select('contract_value, contract_status, contract_email, contract_name, contract_number, start_date, end_date')
+        .eq('customer_id', customerData.id)
+        .order('start_date', { ascending: false });
 
       if (contractError) {
         console.warn('Error getting contract data for autofill:', contractError);
@@ -306,8 +365,8 @@ export class SupabaseSimProService {
       const contracts = contractData || [];
       const activeContracts = contracts.filter(c => c.contract_status === 'Active');
       const totalContractValue = contracts.reduce((sum, c) => sum + (c.contract_value || 0), 0);
-      const latestContractEmail = contracts.find(c => c.email)?.email || customerData.email;
-
+      const latestContract = contracts[0]; // Most recent contract
+      
       return {
         company_name: customerData.company_name || '',
         email: customerData.email || '',
@@ -322,7 +381,11 @@ export class SupabaseSimProService {
         has_active_contracts: activeContracts.length > 0,
         total_contract_value: totalContractValue,
         active_contract_count: activeContracts.length,
-        latest_contract_email: latestContractEmail
+        latest_contract_email: latestContract?.contract_email || customerData.email || '',
+        latest_contract_number: latestContract?.contract_number || '',
+        latest_contract_name: latestContract?.contract_name || '',
+        latest_start_date: latestContract?.start_date || '',
+        latest_end_date: latestContract?.end_date || ''
       };
     } catch (error) {
       console.error('Error in fallbackGetCustomerAutofill:', error);

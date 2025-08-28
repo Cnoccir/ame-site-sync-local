@@ -56,6 +56,8 @@ interface CustomerSearchResult {
 interface EnhancedGoogleDriveFolderSearchProps {
   customerData: {
     company_name: string;
+    site_name?: string;
+    site_nickname?: string;
     site_address?: string;
     customer_id?: string;
     service_tier?: string;
@@ -121,14 +123,30 @@ export const EnhancedGoogleDriveFolderSearch: React.FC<EnhancedGoogleDriveFolder
       
       const results = await EnhancedGoogleDriveService.searchExistingCustomerFolders(
         customerData.company_name,
-        customerData.site_address
+        customerData.site_address,
+        customerData.site_name,
+        customerData.site_nickname
       );
       
       setSearchResults(results);
       setActiveTab('search'); // Always show search results when searching
       
-      // Show notification about search results
-      if (results.existingFolders.length > 0) {
+      // Check if authentication is required
+      if (results.authenticationRequired) {
+        toast({
+          title: 'Google Drive Authentication Required',
+          description: 'Please authenticate with Google Drive to search existing folders.',
+          variant: 'default',
+          action: (
+            <button 
+              onClick={() => EnhancedGoogleDriveService.promptAuthentication()}
+              className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+            >
+              Authenticate
+            </button>
+          ),
+        });
+      } else if (results.existingFolders.length > 0) {
         const highConfidenceCount = results.existingFolders.filter(f => f.confidence === 'high').length;
         toast({
           title: 'Folder Search Complete',

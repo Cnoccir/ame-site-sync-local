@@ -23,6 +23,7 @@ interface CreateStructuredProjectFolderRequest {
   parentFolderId: string
   folderName: string
   year: number
+  accessToken: string
 }
 
 Deno.serve(async (req) => {
@@ -36,8 +37,8 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const clientId = Deno.env.get('GOOGLE_CLIENT_ID')
-    const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET')
+    const clientId = Deno.env.get('GOOGLE_OAUTH_CLIENT_ID')
+    const clientSecret = Deno.env.get('GOOGLE_OAUTH_CLIENT_SECRET')
 
     console.log('Google Client ID exists:', !!clientId)
     console.log('Google Client Secret exists:', !!clientSecret)
@@ -105,6 +106,7 @@ async function getAccessToken(supabase: any): Promise<string> {
     throw new Error('User not authenticated')
   }
 
+  // OAuth exchange function stores tokens under 'google_oauth'
   const googleOAuth = user.user_metadata?.google_oauth
   if (!googleOAuth || !googleOAuth.access_token) {
     throw new Error('No Google OAuth tokens found. Please re-authenticate with Google.')
@@ -211,30 +213,8 @@ async function createProjectFolder(
   } catch (error) {
     console.error('Error creating Google Drive folder:', error)
     
-    // Fallback to mock folder creation if Google Drive fails
-    const mockFolderId = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    const folderName = visitId ? `${customerName} - Visit ${visitId}` : `${customerName} - ${new Date().getFullYear()}`
-    
-    const { error: updateError } = await supabase
-      .from('ame_customers')
-      .update({
-        drive_folder_id: mockFolderId,
-        drive_folder_url: `https://drive.google.com/drive/folders/${mockFolderId}`,
-      })
-      .eq('id', customerId)
-
-    if (updateError) {
-      throw new Error('Failed to update customer record with fallback folder')
-    }
-
-    return {
-      success: true,
-      folderId: mockFolderId,
-      folderUrl: `https://drive.google.com/drive/folders/${mockFolderId}`,
-      subfolders: {},
-      fallbackMode: true,
-      note: 'Folder created in fallback mode due to Google Drive API issue'
-    }
+    // Throw error instead of creating mock data
+    throw new Error(`Google Drive folder creation failed: ${error.message}`)
   }
 }
 
@@ -247,13 +227,15 @@ async function createStructuredProjectFolder(
   data: CreateStructuredProjectFolderRequest,
   supabase: any
 ): Promise<any> {
-  const { customerName, customerData, parentFolderId, folderName, year } = data
+  const { customerName, customerData, parentFolderId, folderName, year, accessToken } = data
 
   console.log(`Creating structured project folder: ${folderName} in parent ${parentFolderId}`)
   
   try {
-    // Get access token from authenticated user
-    const accessToken = await getAccessToken(supabase)
+    // Use the access token passed from the client
+    if (!accessToken) {
+      throw new Error('Access token is required for folder creation')
+    }
     
     // Create main project folder
     const createFolderResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
@@ -388,43 +370,7 @@ ${Object.entries(projectSubfolders).map(([name, key]) =>
     
   } catch (error) {
     console.error('Error creating structured Google Drive folder:', error)
-    
-    // Fallback to mock folder creation
-    const mockMainFolderId = `mock_main_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    const mockMainFolderUrl = `https://drive.google.com/drive/folders/${mockMainFolderId}`
-    
-    const projectSubfolders = {
-      'Site Backups': 'backups',
-      'Project Documentation': 'projectDocs',
-      'Site Photos & Media': 'sitePhotos',
-      'Maintenance Records': 'maintenance',
-      'Reports & Analytics': 'reports',
-      'Client Correspondence': 'correspondence'
-    }
-
-    const subfolderStructure = {}
-    Object.entries(projectSubfolders).forEach(([displayName, key]) => {
-      const subfolderId = `mock_${key}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      subfolderStructure[key] = {
-        id: subfolderId,
-        url: `https://drive.google.com/drive/folders/${subfolderId}`,
-        name: displayName
-      }
-    })
-
-    return {
-      success: true,
-      mainFolder: {
-        id: mockMainFolderId,
-        url: mockMainFolderUrl,
-        name: folderName
-      },
-      subfolders: subfolderStructure,
-      parentFolderId,
-      year,
-      fallbackMode: true,
-      note: 'Structured project folder created in fallback mode due to Google Drive API issue'
-    }
+    throw error; // Don't fallback to mock data, let the error propagate
   }
 }
 
@@ -478,24 +424,7 @@ async function listProjectFolders(clientId: string, clientSecret: string, supaba
   } catch (error) {
     console.error('Error listing Google Drive folders:', error)
     
-    // Fallback to mock data
-    const mockFolders = [
-      {
-        id: 'mock_folder_1',
-        name: 'Example Company - 2025',
-        createdTime: '2024-01-15T10:00:00.000Z'
-      },
-      {
-        id: 'mock_folder_2', 
-        name: 'Test Site - 2025',
-        createdTime: '2024-01-16T14:30:00.000Z'
-      }
-    ]
-
-    return { 
-      folders: mockFolders,
-      fallbackMode: true,
-      note: 'Showing mock data due to Google Drive API issue'
-    }
+    // Throw error instead of returning mock data
+    throw new Error(`Google Drive folder listing failed: ${error.message}`)
   }
 }

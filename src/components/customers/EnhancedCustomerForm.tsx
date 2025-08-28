@@ -92,11 +92,14 @@ export const EnhancedCustomerForm: React.FC<EnhancedCustomerFormProps> = ({
 
   const { watch } = form;
   const companyName = watch('company_name');
+  const siteName = watch('site_name');
   const siteAddress = watch('site_address');
 
   // Watch for form data to pass to Google Drive component
   const customerData = {
     company_name: companyName || '',
+    site_name: siteName || '',
+    site_nickname: '', // Not available in this simple form
     site_address: siteAddress || '',
     customer_id: '', // New customer, no ID yet
     service_tier: watch('service_tier'),

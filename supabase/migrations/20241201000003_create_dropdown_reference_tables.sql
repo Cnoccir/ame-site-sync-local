@@ -107,33 +107,21 @@ CREATE POLICY "Enable read access for all users" ON access_methods
 CREATE POLICY "Enable read access for all users" ON service_frequencies
   FOR SELECT USING (auth.role() = 'authenticated');
 
--- Admin policies for full access (assuming admin role or specific user permissions)
+-- Admin policies for full access - simplified for now (will be enhanced after ame_technicians table is created)
 CREATE POLICY "Enable all operations for admins" ON building_types
-  FOR ALL USING (auth.jwt() ->> 'role' = 'admin' OR auth.uid()::text IN (
-    SELECT user_id::text FROM ame_technicians WHERE role = 'admin' AND is_active = true
-  ));
+  FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
 
 CREATE POLICY "Enable all operations for admins" ON system_architectures
-  FOR ALL USING (auth.jwt() ->> 'role' = 'admin' OR auth.uid()::text IN (
-    SELECT user_id::text FROM ame_technicians WHERE role = 'admin' AND is_active = true
-  ));
+  FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
 
 CREATE POLICY "Enable all operations for admins" ON bas_platforms
-  FOR ALL USING (auth.jwt() ->> 'role' = 'admin' OR auth.uid()::text IN (
-    SELECT user_id::text FROM ame_technicians WHERE role = 'admin' AND is_active = true
-  ));
+  FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
 
 CREATE POLICY "Enable all operations for admins" ON contact_roles
-  FOR ALL USING (auth.jwt() ->> 'role' = 'admin' OR auth.uid()::text IN (
-    SELECT user_id::text FROM ame_technicians WHERE role = 'admin' AND is_active = true
-  ));
+  FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
 
 CREATE POLICY "Enable all operations for admins" ON access_methods
-  FOR ALL USING (auth.jwt() ->> 'role' = 'admin' OR auth.uid()::text IN (
-    SELECT user_id::text FROM ame_technicians WHERE role = 'admin' AND is_active = true
-  ));
+  FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
 
 CREATE POLICY "Enable all operations for admins" ON service_frequencies
-  FOR ALL USING (auth.jwt() ->> 'role' = 'admin' OR auth.uid()::text IN (
-    SELECT user_id::text FROM ame_technicians WHERE role = 'admin' AND is_active = true
-  ));
+  FOR ALL USING (auth.jwt() ->> 'role' = 'admin');

@@ -28,10 +28,28 @@ export const GoogleCallback: React.FC = () => {
       console.log('Error:', error);
 
       if (error) {
+        // If this is a popup, send error message to parent
+        if (window.opener) {
+          window.opener.postMessage({
+            type: 'GOOGLE_AUTH_ERROR',
+            error: `OAuth error: ${error}`
+          }, window.location.origin);
+          window.close();
+          return;
+        }
         throw new Error(`OAuth error: ${error}`);
       }
 
       if (!authCode) {
+        // If this is a popup, send error message to parent
+        if (window.opener) {
+          window.opener.postMessage({
+            type: 'GOOGLE_AUTH_ERROR',
+            error: 'No authorization code received'
+          }, window.location.origin);
+          window.close();
+          return;
+        }
         throw new Error('No authorization code received');
       }
 
@@ -59,7 +77,18 @@ export const GoogleCallback: React.FC = () => {
       setMessage('Google Drive authentication successful!');
       setUserEmail(userInfo?.email || 'Unknown');
 
-      // Redirect back to where user came from after a short delay
+      // If this is a popup, send success message to parent and close
+      if (window.opener) {
+        window.opener.postMessage({
+          type: 'GOOGLE_AUTH_SUCCESS',
+          tokens,
+          userInfo
+        }, window.location.origin);
+        window.close();
+        return;
+      }
+
+      // For full page redirect, redirect back to where user came from after a short delay
       setTimeout(() => {
         const returnUrl = localStorage.getItem('google_oauth_return_url') || '/admin';
         localStorage.removeItem('google_oauth_return_url');

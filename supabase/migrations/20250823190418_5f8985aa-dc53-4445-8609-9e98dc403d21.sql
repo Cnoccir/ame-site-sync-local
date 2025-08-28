@@ -1,5 +1,13 @@
+-- Enable required extensions
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Insert the development test users directly into auth.users
--- Note: This is for development only - normally users would sign up
+-- Note: This is for development only - normally users would sign up 
+-- Using pre-hashed password to avoid gen_salt issues
+-- Password: Ameinc4100
+
+-- Delete existing test users if they exist
+DELETE FROM auth.users WHERE email IN ('tech@ame-inc.com', 'admin@ame-inc.com');
 
 -- First, let's create the users with the email confirmation bypassed
 INSERT INTO auth.users (
@@ -27,7 +35,7 @@ INSERT INTO auth.users (
     'authenticated',
     'authenticated',
     'tech@ame-inc.com',
-    crypt('Ameinc4100', gen_salt('bf')),
+    '$2a$10$PkZE92ENdOj8XkLYYWqqZ.1yZqY8pUVjhdGwdVsYwjP7OoGGQ7xYu',
     NOW(),
     NOW(),
     NOW(),
@@ -46,7 +54,7 @@ INSERT INTO auth.users (
     'authenticated',
     'authenticated', 
     'admin@ame-inc.com',
-    crypt('Ameinc4100', gen_salt('bf')),
+    '$2a$10$PkZE92ENdOj8XkLYYWqqZ.1yZqY8pUVjhdGwdVsYwjP7OoGGQ7xYu',
     NOW(),
     NOW(),
     NOW(),
@@ -58,5 +66,4 @@ INSERT INTO auth.users (
     '',
     '',
     ''
-  )
-ON CONFLICT (email) DO NOTHING;
+  );

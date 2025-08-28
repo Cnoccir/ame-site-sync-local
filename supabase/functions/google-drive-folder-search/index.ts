@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
         result = await checkOAuthStatus(supabase)
         break
       case 'search_customer_folders':
-        result = await searchCustomerFolders(supabase, data.customerName, data.siteAddress)
+        result = await searchCustomerFolders(supabase, data.customerName, data.siteAddress, data.accessToken)
         break
       default:
         throw new Error('Invalid action specified')
@@ -132,24 +132,30 @@ async function checkOAuthStatus(supabase: any): Promise<any> {
 async function searchCustomerFolders(
   supabase: any,
   customerName: string,
-  siteAddress?: string
+  siteAddress?: string,
+  accessToken?: string
 ): Promise<any> {
   console.log(`Searching Google Drive for folders matching: ${customerName}`)
   
   try {
-    // Get access token from authenticated user
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    // Use access token passed from client if available
+    let driveAccessToken = accessToken
     
-    if (userError || !user) {
-      throw new Error('User not authenticated')
-    }
+    if (!driveAccessToken) {
+      // Fallback: try to get access token from authenticated user session
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !user) {
+        throw new Error('User not authenticated')
+      }
 
-    const googleOAuth = user.user_metadata?.google_oauth
-    if (!googleOAuth || !googleOAuth.access_token) {
-      throw new Error('No Google OAuth tokens found. Please re-authenticate with Google.')
+      const googleOAuth = user.user_metadata?.google_oauth
+      if (!googleOAuth || !googleOAuth.access_token) {
+        throw new Error('No Google OAuth tokens found. Please re-authenticate with Google.')
+      }
+      
+      driveAccessToken = googleOAuth.access_token
     }
-
-    const accessToken = googleOAuth.access_token
     const startTime = Date.now()
     
     // Search for folders containing the customer name
@@ -171,7 +177,7 @@ async function searchCustomerFolders(
           }),
           {
             headers: {
-              'Authorization': `Bearer ${accessToken}`,
+              'Authorization': `Bearer ${driveAccessToken}`,
             },
           }
         )
@@ -264,32 +270,8 @@ async function searchCustomerFolders(
   } catch (error) {
     console.error('Google Drive search failed:', error)
     
-    // Fallback to mock results when API fails
-    const mockResults = [
-      {
-        folderId: 'mock_fallback',
-        folderName: `${customerName} (Fallback)`,
-        folderPath: `/Fallback/${customerName}`,
-        webViewLink: `https://drive.google.com/drive/folders/mock_fallback`,
-        matchScore: 0.5,
-        matchType: 'fallback',
-        confidence: 'low',
-        parentFolder: 'Fallback Mode',
-        parentFolderType: 'FALLBACK',
-        lastModified: new Date().toISOString()
-      }
-    ]
-    
-    return {
-      existingFolders: mockResults,
-      recommendedActions: {
-        action: 'create_new',
-        reason: 'Google Drive search is temporarily unavailable. Recommend creating a new folder when service is restored.'
-      },
-      searchDuration: 100,
-      totalFoldersScanned: 0,
-      fallbackMode: true
-    }
+    // Throw the error instead of masking it with mock data
+    throw new Error(`Google Drive API search failed: ${error.message}`)
   }
 }
 

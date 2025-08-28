@@ -46,6 +46,12 @@ Deno.serve(async (req) => {
       case 'test_connection':
         result = await testConnection()
         break
+      case 'list_project_folders':
+        result = await listProjectFolders(data)
+        break
+      case 'create_project_folder':
+        result = await createProjectFolder(data)
+        break
       default:
         throw new Error('Invalid action specified')
     }
@@ -391,4 +397,78 @@ async function scanAllFolders(): Promise<any> {
       error
     }
   }
+}
+
+/**
+ * List project folders across known AME roots (optionally filter by query)
+ */
+async function listProjectFolders(params: { query?: string }): Promise<{ folders: any[] }> {
+  const query = (params?.query || '').trim()
+  const { drive } = await initializeGoogleDrive()
+
+  const ROOTS: Record<string, string> = {
+    SITE_BACKUPS: '0AA0zN0U9WLD6Uk9PVA',
+    ENGINEERING_MASTER: '0AHYT5lRT-50cUk9PVA',
+    ENGINEERING_2021: '1maB0Nq9V4l05p63DXU9YEIUQlGvjVI0g',
+    ENGINEERING_2022: '10uM5VcqEfBqDuHOi9of3Nj0gfGfxo2QU',
+    ENGINEERING_2023: '1UjzlUQaleGSedk39ZYxQCTAUhu9TLBrM',
+    ENGINEERING_2024: '1kh6bp8m80Lt-GyqBFY2fPMFmFZfhGyMy',
+    ENGINEERING_2025: '17t5MFAl1Hr0iZgWfYbu2TJ-WckFZt41K',
+    SERVICE_MAINTENANCE: '0AEG566vw75FqUk9PVA'
+  }
+
+  const escape = (s: string) => s.replace(/'/g, "\'")
+
+  const folders: any[] = []
+  for (const [key, parentId] of Object.entries(ROOTS)) {
+    const nameFilter = query ? ` and name contains '${escape(query)}'` : ''
+    const res = await drive.files.list({
+      q: `'${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false${nameFilter}`,
+      fields: 'files(id,name,webViewLink,createdTime,modifiedTime,parents,description)',
+      pageSize: 1000
+    })
+    const found = res.data.files || []
+    for (const f of found) {
+      folders.push({
+        id: f.id,
+        name: f.name,
+        webViewLink: f.webViewLink,
+        createdTime: f.createdTime,
+        modifiedTime: f.modifiedTime,
+        parentId,
+        description: f.description || undefined,
+        parentFolderType: key
+      })
+    }
+  }
+
+  // Sort by modified time desc when available
+  folders.sort((a, b) => new Date(b.modifiedTime || 0).getTime() - new Date(a.modifiedTime || 0).getTime())
+  return { folders }
+}
+
+/**
+ * Create a project folder under the AME "New Job" parent
+ */
+async function createProjectFolder(params: { name: string }): Promise<{ folderId: string; folderUrl: string; name: string }> {
+  const name = (params?.name || '').trim()
+  if (!name) throw new Error('Missing folder name')
+
+  const { drive } = await initializeGoogleDrive()
+  const NEW_JOB_PARENT = '1kHsxb9AAeeMtG3G_LjIAoR4UCPky6efU'
+
+  // Create the folder
+  const createRes = await drive.files.create({
+    requestBody: {
+      name,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [NEW_JOB_PARENT]
+    },
+    fields: 'id,webViewLink,name,parents'
+  })
+
+  const folderId = createRes.data.id as string
+  const folderUrl = createRes.data.webViewLink as string
+
+  return { folderId, folderUrl, name: createRes.data.name as string }
 }

@@ -66,6 +66,21 @@ export interface Customer {
   primary_contact: string;
   contact_phone: string;
   contact_email: string;
+  primary_contact_role?: string;
+  
+  // Secondary Contact (Optional)
+  secondary_contact_name?: string;
+  secondary_contact_phone?: string;
+  secondary_contact_email?: string;
+  secondary_contact_role?: string;
+  
+  // Site Access & Logistics
+  access_procedure?: string;
+  equipment_access_notes?: string;
+  
+  // Safety & PPE Requirements
+  other_hazards_notes?: string;
+  safety_notes?: string;
   emergency_contact?: string;
   emergency_phone?: string;
   emergency_email?: string;
@@ -88,15 +103,25 @@ export interface Customer {
   badge_required?: boolean;
   training_required?: boolean;
   safety_requirements?: string;
-  site_hazards?: string;
+  site_hazards?: string[];
+  site_hazards_legacy?: string;
   
-  // System Credentials (encrypted)
+  // System Credentials (encrypted) - legacy fields
   bms_supervisor_ip?: string;
   web_supervisor_url?: string;
   workbench_username?: string;
   workbench_password?: string;
   platform_username?: string;
   platform_password?: string;
+  pc_username?: string;
+  pc_password?: string;
+  different_platform_station_creds?: boolean;
+  
+  // Enhanced credentials system
+  access_credentials?: any[];
+  system_credentials?: any;
+  windows_credentials?: any;
+  service_credentials?: any;
   
   // Remote Access
   remote_access?: boolean;
@@ -112,6 +137,10 @@ export interface Customer {
   special_instructions?: string;
   
   // Administrative
+  account_manager_id?: string;
+  account_manager_name?: string;
+  account_manager_phone?: string;
+  account_manager_email?: string;
   account_manager?: string;
   region?: string;
   district?: string;

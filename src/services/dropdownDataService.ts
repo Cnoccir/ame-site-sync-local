@@ -203,9 +203,10 @@ export class DropdownDataService {
    */
   static async getActiveTechnicians(): Promise<DropdownOption[]> {
     const { data, error } = await supabase
-      .from('ame_technicians')
-      .select('id, employee_name, email, mobile_phone')
+      .from('ame_employees')
+      .select('id, employee_name, email, mobile_phone, is_technician')
       .eq('is_active', true)
+      .eq('is_technician', true)
       .order('employee_name');
     
     if (error) {

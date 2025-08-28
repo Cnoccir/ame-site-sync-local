@@ -340,8 +340,8 @@ export class ValidationService {
     const warnings: ValidationWarning[] = [];
     let checksPerformed = 0;
 
-    // Format-specific validation based on dataset type
-    switch (dataset.type) {
+    // Format-specific validation based on dataset category
+    switch (dataset.category) {
       case 'networkDevices':
         const networkValidation = this.validateNetworkDevices(dataset);
         errors.push(...networkValidation.errors);
@@ -367,7 +367,7 @@ export class ValidationService {
         checksPerformed++;
         warnings.push({
           code: 'UNKNOWN_FORMAT',
-          message: `Dataset format '${dataset.type}' is not recognized`,
+          message: `Dataset format '${dataset.category}' is not recognized`,
           recommendations: ['Verify file format and naming conventions']
         });
     }

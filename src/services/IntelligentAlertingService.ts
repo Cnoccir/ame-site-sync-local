@@ -305,8 +305,8 @@ class IntelligentAlertingService {
       alerts.push(...deviceAlerts);
 
       // Store alerts in the storage service
-      for (const alert of alerts) {
-        await AggregationStorageService.storeSystemAlert(alert);
+      if (alerts.length > 0) {
+        await AggregationStorageService.storeSystemAlerts(alerts);
       }
 
       return alerts;
@@ -403,7 +403,7 @@ class IntelligentAlertingService {
         const alert = this.createAlert({
           rule_id: 'high_cpu_usage',
           title: 'High CPU Usage',
-          description: `Station ${station.station_name} CPU usage at ${stationSummary.cpu_usage_percent.toFixed(1)}%`,
+          description: `Station ${station.name} CPU usage at ${stationSummary.cpu_usage_percent.toFixed(1)}%`,
           alert_type: alertType,
           severity_score: alertType === 'critical' ? 8 : 5,
           context: {
@@ -413,7 +413,7 @@ class IntelligentAlertingService {
             current_value: stationSummary.cpu_usage_percent,
             threshold_value: cpuThreshold.warning_threshold,
             timestamp: new Date(),
-            additional_data: { station_name: station.station_name }
+            additional_data: { station_name: station.name }
           }
         });
 
@@ -433,7 +433,7 @@ class IntelligentAlertingService {
         const alert = this.createAlert({
           rule_id: 'high_memory_usage',
           title: 'High Memory Usage',
-          description: `Station ${station.station_name} memory usage at ${stationSummary.memory_usage_percent.toFixed(1)}%`,
+          description: `Station ${station.name} memory usage at ${stationSummary.memory_usage_percent.toFixed(1)}%`,
           alert_type: alertType,
           severity_score: alertType === 'critical' ? 7 : 4,
           context: {
@@ -443,7 +443,7 @@ class IntelligentAlertingService {
             current_value: stationSummary.memory_usage_percent,
             threshold_value: memoryThreshold.warning_threshold,
             timestamp: new Date(),
-            additional_data: { station_name: station.station_name }
+            additional_data: { station_name: station.name }
           }
         });
 
@@ -466,7 +466,7 @@ class IntelligentAlertingService {
           const alert = this.createAlert({
             rule_id: 'multiple_devices_down',
             title: 'Multiple Devices Down',
-            description: `${stationSummary.devices_down} devices down on station ${station.station_name} (${deviceFailurePercentage.toFixed(1)}%)`,
+            description: `${stationSummary.devices_down} devices down on station ${station.name} (${deviceFailurePercentage.toFixed(1)}%)`,
             alert_type: alertType,
             severity_score: alertType === 'critical' ? 9 : 6,
             context: {
@@ -477,7 +477,7 @@ class IntelligentAlertingService {
               threshold_value: deviceHealthThreshold.warning_threshold,
               timestamp: new Date(),
               additional_data: { 
-                station_name: station.station_name,
+                station_name: station.name,
                 device_failure_percentage: deviceFailurePercentage
               }
             }
@@ -496,7 +496,7 @@ class IntelligentAlertingService {
         const alert = this.createAlert({
           rule_id: 'station_offline',
           title: 'Station Offline',
-          description: `Station ${station.station_name} is ${stationSummary.connection_status}`,
+          description: `Station ${station.name} is ${stationSummary.connection_status}`,
           alert_type: 'critical',
           severity_score: 10,
           context: {
@@ -506,7 +506,7 @@ class IntelligentAlertingService {
             current_value: stationSummary.connection_status,
             threshold_value: 'connected',
             timestamp: new Date(),
-            additional_data: { station_name: station.station_name }
+            additional_data: { station_name: station.name }
           }
         });
 
@@ -526,7 +526,7 @@ class IntelligentAlertingService {
         const alert = this.createAlert({
           rule_id: 'low_uptime',
           title: 'Station Recently Restarted',
-          description: `Station ${station.station_name} uptime: ${stationSummary.uptime_hours.toFixed(1)} hours`,
+          description: `Station ${station.name} uptime: ${stationSummary.uptime_hours.toFixed(1)} hours`,
           alert_type: alertType,
           severity_score: alertType === 'critical' ? 6 : 3,
           context: {
@@ -536,7 +536,7 @@ class IntelligentAlertingService {
             current_value: stationSummary.uptime_hours,
             threshold_value: uptimeThreshold.warning_threshold,
             timestamp: new Date(),
-            additional_data: { station_name: station.station_name }
+            additional_data: { station_name: station.name }
           }
         });
 
@@ -617,22 +617,21 @@ class IntelligentAlertingService {
   }): SystemAlert {
     return {
       id: `${rule_id}_${context.station_id || context.site_id}_${Date.now()}`,
-      rule_id,
-      title,
-      description,
-      alert_type,
-      severity_score,
       site_id: context.site_id,
       station_id: context.station_id,
       device_id: context.device_id,
+      alert_type,
+      category: alert_type === 'critical' ? 'performance' : 'device_health',
+      title,
+      description,
+      status: 'active',
+      severity_score,
       metric_name: context.metric_name,
-      current_value: context.current_value,
-      threshold_value: context.threshold_value,
-      created_at: context.timestamp,
-      acknowledged: false,
-      resolved: false,
-      metadata: context.additional_data || {}
-    };
+      threshold_value: typeof context.threshold_value === 'string' ? 0 : Number(context.threshold_value),
+      actual_value: typeof context.current_value === 'string' ? 0 : Number(context.current_value),
+      triggered_at: context.timestamp.toISOString(),
+      created_at: context.timestamp.toISOString()
+    } as SystemAlert;
   }
 
   // Check if an alert should be created based on cooldown period

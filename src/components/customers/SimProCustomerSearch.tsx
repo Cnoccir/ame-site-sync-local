@@ -170,9 +170,9 @@ export const SimProCustomerSearch: React.FC<SimProCustomerSearchProps> = ({
         {/* Search Suggestions Dropdown */}
         {showSuggestions && suggestions.length > 0 && (
           <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-64 overflow-y-auto">
-            {suggestions.map((suggestion) => (
+            {suggestions.map((suggestion, index) => (
               <div
-                key={suggestion.id}
+                key={`${suggestion.id}-${index}`}
                 className="p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
                 onClick={() => handleSuggestionSelect(suggestion)}
               >
@@ -194,14 +194,18 @@ export const SimProCustomerSearch: React.FC<SimProCustomerSearchProps> = ({
                       </div>
                     )}
                     {suggestion.email && (
-                      <div className="text-sm text-gray-600 mt-1">{suggestion.email}</div>
+                      <div className="text-sm text-gray-600 mt-1">
+                        {suggestion.email}
+                      </div>
                     )}
                   </div>
-                  {suggestion.similarity_score && (
-                    <div className="text-xs text-green-600 font-medium">
-                      {formatSimilarityScore(suggestion.similarity_score)}
-                    </div>
-                  )}
+                  <div className="flex flex-col items-end gap-1">
+                    {suggestion.similarity_score && (
+                      <div className="text-xs text-green-600 font-medium">
+                        {formatSimilarityScore(suggestion.similarity_score)}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -290,6 +294,18 @@ export const SimProCustomerSearch: React.FC<SimProCustomerSearchProps> = ({
                         </span>
                       )}
                     </div>
+                  </div>
+                )}
+                {autofillData.latest_contract_number && (
+                  <div>
+                    <span className="font-medium text-gray-700">Latest Contract:</span>
+                    <div className="text-gray-900">{autofillData.latest_contract_number}</div>
+                  </div>
+                )}
+                {autofillData.latest_contract_name && (
+                  <div>
+                    <span className="font-medium text-gray-700">Contract Name:</span>
+                    <div className="text-gray-900 text-sm">{autofillData.latest_contract_name}</div>
                   </div>
                 )}
               </div>

@@ -103,27 +103,21 @@ export const GoogleDriveFolderSearch: React.FC<GoogleDriveFolderSearchProps> = (
 
     try {
       setIsSearching(true);
-      // This would call the actual Google Drive API to search folders
-      // For now, we'll simulate with project folders list
-      const projectFolders = await GoogleDriveFolderService.listProjectFolders();
-      
-      // Filter folders based on search query
-      const filteredFolders = projectFolders
-        .filter(folder => 
-          folder.name.toLowerCase().includes(query.toLowerCase()) ||
-          (folder.description && folder.description.toLowerCase().includes(query.toLowerCase()))
-        )
-        .map(folder => ({
-          id: folder.id,
-          name: folder.name,
-          webViewLink: folder.webViewLink || `https://drive.google.com/drive/folders/${folder.id}`,
-          createdTime: folder.createdTime || '',
-          modifiedTime: folder.modifiedTime || '',
-          description: folder.description
-        }));
+      // Use real server-side search across AME roots
+      const projectFolders = await GoogleDriveFolderService.searchFolders(query);
 
-      setFolders(filteredFolders);
-      setShowFolders(filteredFolders.length > 0);
+      const normalized = projectFolders.map((folder: any) => ({
+        id: folder.id,
+        name: folder.name,
+        webViewLink: folder.webViewLink || (folder.id ? `https://drive.google.com/drive/folders/${folder.id}` : ''),
+        createdTime: folder.createdTime || '',
+        modifiedTime: folder.modifiedTime || '',
+        description: folder.description,
+        parentId: folder.parentId
+      }));
+
+      setFolders(normalized);
+      setShowFolders(normalized.length > 0);
     } catch (error) {
       console.error('Error searching folders:', error);
       toast({

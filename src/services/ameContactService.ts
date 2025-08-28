@@ -39,7 +39,7 @@ export class AMEContactService {
       const searchQuery = query.trim().toLowerCase();
       
       const { data, error } = await supabase
-        .from('ame_technicians')
+        .from('ame_employees')
         .select('id, employee_name, mobile_phone, email, extension, direct_line, is_active')
         .eq('is_active', true)
         .or(`employee_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,mobile_phone.ilike.%${searchQuery}%`)
@@ -72,9 +72,10 @@ export class AMEContactService {
   static async getTechnicians(): Promise<AMEContactSearchResult[]> {
     try {
       const { data, error } = await supabase
-        .from('ame_technicians')
-        .select('id, employee_name, mobile_phone, email, extension, direct_line, is_active')
+        .from('ame_employees')
+        .select('id, employee_name, mobile_phone, email, extension, direct_line, is_active, is_technician')
         .eq('is_active', true)
+        .eq('is_technician', true)
         .order('employee_name', { ascending: true });
 
       if (error) {
@@ -154,7 +155,7 @@ export class AMEContactService {
   static async getTechnicianById(id: string): Promise<AMEContactSearchResult | null> {
     try {
       const { data, error } = await supabase
-        .from('ame_technicians')
+        .from('ame_employees')
         .select('id, employee_name, mobile_phone, email, extension, direct_line, is_active')
         .eq('id', id)
         .eq('is_active', true)

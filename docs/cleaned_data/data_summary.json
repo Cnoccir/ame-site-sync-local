@@ -1,0 +1,12 @@
+{
+  "total_customers": 688,
+  "customers_with_contracts": 205,
+  "total_contracts": 534,
+  "active_contracts": 219,
+  "total_contract_value": 5965905.43,
+  "service_tiers": {
+    "CORE": 676,
+    "ASSURE": 8,
+    "GUARDIAN": 4
+  }
+}

@@ -26,9 +26,9 @@ export class GoogleOAuthService {
    * Initialize the OAuth service with configuration
    */
   static async initialize(): Promise<void> {
-    // Use production URLs instead of environment variables
-    const clientId = '965749901901-2v8f7vv5o2e26uq7a4s2sdjb3p1qmr7c.apps.googleusercontent.com';
-    const redirectUri = `${window.location.origin}/google/callback`;
+    // Use environment variables for OAuth configuration
+    const clientId = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID || '735781069629-s0jv1cpbcdrpm9qjip0bmjgsh8f4s7tb.apps.googleusercontent.com';
+    const redirectUri = import.meta.env.VITE_GOOGLE_OAUTH_REDIRECT_URI || `${window.location.origin}/google/callback`;
     
     this.config = {
       clientId,
@@ -63,6 +63,83 @@ export class GoogleOAuthService {
     
     // Redirect to Google OAuth
     window.location.href = authUrl.toString();
+  }
+
+  /**
+   * Start OAuth flow in a popup window (better UX - doesn't lose form data)
+   */
+  static async startPopupAuthFlow(): Promise<AuthTokens> {
+    if (!this.config) {
+      throw new Error('OAuth service not initialized. Call initialize() first.');
+    }
+
+    return new Promise((resolve, reject) => {
+      const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+      authUrl.searchParams.append('client_id', this.config.clientId);
+      authUrl.searchParams.append('redirect_uri', this.config.redirectUri);
+      authUrl.searchParams.append('response_type', 'code');
+      authUrl.searchParams.append('scope', this.config.scopes.join(' '));
+      authUrl.searchParams.append('access_type', 'offline');
+      authUrl.searchParams.append('prompt', 'consent select_account');
+      authUrl.searchParams.append('login_hint', 'raymond@ame-inc.com');
+
+      // Open popup window
+      const popup = window.open(
+        authUrl.toString(),
+        'google-oauth',
+        'width=500,height=600,scrollbars=yes,resizable=yes'
+      );
+
+      if (!popup) {
+        reject(new Error('Popup blocked. Please allow popups and try again.'));
+        return;
+      }
+
+      // Monitor the popup for completion
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed);
+          reject(new Error('Authentication cancelled by user'));
+        }
+      }, 1000);
+
+      // Listen for messages from the popup
+      const messageListener = async (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) {
+          return;
+        }
+
+        if (event.data.type === 'GOOGLE_AUTH_SUCCESS' && event.data.authCode) {
+          clearInterval(checkClosed);
+          window.removeEventListener('message', messageListener);
+          popup.close();
+
+          try {
+            const tokens = await this.handleCallback(event.data.authCode);
+            resolve(tokens);
+          } catch (error) {
+            reject(error);
+          }
+        } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
+          clearInterval(checkClosed);
+          window.removeEventListener('message', messageListener);
+          popup.close();
+          reject(new Error(event.data.error || 'Authentication failed'));
+        }
+      };
+
+      window.addEventListener('message', messageListener);
+
+      // Timeout after 10 minutes
+      setTimeout(() => {
+        clearInterval(checkClosed);
+        window.removeEventListener('message', messageListener);
+        if (!popup.closed) {
+          popup.close();
+        }
+        reject(new Error('Authentication timeout'));
+      }, 10 * 60 * 1000);
+    });
   }
 
   /**
@@ -360,6 +437,18 @@ export class GoogleOAuthService {
       // Try to get from Supabase user metadata first
       const { data: { user } } = await supabase.auth.getUser();
       
+      if (user?.user_metadata?.google_oauth_tokens) {
+        const oauthData = user.user_metadata.google_oauth_tokens;
+        return {
+          access_token: oauthData.access_token,
+          refresh_token: oauthData.refresh_token,
+          expires_in: oauthData.expires_in || 3600, // Default to 1 hour
+          scope: oauthData.scope || 'drive.readonly userinfo.profile userinfo.email',
+          token_type: 'Bearer'
+        };
+      }
+      
+      // Fallback: check the old key format (google_oauth) for compatibility
       if (user?.user_metadata?.google_oauth) {
         const oauthData = user.user_metadata.google_oauth;
         return {

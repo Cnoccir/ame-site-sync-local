@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronLeft, ChevronRight, Save, X, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AMEService } from '@/services/ameService';
@@ -19,7 +20,11 @@ import { SimProCustomerSearch } from './SimProCustomerSearch';
 import { EnhancedGoogleDriveFolderSearch } from './EnhancedGoogleDriveFolderSearch';
 import { SearchableCombobox } from '@/components/ui/searchable-combobox';
 import { AMEContactService } from '@/services/ameContactService';
-import { AccessCredentialsManager } from './AccessCredentialsManager';
+import { RemoteAccessCredentialsManager } from '../remote-access/RemoteAccessCredentialsManager';
+import { SystemCredentialsManager } from '../system-access/SystemCredentialsManager';
+import { useGoogleDriveAuth } from '@/hooks/useGoogleDriveAuth';
+import { FormDataPersistence } from '@/utils/formDataPersistence';
+import { GoogleDriveAuthPrompt } from '../GoogleDriveAuthPrompt';
 
 interface NewCustomerWizardProps {
   isOpen: boolean;
@@ -32,6 +37,7 @@ interface CustomerFormData {
   customer_id: string;
   company_name: string;
   site_name: string;
+  site_nickname?: string;
   site_address: string;
   service_tier: 'CORE' | 'ASSURE' | 'GUARDIAN';
   system_type: string;
@@ -100,6 +106,9 @@ interface CustomerFormData {
   
   // Enhanced credentials system
   access_credentials?: any[];
+  system_credentials?: any;
+  windows_credentials?: any;
+  service_credentials?: any;
   
   // Service Information
   technician_assigned: string;
@@ -123,6 +132,7 @@ const initialFormData: CustomerFormData = {
   customer_id: '',
   company_name: '',
   site_name: '',
+  site_nickname: '',
   site_address: '',
   service_tier: 'CORE',
   system_type: '',
@@ -210,9 +220,15 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
   const [showCloseConfirmation, setShowCloseConfirmation] = useState(false);
   const [showSecondaryContact, setShowSecondaryContact] = useState(false);
   const [selectedHazards, setSelectedHazards] = useState<string[]>([]);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const { toast } = useToast();
+  
+  // Google Drive authentication hook
+  const googleAuth = useGoogleDriveAuth();
 
-  const totalSteps = 5;
+  const totalSteps = 4;
+  const FORM_STORAGE_KEY = 'new-customer-wizard-form';
+  const STEP_STORAGE_KEY = 'new-customer-wizard-step';
 
   // Load dropdown data and generate customer ID when form opens
   useEffect(() => {
@@ -223,6 +239,43 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
       generateCustomerId();
     }
   }, [isOpen, dropdownData, formData.customer_id]);
+
+  // Load persisted form data on mount
+  useEffect(() => {
+    if (isOpen) {
+      const savedFormData = FormDataPersistence.restoreFormData(FORM_STORAGE_KEY);
+      const savedStep = FormDataPersistence.restoreFormStep(STEP_STORAGE_KEY);
+      
+      if (savedFormData) {
+        console.log('Restoring saved form data:', savedFormData);
+        setFormData(prev => ({ ...prev, ...savedFormData }));
+        
+        toast({
+          title: "Form Data Restored",
+          description: "Your previous progress has been restored.",
+        });
+      }
+      
+      if (savedStep && savedStep > 1) {
+        console.log('Restoring saved step:', savedStep);
+        setCurrentStep(savedStep);
+      }
+    }
+  }, [isOpen]);
+
+  // Auto-save form data whenever form changes
+  useEffect(() => {
+    if (isOpen && formData !== initialFormData) {
+      FormDataPersistence.saveFormData(FORM_STORAGE_KEY, formData);
+      FormDataPersistence.saveFormStep(STEP_STORAGE_KEY, currentStep);
+    }
+  }, [formData, currentStep, isOpen]);
+
+  // Clear persisted data when form is successfully submitted
+  const clearPersistedData = () => {
+    FormDataPersistence.clearFormData(FORM_STORAGE_KEY);
+    FormDataPersistence.clearFormData(STEP_STORAGE_KEY); // Also clear step data
+  };
 
   // Initialize selected hazards when form data changes
   useEffect(() => {
@@ -421,7 +474,22 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
-      await AMEService.createCustomer(formData as any);
+      
+      // Sanitize date fields - convert empty strings to null to prevent database errors
+      const sanitizedFormData = {
+        ...formData,
+        last_service: formData.last_service?.trim() === '' ? null : formData.last_service,
+        next_due: formData.next_due?.trim() === '' ? null : formData.next_due,
+        contract_start_date: formData.contract_start_date?.trim() === '' ? null : formData.contract_start_date,
+        contract_end_date: formData.contract_end_date?.trim() === '' ? null : formData.contract_end_date,
+      };
+      
+      console.log('Sanitized form data before submission:', sanitizedFormData);
+      
+      await AMEService.createCustomer(sanitizedFormData as any);
+      
+      // Clear persisted data on successful submission
+      clearPersistedData();
       
       toast({
         title: "Success",
@@ -484,6 +552,18 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
             onChange={(e) => updateFormData('site_name', e.target.value)}
             placeholder="Building/Site Name"
           />
+        </div>
+        <div>
+          <Label htmlFor="site_nickname">Site Nickname/Alias</Label>
+          <Input
+            id="site_nickname"
+            value={formData.site_nickname}
+            onChange={(e) => updateFormData('site_nickname', e.target.value)}
+            placeholder="Short name or alias for easy search"
+          />
+          <div className="text-xs text-muted-foreground mt-1">
+            Helps with Google Drive folder search and internal references
+          </div>
         </div>
         <div>
           <Label htmlFor="building_type">Building Type</Label>
@@ -837,214 +917,119 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
   };
 
   const renderStep3 = () => {
-    // Handle credential changes from AccessCredentialsManager
-    const handleCredentialsChange = (credentials: any[]) => {
+    // Handle credential changes from RemoteAccessCredentialsManager
+    const handleRemoteAccessChange = (credentials: any[], vpnConfig?: any) => {
       updateFormData('access_credentials', credentials);
       
-      // For backward compatibility, copy the first credential's values to the old fields
+      // Update VPN settings
+      if (vpnConfig) {
+        updateFormData('vpn_required', vpnConfig.vpn_required || false);
+        updateFormData('vpn_details', vpnConfig.connection_instructions || '');
+        updateFormData('remote_access', vpnConfig.vpn_required || false);
+        updateFormData('remote_access_type', vpnConfig.vpn_profile_name || 'VPN');
+      }
+      
+      // For backward compatibility with legacy fields, extract common credential data
       if (credentials && credentials.length > 0) {
-        const primaryCred = credentials[0];
-        if (primaryCred.system_type === 'computer_pc') {
-          updateFormData('pc_username', primaryCred.username || '');
-          updateFormData('pc_password', primaryCred.password_encrypted || '');
-        } else if (primaryCred.system_type === 'web_portal') {
-          updateFormData('web_supervisor_url', primaryCred.host_address || '');
-          updateFormData('platform_username', primaryCred.username || '');
-          updateFormData('platform_password', primaryCred.password_encrypted || '');
-        }
-        
-        // For VPN information
-        const vpnCred = credentials.find(c => c.system_type === 'vpn_client');
-        if (vpnCred) {
-          updateFormData('vpn_required', true);
-          updateFormData('vpn_details', vpnCred.connection_instructions || '');
+        // Look for TeamViewer or similar remote access
+        const remoteAccessCred = credentials[0];
+        if (remoteAccessCred) {
           updateFormData('remote_access', true);
-          updateFormData('remote_access_type', 'VPN');
+          updateFormData('remote_access_type', remoteAccessCred.vendor || 'Remote Access');
         }
+      }
+    };
+
+    // Handle system credentials changes
+    const handleSystemCredentialsChange = (data: any) => {
+      updateFormData('system_credentials', data.bms);
+      updateFormData('windows_credentials', data.windows);
+      updateFormData('service_credentials', data.services);
+      
+      // For backward compatibility, also update legacy fields
+      if (data.bms) {
+        updateFormData('bms_supervisor_ip', data.bms.platform_host || '');
+        updateFormData('platform_username', data.bms.platform_username || '');
+        updateFormData('platform_password', data.bms.platform_password || '');
+        updateFormData('workbench_username', data.bms.station_username || data.bms.platform_username || '');
+        updateFormData('workbench_password', data.bms.station_password || data.bms.platform_password || '');
+      }
+      
+      if (data.windows) {
+        updateFormData('pc_username', data.windows.local_admin_username || '');
+        updateFormData('pc_password', data.windows.local_admin_password || '');
       }
     };
     
-    // Create initial credentials based on existing legacy data
-    const createInitialCredentials = () => {
-      const credentials = [];
+    // Create initial VPN config from legacy data
+    const createInitialVpnConfig = () => {
+      if (!formData.vpn_required) return undefined;
       
-      // Add Computer/PC login if applicable
-      if (formData.pc_username || formData.pc_password) {
-        credentials.push({
-          access_name: 'Main Control Computer',
-          system_type: 'computer_pc',
-          description: 'Primary workstation/PC login for on-site access',
-          username: formData.pc_username || '',
-          password_encrypted: formData.pc_password || '',
-          requires_2fa: false,
-          requires_vpn: false,
-          has_attachment: false,
-          access_level: 'standard',
-          is_active: true
-        });
-      }
-      
-      // Add Web Portal if applicable
-      if (formData.web_supervisor_url || formData.platform_username || formData.platform_password) {
-        credentials.push({
-          access_name: 'Web Supervisor Portal',
-          system_type: 'web_portal',
-          description: 'BMS Web Supervisor Access',
-          host_address: formData.web_supervisor_url || '',
-          username: formData.platform_username || '',
-          password_encrypted: formData.platform_password || '',
-          requires_2fa: false,
-          requires_vpn: formData.vpn_required || false,
-          has_attachment: false,
-          access_level: 'standard',
-          is_active: true
-        });
-      }
-      
-      // Add VPN if applicable
-      if (formData.vpn_required && formData.vpn_details) {
-        credentials.push({
-          access_name: 'VPN Connection',
-          system_type: 'vpn_client',
-          description: 'VPN required for remote access',
-          username: '',
-          password_encrypted: '',
-          requires_2fa: false,
-          requires_vpn: true,
-          vpn_config_name: formData.remote_access_type || 'VPN',
-          connection_instructions: formData.vpn_details || '',
-          has_attachment: false,
-          access_level: 'standard',
-          is_active: true
-        });
-      }
-      
-      return credentials;
+      return {
+        customer_id: '',
+        vpn_required: formData.vpn_required,
+        vpn_profile_name: formData.remote_access_type || '',
+        connection_instructions: formData.vpn_details || '',
+        is_active: true
+      };
     };
+    
+    // Create initial system credentials from legacy data
+    const createInitialSystemCredentials = () => ({
+      bms: {
+        system_type: 'tridium_n4' as const,
+        platform_host: formData.bms_supervisor_ip || '',
+        platform_port: 4911,
+        platform_username: formData.platform_username || '',
+        platform_password: formData.platform_password || '',
+        station_username: formData.workbench_username || '',
+        station_password: formData.workbench_password || '',
+        same_credentials: true
+      },
+      windows: {
+        computer_name: '',
+        local_admin_username: formData.pc_username || '',
+        local_admin_password: formData.pc_password || ''
+      },
+      services: {
+        custom_services: []
+      }
+    });
     
     return (
-      <AccessCredentialsManager
-        initialCredentials={formData.access_credentials || createInitialCredentials()}
-        onChange={handleCredentialsChange}
-        mode="form"
-      />
+      <Tabs defaultValue="remote-access" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="remote-access">Remote Access</TabsTrigger>
+          <TabsTrigger value="system-access">System Access</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="remote-access" className="mt-6">
+          <RemoteAccessCredentialsManager
+            initialCredentials={formData.access_credentials || []}
+            initialVpnConfig={createInitialVpnConfig()}
+            onChange={handleRemoteAccessChange}
+            mode="form"
+            showVpnConfig={true}
+          />
+        </TabsContent>
+        
+        <TabsContent value="system-access" className="mt-6">
+          <SystemCredentialsManager
+            initialBmsCredentials={formData.system_credentials}
+            initialWindowsCredentials={formData.windows_credentials}
+            initialServiceCredentials={formData.service_credentials}
+            onChange={handleSystemCredentialsChange}
+            mode="form"
+          />
+        </TabsContent>
+      </Tabs>
     );
   };
 
+
   const renderStep4 = () => (
-    <div className="space-y-4">
-      <div>
-        <Label htmlFor="web_supervisor_url">Web Supervisor URL</Label>
-        <Input
-          id="web_supervisor_url"
-          value={formData.web_supervisor_url}
-          onChange={(e) => updateFormData('web_supervisor_url', e.target.value)}
-          placeholder="https://supervisor.example.com"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="workbench_username">Workbench Username</Label>
-          <Input
-            id="workbench_username"
-            value={formData.workbench_username}
-            onChange={(e) => updateFormData('workbench_username', e.target.value)}
-            placeholder="Username"
-          />
-        </div>
-        <div>
-          <Label htmlFor="workbench_password">Workbench Password</Label>
-          <Input
-            id="workbench_password"
-            type="password"
-            value={formData.workbench_password}
-            onChange={(e) => updateFormData('workbench_password', e.target.value)}
-            placeholder="Password"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="platform_username">Platform Username</Label>
-          <Input
-            id="platform_username"
-            value={formData.platform_username}
-            onChange={(e) => updateFormData('platform_username', e.target.value)}
-            placeholder="Platform username"
-          />
-        </div>
-        <div>
-          <Label htmlFor="platform_password">Platform Password</Label>
-          <Input
-            id="platform_password"
-            type="password"
-            value={formData.platform_password}
-            onChange={(e) => updateFormData('platform_password', e.target.value)}
-            placeholder="Platform password"
-          />
-        </div>
-      </div>
-
-      <div>
-        <Label htmlFor="bms_supervisor_ip">BMS Supervisor IP</Label>
-        <Input
-          id="bms_supervisor_ip"
-          value={formData.bms_supervisor_ip}
-          onChange={(e) => updateFormData('bms_supervisor_ip', e.target.value)}
-          placeholder="192.168.1.100"
-        />
-      </div>
-
-      <div className="space-y-3">
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="remote_access"
-            checked={formData.remote_access}
-            onCheckedChange={(checked) => updateFormData('remote_access', checked)}
-          />
-          <Label htmlFor="remote_access">Remote Access Available</Label>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="vpn_required"
-            checked={formData.vpn_required}
-            onCheckedChange={(checked) => updateFormData('vpn_required', checked)}
-          />
-          <Label htmlFor="vpn_required">VPN Required</Label>
-        </div>
-      </div>
-
-      {formData.remote_access && (
-        <div>
-          <Label htmlFor="remote_access_type">Remote Access Type</Label>
-          <Input
-            id="remote_access_type"
-            value={formData.remote_access_type}
-            onChange={(e) => updateFormData('remote_access_type', e.target.value)}
-            placeholder="VPN, TeamViewer, etc."
-          />
-        </div>
-      )}
-
-      {formData.vpn_required && (
-        <div>
-          <Label htmlFor="vpn_details">VPN Details</Label>
-          <Textarea
-            id="vpn_details"
-            value={formData.vpn_details}
-            onChange={(e) => updateFormData('vpn_details', e.target.value)}
-            placeholder="VPN connection details and instructions..."
-            rows={3}
-          />
-        </div>
-      )}
-    </div>
-  );
-
-  const renderStep5 = () => (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Technician Assignment */}
       <div>
         <h4 className="font-semibold text-foreground mb-3">Technician Assignment</h4>
         <div className="grid grid-cols-2 gap-4">
@@ -1097,6 +1082,7 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
         </div>
       </div>
       
+      {/* Service Information */}
       <div>
         <h4 className="font-semibold text-foreground mb-3">Service Information</h4>
         <div className="grid grid-cols-2 gap-4">
@@ -1124,44 +1110,40 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
             </Select>
           </div>
         </div>
-      </div>
+        
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <div>
+            <Label htmlFor="last_service">Last Service Date</Label>
+            <Input
+              id="last_service"
+              type="date"
+              value={formData.last_service}
+              onChange={(e) => updateFormData('last_service', e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="next_due">Next Service Due</Label>
+            <Input
+              id="next_due"
+              type="date"
+              value={formData.next_due}
+              onChange={(e) => updateFormData('next_due', e.target.value)}
+            />
+          </div>
+        </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="last_service">Last Service Date</Label>
-          <Input
-            id="last_service"
-            type="date"
-            value={formData.last_service}
-            onChange={(e) => updateFormData('last_service', e.target.value)}
+        <div className="mt-4">
+          <Label htmlFor="special_instructions">Special Instructions</Label>
+          <Textarea
+            id="special_instructions"
+            value={formData.special_instructions}
+            onChange={(e) => updateFormData('special_instructions', e.target.value)}
+            placeholder="Any special instructions for service visits..."
+            rows={4}
           />
         </div>
-        <div>
-          <Label htmlFor="next_due">Next Service Due</Label>
-          <Input
-            id="next_due"
-            type="date"
-            value={formData.next_due}
-            onChange={(e) => updateFormData('next_due', e.target.value)}
-          />
-        </div>
       </div>
 
-      <div>
-        <Label htmlFor="special_instructions">Special Instructions</Label>
-        <Textarea
-          id="special_instructions"
-          value={formData.special_instructions}
-          onChange={(e) => updateFormData('special_instructions', e.target.value)}
-          placeholder="Any special instructions for service visits..."
-          rows={4}
-        />
-      </div>
-    </div>
-  );
-
-  const renderStep6 = () => (
-    <div className="space-y-6">
       {/* Account Manager Selection */}
       <div>
         <h4 className="font-semibold text-foreground mb-3">Account Management</h4>
@@ -1210,22 +1192,49 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
         </div>
       </div>
 
-      {/* Enhanced Google Drive Integration */}
-      <EnhancedGoogleDriveFolderSearch
-        customerData={{
-          company_name: formData.company_name,
-          site_address: formData.site_address,
-          customer_id: '', // New customer, no ID yet
-          service_tier: formData.service_tier,
-          contact_name: formData.primary_contact,
-          phone: formData.contact_phone
-        }}
-        onFolderSelected={handleGoogleDriveFolder}
-        onFolderStructureCreated={handleFolderStructureCreated}
-        initialFolderId={formData.drive_folder_id}
-        initialFolderUrl={formData.drive_folder_url}
-        disabled={isSubmitting}
-      />
+      {/* Google Drive Integration with Authentication */}
+      <div className="space-y-6">
+        <h4 className="font-semibold text-foreground mb-3">Google Drive Project Folder</h4>
+        
+        {!googleAuth.isAuthenticated ? (
+          <GoogleDriveAuthPrompt
+            title="Google Drive Access Required"
+            description="To create and manage customer folders, please authenticate with Google Drive first."
+            onAuthSuccess={() => {
+              toast({
+                title: "Authentication Successful",
+                description: "You can now create and manage Google Drive folders.",
+              });
+            }}
+            onAuthError={(error) => {
+              toast({
+                title: "Authentication Failed",
+                description: error,
+                variant: "destructive",
+              });
+            }}
+            size="lg"
+          />
+        ) : (
+          <EnhancedGoogleDriveFolderSearch
+            customerData={{
+              company_name: formData.company_name,
+              site_name: formData.site_name,
+              site_nickname: formData.site_nickname,
+              site_address: formData.site_address,
+              customer_id: formData.customer_id,
+              service_tier: formData.service_tier,
+              contact_name: formData.primary_contact,
+              phone: formData.contact_phone
+            }}
+            onFolderSelected={handleGoogleDriveFolder}
+            onFolderStructureCreated={handleFolderStructureCreated}
+            initialFolderId={formData.drive_folder_id}
+            initialFolderUrl={formData.drive_folder_url}
+            disabled={isSubmitting}
+          />
+        )}
+      </div>
       
       {/* Manual folder input as fallback */}
       <div className="grid grid-cols-2 gap-4">
@@ -1268,12 +1277,12 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
     </div>
   );
 
+
   const getStepTitle = () => {
     const titles = [
       'Basic Information',
       'Site Access & Contacts',
       'System Access',
-      'Service Information', 
       'Administrative & Review'
     ];
     return titles[currentStep - 1];
@@ -1284,8 +1293,7 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
       case 1: return renderStep1();
       case 2: return renderStep2();
       case 3: return renderStep3();
-      case 4: return renderStep5();
-      case 5: return renderStep6();
+      case 4: return renderStep4();
       default: return renderStep1();
     }
   };

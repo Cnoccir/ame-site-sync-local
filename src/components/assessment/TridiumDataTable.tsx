@@ -138,42 +138,29 @@ export const TridiumDataTable: React.FC<TridiumDataTableProps> = ({
     }
 
     try {
-      // Convert selected devices to device records
+      // Convert selected devices directly to device records
       const selectedDevices = devices.filter(d => selectedIds.has(d.id));
       
-      // Create a mock dataset for conversion
-      const mockDataset = {
-        id: 'temp',
-        filename: selectedDevices[0]?.sourceFile || 'unknown',
-        type: 'networkDevices' as const,
-        columns: [],
-        rows: selectedDevices.map(device => ({
-          id: device.id,
-          selected: true,
-          data: device,
-          parsedStatus: {
-            status: (device.isOnline ? 'ok' : device.isDown ? 'down' : device.hasAlarm ? 'alarm' : 'unknown') as 'ok' | 'down' | 'alarm' | 'fault' | 'unknown',
-            severity: 'normal' as const,
-            details: [],
-            badge: { text: '', variant: 'default' as const }
-          }
-        })),
-        summary: {
-          totalDevices: selectedDevices.length,
-          statusBreakdown: { ok: 0, down: 0, alarm: 0, fault: 0, unknown: 0 },
-          typeBreakdown: {},
-          criticalFindings: [],
-          recommendations: []
-        },
-        metadata: {
-          totalRows: selectedDevices.length,
-          parseErrors: [],
-          uploadedAt: new Date(),
-          fileSize: 0
-        }
-      };
-
-      const deviceRecords = DeviceInventoryService.convertDatasetToDevices(mockDataset);
+      const deviceRecords = selectedDevices.map(device => ({
+        id: device.id,
+        name: device.Name || device.name || `Device_${device.id}`,
+        type: device.Type || device.type || device['Controller Type'] || 'Unknown',
+        status: device.isOnline ? 'ok' : device.isDown ? 'down' : device.hasAlarm ? 'alarm' : 'unknown',
+        address: device.Address || device.address || device['IP Address'],
+        protocol: device.format || 'Unknown',
+        device_id: device['Device ID'] || device.device_id,
+        vendor: device.Vendor || device.vendor,
+        model: device.Model || device.model,
+        location: device.Location || device.location,
+        fox_port: device['Fox Port'] || device.fox_port,
+        host_model: device['Host Model'] || device.host_model,
+        version: device.Version || device.version || device['Firmware Rev'] || device['App SW Version'],
+        health_score: device.isOnline ? 100 : device.isDown ? 0 : device.hasAlarm ? 25 : 50,
+        raw_data: device,
+        source_file: device.sourceFile || 'unknown',
+        source_format: device.format || 'unknown'
+      }));
+      
       const result = await DeviceInventoryService.saveDevices(deviceRecords);
       
       if (result.success) {

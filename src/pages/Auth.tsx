@@ -51,7 +51,7 @@ export const Auth = () => {
   const handleQuickLogin = (userType: 'admin' | 'tech') => {
     const email = userType === 'admin' ? 'admin@ame-inc.com' : 'tech@ame-inc.com';
     setEmail(email);
-    setPassword('Ameinc4100');
+    setPassword('AME2024!');
   };
 
   return (
