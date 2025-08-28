@@ -13,9 +13,7 @@ interface Tool {
   id: string;
   tool_id: string;
   tool_name: string;
-  category_id: string;
-  description?: string;
-  status: string;
+  category: string;
   safety_category: string;
   current_stock: number;
   minimum_stock: number;
@@ -51,30 +49,32 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
 
   const loadToolsAndCategories = async () => {
     try {
-      // Load tools and categories
-      const [toolsResult, categoriesResult] = await Promise.all([
+      // Load tools from the correct table
+      const [toolsResult] = await Promise.all([
         supabase
-          .from('ame_tools_normalized')
-          .select('id, tool_id, tool_name, category_id, description, status, safety_category, current_stock, minimum_stock')
-          .eq('status', 'active')
-          .order('tool_name'),
-        supabase
-          .from('ame_tool_categories')
-          .select('id, category_name, description, is_essential')
-          .order('category_name')
+          .from('ame_tools')
+          .select('id, tool_id, tool_name, category, safety_category, current_stock, minimum_stock')
+          .order('tool_name')
       ]);
 
       if (toolsResult.error) throw toolsResult.error;
-      if (categoriesResult.error) throw categoriesResult.error;
 
       setTools(toolsResult.data || []);
-      setCategories(categoriesResult.data || []);
+      
+      // Create categories from unique tool categories
+      const uniqueCategories = [...new Set((toolsResult.data || []).map((tool: any) => tool.category))];
+      const categoryData = uniqueCategories.map((cat: any, index: number) => ({
+        id: `cat_${index}`,
+        category_name: cat,
+        description: '',
+        is_essential: false
+      }));
+      
+      setCategories(categoryData);
 
-      // Auto-expand essential categories
-      const essentialCategoryIds = (categoriesResult.data || [])
-        .filter(cat => cat.is_essential)
-        .map(cat => cat.id);
-      setExpandedCategories(new Set(essentialCategoryIds));
+      // Auto-expand all categories
+      const categoryIds = categoryData.map((cat: any) => cat.id);
+      setExpandedCategories(new Set(categoryIds));
 
       setLoading(false);
     } catch (error) {
@@ -109,7 +109,9 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
   };
 
   const getToolsByCategory = (categoryId: string) => {
-    return tools.filter(tool => tool.category_id === categoryId);
+    const categoryData = categories.find(cat => cat.id === categoryId);
+    if (!categoryData) return [];
+    return tools.filter(tool => tool.category === categoryData.category_name);
   };
 
   const getToolStats = () => {

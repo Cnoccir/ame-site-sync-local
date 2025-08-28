@@ -296,11 +296,11 @@ export const EnhancedCustomerDisplayCard: React.FC<EnhancedCustomerDisplayCardPr
                   </div>
                 )}
                 
-                {customer.account_manager_name && (
+                {(customer as any).account_manager_name && (
                   <div>
                     <div className="text-gray-600">Account Manager</div>
-                    <div className="font-medium">{customer.account_manager_name}</div>
-                    <div className="text-gray-500">{customer.account_manager_phone || 'N/A'}</div>
+                    <div className="font-medium">{(customer as any).account_manager_name}</div>
+                    <div className="text-gray-500">{(customer as any).account_manager_phone || 'N/A'}</div>
                   </div>
                 )}
               </div>
@@ -313,18 +313,18 @@ export const EnhancedCustomerDisplayCard: React.FC<EnhancedCustomerDisplayCardPr
                 System Access
               </h4>
               <div className="space-y-2 text-sm">
-                {customer.primary_bas_platform && (
+                {(customer as any).primary_bas_platform && (
                   <InfoItem 
                     icon={Settings} 
                     label="BAS Platform" 
-                    value={customer.primary_bas_platform} 
+                    value={(customer as any).primary_bas_platform} 
                   />
                 )}
                 {customer.bms_supervisor_ip && (
                   <InfoItem 
                     icon={Server} 
                     label="Supervisor IP" 
-                    value={customer.bms_supervisor_ip} 
+                    value={String(customer.bms_supervisor_ip)} 
                   />
                 )}
                 {customer.web_supervisor_url && (

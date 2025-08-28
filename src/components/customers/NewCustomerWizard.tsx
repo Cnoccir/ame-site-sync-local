@@ -333,10 +333,8 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
     if (databaseRecord.site_hazards) {
       if (typeof databaseRecord.site_hazards === 'string') {
         try {
-          // Try to parse as JSON first
           siteHazards = JSON.parse(databaseRecord.site_hazards);
         } catch {
-          // If not JSON, split by comma or newline
           siteHazards = databaseRecord.site_hazards.split(/[,\n]/).map((h: string) => h.trim()).filter(Boolean);
         }
       } else if (Array.isArray(databaseRecord.site_hazards)) {
@@ -349,104 +347,94 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
       if (!dateValue) return '';
       try {
         const date = new Date(dateValue);
-        return date.toISOString().split('T')[0]; // YYYY-MM-DD format
+        return date.toISOString().split('T')[0];
       } catch {
         return '';
       }
     };
     
-    // Handle IP address conversion
-    const formatIpAddress = (ipValue: any) => {
-      if (!ipValue) return '';
-      return String(ipValue);
-    };
-    
+    // Direct field mapping with proper handling
     const mappedData: Partial<CustomerFormData> = {
-      // Basic fields - direct mapping
-      id: databaseRecord.id,
       customer_id: databaseRecord.customer_id || '',
       company_name: databaseRecord.company_name || '',
       site_name: databaseRecord.site_name || '',
+      site_nickname: databaseRecord.site_nickname || '',
       site_address: databaseRecord.site_address || '',
       service_tier: databaseRecord.service_tier || 'CORE',
       system_type: databaseRecord.system_type || '',
       contract_status: databaseRecord.contract_status || 'Active',
       building_type: databaseRecord.building_type || '',
+      system_architecture: databaseRecord.system_architecture || '',
+      primary_bas_platform: databaseRecord.primary_bas_platform || '',
       
-      // Contact information
+      // Primary Contact
       primary_contact: databaseRecord.primary_contact || '',
       contact_phone: databaseRecord.contact_phone || '',
       contact_email: databaseRecord.contact_email || '',
-      emergency_contact: databaseRecord.emergency_contact || '',
-      emergency_phone: databaseRecord.emergency_phone || '',
-      emergency_email: databaseRecord.emergency_email || '',
+      primary_contact_role: databaseRecord.primary_contact_role || '',
       
-      // Access and safety
+      // Site Access & Logistics
+      access_procedure: databaseRecord.access_procedure || '',
+      parking_instructions: databaseRecord.parking_instructions || '',
+      equipment_access_notes: databaseRecord.equipment_access_notes || '',
+      
+      // Safety & PPE
+      site_hazards: siteHazards,
+      other_hazards_notes: databaseRecord.other_hazards_notes || '',
+      safety_notes: databaseRecord.safety_notes || '',
+      ppe_required: databaseRecord.ppe_required ?? true,
+      badge_required: databaseRecord.badge_required ?? false,
+      training_required: databaseRecord.training_required ?? false,
+      
+      // Secondary Contact
+      secondary_contact_name: databaseRecord.secondary_contact_name || databaseRecord.emergency_contact || '',
+      secondary_contact_phone: databaseRecord.secondary_contact_phone || databaseRecord.emergency_phone || '',
+      secondary_contact_email: databaseRecord.secondary_contact_email || databaseRecord.emergency_email || '',
+      secondary_contact_role: databaseRecord.secondary_contact_role || '',
+      
+      // Technician Assignment
+      primary_technician_id: databaseRecord.primary_technician_id || '',
+      primary_technician_name: databaseRecord.primary_technician_name || '',
+      primary_technician_phone: databaseRecord.primary_technician_phone || '',
+      primary_technician_email: databaseRecord.primary_technician_email || '',
+      secondary_technician_id: databaseRecord.secondary_technician_id || '',
+      secondary_technician_name: databaseRecord.secondary_technician_name || '',
+      secondary_technician_phone: databaseRecord.secondary_technician_phone || '',
+      secondary_technician_email: databaseRecord.secondary_technician_email || '',
+      
+      // System Access
       building_access_type: databaseRecord.building_access_type || '',
       building_access_details: databaseRecord.building_access_details || '',
       access_hours: databaseRecord.access_hours || '',
       safety_requirements: databaseRecord.safety_requirements || '',
-      ppe_required: databaseRecord.ppe_required ?? true,
-      badge_required: databaseRecord.badge_required ?? false,
-      training_required: databaseRecord.training_required ?? false,
-      site_hazards: siteHazards,
-      
-      // System access
-      bms_supervisor_ip: formatIpAddress(databaseRecord.bms_supervisor_ip),
       web_supervisor_url: databaseRecord.web_supervisor_url || '',
       workbench_username: databaseRecord.workbench_username || '',
       workbench_password: databaseRecord.workbench_password || '',
       platform_username: databaseRecord.platform_username || '',
       platform_password: databaseRecord.platform_password || '',
+      bms_supervisor_ip: databaseRecord.bms_supervisor_ip ? String(databaseRecord.bms_supervisor_ip) : '',
       remote_access: databaseRecord.remote_access ?? false,
       remote_access_type: databaseRecord.remote_access_type || '',
       vpn_required: databaseRecord.vpn_required ?? false,
       vpn_details: databaseRecord.vpn_details || '',
+      different_platform_station_creds: databaseRecord.different_platform_station_creds ?? false,
       
-      // Service information
-      last_service: formatDateForInput(databaseRecord.last_service),
-      next_due: formatDateForInput(databaseRecord.next_due),
+      // Service Information
       technician_assigned: databaseRecord.technician_assigned || '',
       service_frequency: databaseRecord.service_frequency || '',
+      next_due: formatDateForInput(databaseRecord.next_due),
+      last_service: formatDateForInput(databaseRecord.last_service),
       special_instructions: databaseRecord.special_instructions || '',
       
       // Administrative
+      account_manager_id: databaseRecord.account_manager_id || '',
+      account_manager_name: databaseRecord.account_manager_name || databaseRecord.account_manager || '',
+      account_manager_phone: databaseRecord.account_manager_phone || '',
+      account_manager_email: databaseRecord.account_manager_email || '',
       escalation_contact: databaseRecord.escalation_contact || '',
       escalation_phone: databaseRecord.escalation_phone || '',
       drive_folder_id: databaseRecord.drive_folder_id || '',
-      drive_folder_url: databaseRecord.drive_folder_url || '',
-      
-      // Handle technician names if provided (computed fields)
-      primary_technician_name: databaseRecord.primary_technician_name || '',
-      secondary_technician_name: databaseRecord.secondary_technician_name || '',
-      
-      // Map fields that might have different names in the database vs form
-      account_manager_name: databaseRecord.account_manager || '',
-      
-      // Date fields that might exist
-      contract_start_date: formatDateForInput(databaseRecord.contract_start_date),
-      contract_end_date: formatDateForInput(databaseRecord.contract_end_date),
-      
-      // Fields that might be missing but should have defaults
-      primary_contact_role: '',
-      access_procedure: databaseRecord.building_access_type || '',
-      parking_instructions: databaseRecord.building_access_details || '',
-      equipment_access_notes: '',
-      safety_notes: databaseRecord.safety_requirements || '',
-      other_hazards_notes: '',
-      secondary_contact_name: databaseRecord.emergency_contact || '',
-      secondary_contact_phone: databaseRecord.emergency_phone || '',
-      secondary_contact_email: databaseRecord.emergency_email || '',
-      secondary_contact_role: '',
-      
-      // Technician IDs if available
-      primary_technician_id: '', // Will be populated by technician lookup
-      secondary_technician_id: '',
-      
-      // Account manager fields
-      account_manager_id: '',
-      account_manager_phone: '',
-      account_manager_email: ''
+      drive_folder_url: databaseRecord.drive_folder_url || ''
     };
     
     console.log('✅ Mapped data result:', mappedData);
@@ -881,18 +869,6 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
         
         console.log('✅ Customer created successfully:', createdCustomer);
         
-        // Handle folder selection after customer creation if needed
-        if (folderSelection && createdCustomer?.id) {
-          try {
-            // Process folder selection (association saving, folder creation, etc.)
-            console.log('Processing folder selection for customer:', createdCustomer.id);
-            // This would be handled by a separate service if needed
-          } catch (folderError) {
-            console.error('Failed to process folder selection:', folderError);
-            // Don't fail the whole operation for folder issues
-          }
-        }
-        
         // Clear persisted data on successful submission
         clearPersistedData();
         
@@ -907,8 +883,6 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
         
         // Reset form state
         setFormData(initialFormData);
-        setFolderSelection(null);
-        setHasMigrationPlan(false);
         
         handleClose();
       }
