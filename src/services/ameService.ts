@@ -6,6 +6,7 @@ import { getCurrentISODate, getCurrentDateString, generateVisitExpiration } from
 import { generateUUID, generateSessionToken } from '@/utils/idGenerators';
 import { VISIT_STATUS, PHASE_STATUS } from '@/utils/constants';
 import { filterContentByTier } from '@/types/serviceTiers';
+import { SiteIntelligenceService } from './siteIntelligenceService';
 
 /**
  * Service for AME maintenance system database operations
@@ -21,7 +22,28 @@ export class AMEService {
         .order('company_name');
       
       if (error) throw errorHandler.handleSupabaseError(error, 'getCustomers');
-      return (data || []) as Customer[];
+      
+      const customers = (data || []) as Customer[];
+      
+      // Populate technician names for customers with assigned technicians
+      const customersWithTechNames = await Promise.all(
+        customers.map(async (customer) => {
+          if (customer.primary_technician_id || customer.secondary_technician_id) {
+            const techNames = await SiteIntelligenceService.getTechnicianNames(
+              customer.primary_technician_id,
+              customer.secondary_technician_id
+            );
+            return {
+              ...customer,
+              primary_technician_name: techNames.primary,
+              secondary_technician_name: techNames.secondary
+            };
+          }
+          return customer;
+        })
+      );
+      
+      return customersWithTechNames;
     }, 'getCustomers');
   }
   

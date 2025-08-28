@@ -10,6 +10,9 @@ import { Projects } from "./pages/Projects";
 import { Admin } from "./pages/Admin";
 import { Visit } from "./pages/Visit";
 import { Auth } from "./pages/Auth";
+import { GoogleCallback } from "./pages/GoogleCallback";
+import { SimpleCallback } from "./pages/SimpleCallback";
+import { TestCallback } from "./pages/TestCallback";
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
@@ -24,6 +27,8 @@ const App = () => (
         <Routes>
           {/* Public routes */}
           <Route path="/auth" element={<Auth />} />
+          <Route path="/google/callback" element={<GoogleCallback />} />
+          <Route path="/test/callback" element={<TestCallback />} />
           
           {/* Protected routes */}
           <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>

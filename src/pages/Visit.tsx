@@ -17,6 +17,30 @@ export const Visit = () => {
       try {
         setLoading(true);
         const customerData = await AMEService.getCustomer(customerId);
+        
+        // Debug logging to see what data we're getting
+        console.log('Customer data loaded:', {
+          site_nickname: customerData?.site_nickname,
+          site_number: customerData?.site_number,
+          system_platform: customerData?.system_platform,
+          primary_technician_id: customerData?.primary_technician_id,
+          secondary_technician_id: customerData?.secondary_technician_id,
+          last_job_numbers: customerData?.last_job_numbers
+        });
+        
+        // Populate technician names if IDs are present
+        if (customerData && (customerData.primary_technician_id || customerData.secondary_technician_id)) {
+          const { SiteIntelligenceService } = await import('@/services/siteIntelligenceService');
+          const techNames = await SiteIntelligenceService.getTechnicianNames(
+            customerData.primary_technician_id,
+            customerData.secondary_technician_id
+          );
+          customerData.primary_technician_name = techNames.primary;
+          customerData.secondary_technician_name = techNames.secondary;
+          
+          console.log('Technician names loaded:', techNames);
+        }
+        
         setCustomer(customerData);
       } catch (error) {
         console.error('Failed to load customer:', error);

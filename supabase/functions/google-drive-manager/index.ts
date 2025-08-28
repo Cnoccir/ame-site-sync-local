@@ -7,8 +7,22 @@ const corsHeaders = {
 
 interface CreateProjectFolderRequest {
   customerName: string
-  visitId: string
+  visitId?: string
   customerId: string
+}
+
+interface CreateStructuredProjectFolderRequest {
+  customerName: string
+  customerData: {
+    customer_id?: string
+    site_address?: string
+    service_tier?: string
+    contact_name?: string
+    phone?: string
+  }
+  parentFolderId: string
+  folderName: string
+  year: number
 }
 
 Deno.serve(async (req) => {
@@ -41,6 +55,9 @@ Deno.serve(async (req) => {
         break
       case 'create_project_folder':
         result = await createProjectFolder(clientId, clientSecret, data as CreateProjectFolderRequest, supabase)
+        break
+      case 'create_structured_project_folder':
+        result = await createStructuredProjectFolder(clientId, clientSecret, data as CreateStructuredProjectFolderRequest, supabase)
         break
       case 'list_folders':
         result = await listProjectFolders(clientId, clientSecret)
@@ -104,7 +121,7 @@ async function createProjectFolder(
   
   // In development, simulate folder creation
   const mockFolderId = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  const folderName = `${customerName} - Visit ${visitId}`
+  const folderName = visitId ? `${customerName} - Visit ${visitId}` : `${customerName} - ${new Date().getFullYear()}`
   
   // Simulate the folder structure
   const subfolders = [
@@ -141,6 +158,100 @@ async function createProjectFolder(
     developmentMode: true,
     note: 'Folder created in development mode. Deploy to production for actual Google Drive integration.'
   }
+}
+
+/**
+ * Create a structured project folder with proper AME subfolder organization
+ */
+async function createStructuredProjectFolder(
+  clientId: string,
+  clientSecret: string,
+  data: CreateStructuredProjectFolderRequest,
+  supabase: any
+): Promise<any> {
+  const { customerName, customerData, parentFolderId, folderName, year } = data
+
+  console.log(`Creating structured project folder (development mode): ${folderName} in parent ${parentFolderId}`)
+  
+  // In development, simulate structured folder creation
+  const mockMainFolderId = `mock_main_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const mockMainFolderUrl = `https://drive.google.com/drive/folders/${mockMainFolderId}`
+  
+  // Define AME standard project subfolders
+  const projectSubfolders = {
+    'Site Backups': 'backups',
+    'Project Documentation': 'projectDocs',
+    'Site Photos & Media': 'sitePhotos',
+    'Maintenance Records': 'maintenance',
+    'Reports & Analytics': 'reports',
+    'Client Correspondence': 'correspondence'
+  }
+
+  const subfolderStructure = {}
+  Object.entries(projectSubfolders).forEach(([displayName, key]) => {
+    const subfolderId = `mock_${key}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    subfolderStructure[key] = {
+      id: subfolderId,
+      url: `https://drive.google.com/drive/folders/${subfolderId}`,
+      name: displayName
+    }
+  })
+
+  // Create a project info document in the main folder (simulated)
+  const projectInfoDoc = {
+    id: `mock_doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    name: 'PROJECT_INFO.md',
+    content: `# ${customerName} - Project Information\n\n` +
+             `**Customer:** ${customerName}\n` +
+             `**Year:** ${year}\n` +
+             `**Service Tier:** ${customerData.service_tier || 'CORE'}\n` +
+             `**Site Address:** ${customerData.site_address || 'Not specified'}\n` +
+             `**Primary Contact:** ${customerData.contact_name || 'Not specified'}\n` +
+             `**Phone:** ${customerData.phone || 'Not specified'}\n\n` +
+             `**Created:** ${new Date().toISOString()}\n` +
+             `**Parent Folder ID:** ${parentFolderId}\n\n` +
+             `## Folder Structure\n\n` +
+             Object.entries(projectSubfolders).map(([name, key]) => 
+               `- **${name}**: For ${getFolderDescription(key)}`
+             ).join('\n')
+  }
+
+  console.log('Simulated folder structure created:', {
+    mainFolder: mockMainFolderId,
+    subfolders: Object.keys(subfolderStructure).length,
+    parentFolder: parentFolderId
+  })
+
+  return {
+    success: true,
+    mainFolder: {
+      id: mockMainFolderId,
+      url: mockMainFolderUrl,
+      name: folderName
+    },
+    subfolders: subfolderStructure,
+    projectInfo: projectInfoDoc,
+    parentFolderId,
+    year,
+    developmentMode: true,
+    note: `Structured project folder created in development mode. ` +
+          `In production, this would create the actual folder structure in Google Drive folder ${parentFolderId}.`
+  }
+}
+
+/**
+ * Get description for each subfolder type
+ */
+function getFolderDescription(folderKey: string): string {
+  const descriptions = {
+    backups: 'site configuration backups and system snapshots',
+    projectDocs: 'project plans, specifications, and documentation',
+    sitePhotos: 'site photos, videos, and visual documentation',
+    maintenance: 'maintenance logs, service records, and schedules',
+    reports: 'system reports, analytics, and performance data',
+    correspondence: 'client emails, communications, and meeting notes'
+  }
+  return descriptions[folderKey] || 'project files and documents'
 }
 
 async function listProjectFolders(clientId: string, clientSecret: string): Promise<any> {

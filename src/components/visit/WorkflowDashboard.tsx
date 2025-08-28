@@ -313,14 +313,56 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Customer Header with Service Tier */}
+      {/* Customer Header with Site Intelligence */}
       <div className="bg-card border-b px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div>
-            <h1 className="text-2xl font-bold">{customer.company_name}</h1>
-            <p className="text-muted-foreground">{customer.site_name}</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-2xl font-bold">
+                {customer.site_nickname || customer.company_name}
+              </h1>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-muted-foreground">{customer.site_name}</p>
+                {customer.site_number && (
+                  <Badge variant="outline" className="text-xs font-mono">
+                    {customer.site_number}
+                  </Badge>
+                )}
+                {customer.system_platform && (
+                  <Badge variant="secondary" className="text-xs">
+                    {customer.system_platform}
+                  </Badge>
+                )}
+              </div>
+              {customer.site_nickname && customer.site_nickname !== customer.company_name && (
+                <p className="text-xs text-muted-foreground mt-1">{customer.company_name}</p>
+              )}
+            </div>
+            <ServiceTierBadge tier={customer.service_tier} size="md" />
           </div>
-          <ServiceTierBadge tier={customer.service_tier} size="md" />
+          
+          {/* Site Intelligence Summary */}
+          <div className="text-right">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+              {customer.primary_technician_name && (
+                <div className="flex items-center gap-1">
+                  <span>Primary Tech:</span>
+                  <span className="font-medium text-foreground">{customer.primary_technician_name}</span>
+                </div>
+              )}
+              {customer.secondary_technician_name && (
+                <div className="flex items-center gap-1">
+                  <span>• Secondary:</span>
+                  <span className="font-medium text-foreground">{customer.secondary_technician_name}</span>
+                </div>
+              )}
+            </div>
+            {customer.last_job_numbers && customer.last_job_numbers.length > 0 && (
+              <div className="text-xs text-muted-foreground">
+                Recent Job: {customer.last_job_numbers[customer.last_job_numbers.length - 1]}
+              </div>
+            )}
+          </div>
         </div>
       </div>
       

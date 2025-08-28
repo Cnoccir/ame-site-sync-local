@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ToolManagement } from '@/components/ToolManagement';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { generateToolRecommendations } from '@/services/toolLibraryService';
+import { EnhancedSiteIntelligenceCard } from '@/components/phases/pre-visit/EnhancedSiteIntelligenceCard';
 
 interface PreVisitPhaseProps {
   customer: Customer;
@@ -189,32 +190,35 @@ export const PreVisitPhase = ({ customer, onPhaseComplete, sessionData, updateAu
         </div>
       </div>
 
-      {/* Customer Overview */}
+      {/* Enhanced Site Intelligence - Full Width */}
+      <EnhancedSiteIntelligenceCard customer={customer} />
+      
+      {/* Service Overview */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Service Overview</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="font-medium">Service Tier:</span>
-              <Badge className="ml-2">{customer.service_tier}</Badge>
+          <CardHeader>
+            <CardTitle className="text-base">Service Overview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-4 text-sm">
+              <div>
+                <span className="font-medium">Service Tier:</span>
+                <Badge className="ml-2">{customer.service_tier}</Badge>
+              </div>
+              <div>
+                <span className="font-medium">System Type:</span>
+                <span className="ml-2">{customer.system_type}</span>
+              </div>
+              <div>
+                <span className="font-medium">Last Service:</span>
+                <span className="ml-2">{customer.last_service || 'Unknown'}</span>
+              </div>
+              <div>
+                <span className="font-medium">Next Due:</span>
+                <span className="ml-2">{customer.next_due || 'TBD'}</span>
+              </div>
             </div>
-            <div>
-              <span className="font-medium">System Type:</span>
-              <span className="ml-2">{customer.system_type}</span>
-            </div>
-            <div>
-              <span className="font-medium">Last Service:</span>
-              <span className="ml-2">{customer.last_service}</span>
-            </div>
-            <div>
-              <span className="font-medium">Next Due:</span>
-              <span className="ml-2">{customer.next_due}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
       {/* Project Handoff Documentation */}
       <Card>

@@ -140,6 +140,40 @@
   }
 }
 
+/* Fix for dropdown z-index issues */
+@layer components {
+  /* Ensure dropdowns appear above all other content */
+  [data-radix-popper-content-wrapper] {
+    z-index: 9999 !important;
+  }
+  
+  /* Select dropdown content */
+  .select-content,
+  [role="listbox"],
+  [data-radix-select-content] {
+    z-index: 9999 !important;
+    background: white !important;
+    border: 1px solid hsl(var(--border)) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  }
+  
+  /* Dialog content should have higher z-index than dropdowns inside it */
+  [data-radix-dialog-content] {
+    z-index: 10000 !important;
+  }
+  
+  /* Ensure dropdowns inside dialogs work properly */
+  [data-radix-dialog-content] [data-radix-select-content] {
+    z-index: 10001 !important;
+  }
+  
+  /* Tooltip and popover content */
+  [data-radix-tooltip-content],
+  [data-radix-popover-content] {
+    z-index: 9998 !important;
+  }
+}
+
 /* AME Component Styles */
 @layer components {
   .ame-container {

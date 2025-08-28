@@ -13,6 +13,55 @@ export interface Customer {
   contract_status: 'Active' | 'Inactive' | 'Pending' | 'Expired';
   building_type?: string;
   
+  // Enhanced Basic Information
+  system_architecture?: string;
+  primary_bas_platform?: string;
+  
+  // Enhanced Contact Information
+  contact_name?: string;
+  contact_role?: string;
+  
+  // Enhanced Access Information
+  access_method?: string;
+  parking_instructions?: string;
+  special_access_notes?: string;
+  
+  // Site Intelligence System fields
+  site_nickname?: string;           // Quick reference name
+  site_number?: string;            // Persistent unique identifier (AME-YYYY-###)
+  primary_technician_id?: string;  // Primary technician UUID
+  secondary_technician_id?: string; // Secondary technician UUID
+  primary_technician_name?: string;  // Derived from user lookup
+  secondary_technician_name?: string; // Derived from user lookup
+  last_job_numbers?: string[];     // Historical job numbers
+  system_platform?: 'N4' | 'FX' | 'WEBs' | 'Mixed-ALC' | 'EBI-Honeywell' | 'Other';
+  
+  // Enhanced Team Context fields
+  last_visit_by?: string;          // Last technician name
+  last_visit_date?: string;        // ISO date string
+  site_experience?: 'first_time' | 'familiar' | 'expert';
+  handoff_notes?: string;          // From previous technician
+  
+  // Enhanced Access Intelligence fields
+  best_arrival_times?: string[];   // Optimal arrival windows
+  poc_name?: string;               // Point of contact name
+  poc_phone?: string;              // Point of contact phone
+  poc_available_hours?: string;    // Availability schedule
+  backup_contact?: string;         // Secondary contact
+  access_approach?: string;        // Successful approach notes
+  common_access_issues?: string[]; // Known access problems
+  scheduling_notes?: string;       // Coordination notes
+  
+  // Enhanced Project Status fields
+  completion_status?: 'Design' | 'Construction' | 'Commissioning' | 'Operational' | 'Warranty';
+  commissioning_notes?: string;    // Project commissioning status
+  known_issues?: string[];         // Site-specific problems
+  documentation_score?: number;    // 0-100 completeness rating
+  original_team_contact?: string;  // Original installation team contact
+  original_team_role?: string;     // Role of original team contact
+  original_team_info?: string;     // Contact information
+  when_to_contact_original?: string; // Guidance on when to reach out
+  
   // Contact Information
   primary_contact: string;
   contact_phone: string;
@@ -22,6 +71,14 @@ export interface Customer {
   emergency_email?: string;
   security_contact?: string;
   security_phone?: string;
+  
+  // Additional Contact Information
+  technical_contact?: string;
+  technical_phone?: string;
+  technical_email?: string;
+  billing_contact?: string;
+  billing_phone?: string;
+  billing_email?: string;
   
   // Access & Security
   building_access_type?: string;
@@ -261,6 +318,75 @@ export interface TeamContext {
     notes?: string;
   };
   siteExperience: 'first_time' | 'familiar' | 'expert';
+}
+
+// Enhanced Site Intelligence System types
+export interface SiteIntelligence {
+  siteIdentity: {
+    nickname: string;              // Rob's "quick reference" request
+    siteNumber: string;            // Unique persistent ID across contracts
+    legacyJobNumbers: string[];    // Track changing job numbers
+    systemPlatform: 'N4' | 'FX' | 'WEBs' | 'Mixed-ALC' | 'EBI-Honeywell' | 'Other'; // John's system type request
+    serviceTier: 'CORE' | 'ASSURE' | 'GUARDIAN';
+  };
+  teamContext: {
+    primaryTech: string;           // From Rob's spreadsheet reference
+    secondaryTech?: string;
+    lastVisitBy: string;
+    lastVisitDate: Date;
+    siteExperience: 'first_time' | 'familiar' | 'expert';
+    handoffNotes: string;          // From previous technician
+  };
+  accessIntelligence: {
+    bestArrivalTimes: string[];    // Rob's "timing" feedback
+    pocAvailability: {
+      name: string;
+      phone: string;
+      availableHours: string;
+      backupContact?: string;
+    };
+    accessPatterns: {
+      successfulApproach: string;
+      commonIssues: string[];
+      schedulingNotes: string;
+    };
+  };
+  projectStatus: {
+    completionStatus: 'Design' | 'Construction' | 'Commissioning' | 'Operational' | 'Warranty';
+    commissioningNotes?: string;
+    knownIssues: string[];
+    documentationScore: number; // 0-100 completeness score
+    originalTeamContact?: {
+      name: string;
+      role: string;
+      contactInfo: string;
+      whenToContact: string; // Rob's "complex site" feedback
+    };
+  };
+}
+
+export interface SiteContext {
+  nickname: string;
+  siteNumber: string;
+  systemPlatform?: string;
+  primaryTech?: string;
+  secondaryTech?: string;
+  lastVisit?: {
+    technicianName: string;
+    technicianId: string;
+    date: Date;
+    phase: number;
+    notes?: string;
+  };
+  jobNumberHistory: string[];
+}
+
+export interface TechnicianInfo {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  experience?: string;
 }
 
 // Service tier types are now centralized in serviceTiers.ts

@@ -7,9 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, FolderPlus, Settings, Database, Users, FileText, ImageIcon } from 'lucide-react';
+import { Upload, FolderPlus, Settings, Database, Users, FileText, ImageIcon, Wrench } from 'lucide-react';
 import { DataImportPanel } from '@/components/admin/DataImportPanel';
 import { SOPImageManager } from '@/components/admin/SOPImageManager';
+import { GoogleOAuthTestPanel } from '@/components/admin/GoogleOAuthTestPanel';
+import { MigrationRunner } from '@/services/migrationRunner';
+import { SiteIntelligenceService } from '@/services/siteIntelligenceService';
 
 export const Admin = () => {
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -191,6 +194,7 @@ export const Admin = () => {
           <TabsTrigger value="import">Data Import</TabsTrigger>
           <TabsTrigger value="customers">Customer Management</TabsTrigger>
           <TabsTrigger value="sop-images">SOP Images</TabsTrigger>
+          <TabsTrigger value="google-oauth">Google OAuth</TabsTrigger>
           <TabsTrigger value="folders">Drive Integration</TabsTrigger>
           <TabsTrigger value="system">System Settings</TabsTrigger>
         </TabsList>
@@ -278,6 +282,10 @@ export const Admin = () => {
 
         <TabsContent value="sop-images" className="space-y-4">
           <SOPImageManager />
+        </TabsContent>
+
+        <TabsContent value="google-oauth" className="space-y-4">
+          <GoogleOAuthTestPanel />
         </TabsContent>
 
         <TabsContent value="folders" className="space-y-4">

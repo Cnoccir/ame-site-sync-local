@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { GoogleDriveIntelligenceService } from './googleDriveIntelligenceService';
 
 /**
  * Service for creating and managing Google Drive project folders
@@ -77,20 +78,14 @@ export class GoogleDriveFolderService {
   }
 
   /**
-   * Test Google Drive connection
+   * Test Google Drive connection using OAuth status
    */
   static async testConnection(): Promise<boolean> {
     try {
-      const { data, error } = await supabase.functions.invoke('google-drive-manager', {
-        body: {
-          action: 'testConnection'
-        }
-      });
-
-      if (error) throw error;
-      return data.success === true;
+      const status = await GoogleDriveIntelligenceService.checkOAuthConnection();
+      return status.connected;
     } catch (error) {
-      console.error('Google Drive connection test failed:', error);
+      console.error('Google Drive OAuth connection test failed:', error);
       return false;
     }
   }

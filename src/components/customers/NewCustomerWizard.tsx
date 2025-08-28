@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,9 +8,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Save, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Save, X, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AMEService } from '@/services/ameService';
+import { TechnicianService } from '@/services/technicianService';
+import { CustomerIdService } from '@/services/customerIdService';
+import { DropdownDataService, DropdownOption, GroupedDropdownOption } from '@/services/dropdownDataService';
+import { Technician } from '@/types/technician';
+import { SimProCustomerSearch } from './SimProCustomerSearch';
+import { EnhancedGoogleDriveFolderSearch } from './EnhancedGoogleDriveFolderSearch';
+import { SearchableCombobox } from '@/components/ui/searchable-combobox';
+import { AMEContactService } from '@/services/ameContactService';
+import { AccessCredentialsManager } from './AccessCredentialsManager';
 
 interface NewCustomerWizardProps {
   isOpen: boolean;
@@ -29,43 +38,68 @@ interface CustomerFormData {
   contract_status: 'Active' | 'Inactive' | 'Pending' | 'Expired';
   building_type: string;
   
-  // Contact Information
+  // Enhanced Basic Information
+  system_architecture: string;
+  primary_bas_platform: string;
+  
+  // Primary Site Contact
   primary_contact: string;
   contact_phone: string;
   contact_email: string;
-  emergency_contact: string;
-  emergency_phone: string;
-  emergency_email: string;
-  security_contact: string;
-  security_phone: string;
-  technical_contact: string;
-  technical_phone: string;
-  technical_email: string;
-  billing_contact: string;
-  billing_phone: string;
-  billing_email: string;
+  primary_contact_role: string;
+  
+  // Site Access & Logistics
+  access_procedure: string;
+  parking_instructions: string;
+  equipment_access_notes: string;
+  
+  // Safety & PPE Requirements
+  site_hazards: string[];
+  other_hazards_notes: string;
+  safety_notes: string;
+  
+  // Secondary Contact (Optional)
+  secondary_contact_name: string;
+  secondary_contact_phone: string;
+  secondary_contact_email: string;
+  secondary_contact_role: string;
+  
+  // Technician Assignment
+  primary_technician_id: string;
+  primary_technician_name: string;
+  primary_technician_phone: string;
+  primary_technician_email: string;
+  secondary_technician_id: string;
+  secondary_technician_name: string;
+  secondary_technician_phone: string;
+  secondary_technician_email: string;
   
   // Access & Security
   building_access_type: string;
   building_access_details: string;
   access_hours: string;
   safety_requirements: string;
-  site_hazards: string;
   ppe_required: boolean;
   badge_required: boolean;
   training_required: boolean;
   
-  // System Access
+  // System Access - legacy fields kept for backward compatibility
   web_supervisor_url: string;
   workbench_username: string;
   workbench_password: string;
   platform_username: string;
   platform_password: string;
+  pc_username?: string;
+  pc_password?: string;
   bms_supervisor_ip: string;
   remote_access: boolean;
   remote_access_type: string;
   vpn_required: boolean;
   vpn_details: string;
+  different_platform_station_creds: boolean;
+  
+  // Enhanced credentials system
+  access_credentials?: any[];
   
   // Service Information
   technician_assigned: string;
@@ -75,12 +109,12 @@ interface CustomerFormData {
   special_instructions: string;
   
   // Administrative
-  account_manager: string;
+  account_manager_id: string;
+  account_manager_name: string;
+  account_manager_phone: string;
+  account_manager_email: string;
   escalation_contact: string;
   escalation_phone: string;
-  region: string;
-  district: string;
-  territory: string;
   drive_folder_id: string;
   drive_folder_url: string;
 }
@@ -94,25 +128,34 @@ const initialFormData: CustomerFormData = {
   system_type: '',
   contract_status: 'Active',
   building_type: '',
+  system_architecture: '',
+  primary_bas_platform: '',
   primary_contact: '',
   contact_phone: '',
   contact_email: '',
-  emergency_contact: '',
-  emergency_phone: '',
-  emergency_email: '',
-  security_contact: '',
-  security_phone: '',
-  technical_contact: '',
-  technical_phone: '',
-  technical_email: '',
-  billing_contact: '',
-  billing_phone: '',
-  billing_email: '',
+  primary_contact_role: '',
+  access_procedure: '',
+  parking_instructions: '',
+  equipment_access_notes: '',
+  site_hazards: [],
+  other_hazards_notes: '',
+  safety_notes: '',
+  secondary_contact_name: '',
+  secondary_contact_phone: '',
+  secondary_contact_email: '',
+  secondary_contact_role: '',
+  primary_technician_id: '',
+  primary_technician_name: '',
+  primary_technician_phone: '',
+  primary_technician_email: '',
+  secondary_technician_id: '',
+  secondary_technician_name: '',
+  secondary_technician_phone: '',
+  secondary_technician_email: '',
   building_access_type: '',
   building_access_details: '',
   access_hours: '',
   safety_requirements: '',
-  site_hazards: '',
   ppe_required: true,
   badge_required: false,
   training_required: false,
@@ -121,22 +164,25 @@ const initialFormData: CustomerFormData = {
   workbench_password: '',
   platform_username: '',
   platform_password: '',
+  pc_username: '',
+  pc_password: '',
   bms_supervisor_ip: '',
   remote_access: false,
   remote_access_type: '',
   vpn_required: false,
   vpn_details: '',
+  different_platform_station_creds: false,
   technician_assigned: '',
   service_frequency: '',
   next_due: '',
   last_service: '',
   special_instructions: '',
-  account_manager: '',
+  account_manager_id: '',
+  account_manager_name: '',
+  account_manager_phone: '',
+  account_manager_email: '',
   escalation_contact: '',
   escalation_phone: '',
-  region: '',
-  district: '',
-  territory: '',
   drive_folder_id: '',
   drive_folder_url: ''
 };
@@ -149,12 +195,184 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<CustomerFormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingDropdowns, setIsLoadingDropdowns] = useState(false);
+  const [dropdownData, setDropdownData] = useState<{
+    buildingTypes: DropdownOption[];
+    systemArchitectures: DropdownOption[];
+    basPlatforms: DropdownOption[];
+    basPlatformsGrouped: GroupedDropdownOption[];
+    contactRoles: DropdownOption[];
+    accessMethods: DropdownOption[];
+    technicians: DropdownOption[];
+  } | null>(null);
+  const [technicianOptions, setTechnicianOptions] = useState<any[]>([]);
+  const [accountManagerOptions, setAccountManagerOptions] = useState<any[]>([]);
+  const [showCloseConfirmation, setShowCloseConfirmation] = useState(false);
+  const [showSecondaryContact, setShowSecondaryContact] = useState(false);
+  const [selectedHazards, setSelectedHazards] = useState<string[]>([]);
   const { toast } = useToast();
 
-  const totalSteps = 6;
+  const totalSteps = 5;
+
+  // Load dropdown data and generate customer ID when form opens
+  useEffect(() => {
+    if (isOpen && !dropdownData) {
+      loadDropdownData();
+    }
+    if (isOpen && !formData.customer_id) {
+      generateCustomerId();
+    }
+  }, [isOpen, dropdownData, formData.customer_id]);
+
+  // Initialize selected hazards when form data changes
+  useEffect(() => {
+    if (formData.site_hazards && Array.isArray(formData.site_hazards)) {
+      setSelectedHazards(formData.site_hazards);
+    }
+  }, [formData.site_hazards]);
+
+  const loadDropdownData = async () => {
+    try {
+      setIsLoadingDropdowns(true);
+      console.log('Loading dropdown data...');
+      
+      const [data, technicians, accountManagers] = await Promise.all([
+        DropdownDataService.getCachedDropdownData(),
+        AMEContactService.getTechnicians(),
+        AMEContactService.getAccountManagers()
+      ]);
+      
+      console.log('Dropdown data loaded:', data);
+      console.log('Technicians loaded:', technicians);
+      
+      setDropdownData(data);
+      
+      if (!technicians || technicians.length === 0) {
+        console.warn('No technicians found in database');
+        toast({
+          title: "Warning",
+          description: "No technicians found. Please check database connection.",
+          variant: "destructive",
+        });
+        setTechnicianOptions([]);
+        return;
+      }
+      
+      // Format technicians for SearchableCombobox
+      const formattedTechnicians = technicians.map(tech => ({
+        id: tech.id,
+        name: tech.name,
+        description: `${tech.phone ? `📱 ${tech.phone}` : ''}${tech.email ? ` 📧 ${tech.email}` : ''}${tech.extension ? ` ☎️ Ext: ${tech.extension}` : ''}`.trim(),
+        subtitle: tech.role || 'Technician',
+        phone: tech.phone,
+        email: tech.email,
+        extension: tech.extension,
+        direct_line: tech.direct_line
+      }));
+      
+      console.log('Formatted technicians:', formattedTechnicians);
+      setTechnicianOptions(formattedTechnicians);
+      
+      // Format account managers for SearchableCombobox
+      const formattedAccountManagers = accountManagers.map(mgr => ({
+        id: mgr.id,
+        name: mgr.name,
+        description: `${mgr.phone ? `📱 ${mgr.phone}` : ''}${mgr.email ? ` 📧 ${mgr.email}` : ''}`.trim(),
+        subtitle: mgr.role || 'Account Manager',
+        phone: mgr.phone,
+        email: mgr.email
+      }));
+      
+      console.log('Formatted account managers:', formattedAccountManagers);
+      setAccountManagerOptions(formattedAccountManagers);
+      
+      toast({
+        title: "Success",
+        description: `Loaded ${technicians.length} technicians and ${accountManagers.length} account managers successfully`,
+      });
+      
+    } catch (error) {
+      console.error('Error loading dropdown data:', error);
+      toast({
+        title: "Error",
+        description: `Failed to load data: ${error.message}. Please check your connection.`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingDropdowns(false);
+    }
+  };
+
+  const generateCustomerId = async () => {
+    try {
+      const customerId = await CustomerIdService.generateNextCustomerId();
+      updateFormData('customer_id', customerId);
+    } catch (error) {
+      console.error('Error generating customer ID:', error);
+      // Fallback to manual entry if auto-generation fails
+    }
+  };
 
   const updateFormData = (field: keyof CustomerFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleTechnicianSelection = (technicianId: string, isPrimary: boolean = true) => {
+    const selectedTech = technicianOptions.find(tech => tech.id === technicianId);
+    if (selectedTech) {
+      if (isPrimary) {
+        updateFormData('primary_technician_id', technicianId);
+        updateFormData('primary_technician_name', selectedTech.name);
+        updateFormData('primary_technician_phone', selectedTech.phone || '');
+        updateFormData('primary_technician_email', selectedTech.email || '');
+      } else {
+        updateFormData('secondary_technician_id', technicianId);
+        updateFormData('secondary_technician_name', selectedTech.name);
+        updateFormData('secondary_technician_phone', selectedTech.phone || '');
+        updateFormData('secondary_technician_email', selectedTech.email || '');
+      }
+    }
+  };
+
+  const handleAccountManagerSelection = (managerId: string) => {
+    const selectedMgr = accountManagerOptions.find(mgr => mgr.id === managerId);
+    if (selectedMgr) {
+      updateFormData('account_manager_id', managerId);
+      updateFormData('account_manager_name', selectedMgr.name);
+      updateFormData('account_manager_phone', selectedMgr.phone || '');
+      updateFormData('account_manager_email', selectedMgr.email || '');
+    }
+  };
+
+  const handleHazardChange = (hazard: string, checked: boolean) => {
+    const newHazards = checked 
+      ? [...selectedHazards, hazard]
+      : selectedHazards.filter(h => h !== hazard);
+    setSelectedHazards(newHazards);
+    updateFormData('site_hazards', newHazards);
+  };
+
+  const handleSimProAutofill = (autofillData: Partial<CustomerFormData>) => {
+    setFormData(prev => ({ ...prev, ...autofillData }));
+  };
+
+  const handleGoogleDriveFolder = (folderId: string, folderUrl: string, folderStructure?: any) => {
+    updateFormData('drive_folder_id', folderId);
+    updateFormData('drive_folder_url', folderUrl);
+    // Store the folder structure information if provided
+    if (folderStructure) {
+      // You can store this in a separate field if needed
+      console.log('Folder structure created:', folderStructure);
+    }
+  };
+
+  const handleFolderStructureCreated = (structure: any) => {
+    console.log('New structured folder created:', structure);
+    // Optional: show success notification
+    toast({
+      title: 'Project Folder Created',
+      description: `Structured project folder created with ${Object.keys(structure.subfolders).length} subfolders.`,
+    });
   };
 
   const nextStep = () => {
@@ -175,8 +393,29 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
   };
 
   const handleClose = () => {
+    // Check if form has any data before closing
+    const hasData = Object.values(formData).some(value => {
+      if (typeof value === 'boolean') return false; // Ignore boolean defaults
+      if (typeof value === 'string') return value.trim() !== '';
+      return value !== null && value !== undefined;
+    });
+    
+    if (hasData && !isSubmitting) {
+      setShowCloseConfirmation(true);
+    } else {
+      resetForm();
+      onClose();
+    }
+  };
+  
+  const confirmClose = () => {
+    setShowCloseConfirmation(false);
     resetForm();
     onClose();
+  };
+  
+  const cancelClose = () => {
+    setShowCloseConfirmation(false);
   };
 
   const handleSubmit = async () => {
@@ -204,7 +443,17 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
   };
 
   const renderStep1 = () => (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* SimPro Customer Search */}
+      <SimProCustomerSearch
+        onAutofill={handleSimProAutofill}
+        currentCompanyName={formData.company_name}
+        disabled={isSubmitting}
+      />
+      
+      {/* Divider */}
+      <div className="border-t border-gray-200 my-6" />
+      
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="customer_id">Customer ID *</Label>
@@ -238,12 +487,18 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
         </div>
         <div>
           <Label htmlFor="building_type">Building Type</Label>
-          <Input
-            id="building_type"
-            value={formData.building_type}
-            onChange={(e) => updateFormData('building_type', e.target.value)}
-            placeholder="Office, Hospital, School, etc."
-          />
+          <Select value={formData.building_type} onValueChange={(value) => updateFormData('building_type', value)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select building type" />
+            </SelectTrigger>
+            <SelectContent>
+              {dropdownData?.buildingTypes?.map((type) => (
+                <SelectItem key={type.id} value={type.name}>
+                  {type.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -272,15 +527,57 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="system_type">System Type *</Label>
+          <Label htmlFor="primary_bas_platform">Primary BAS Platform *</Label>
+          <Select value={formData.primary_bas_platform} onValueChange={(value) => updateFormData('primary_bas_platform', value)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select BAS platform" />
+            </SelectTrigger>
+            <SelectContent>
+              {dropdownData?.basPlatformsGrouped?.map((group) => (
+                <div key={group.category}>
+                  <div className="px-2 py-1 text-sm font-semibold text-muted-foreground">{group.category}</div>
+                  {group.options.map((platform) => (
+                    <SelectItem key={platform.id} value={platform.name} className="pl-6">
+                      {platform.name}
+                    </SelectItem>
+                  ))}
+                </div>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="system_type">Version *</Label>
           <Input
             id="system_type"
             value={formData.system_type}
             onChange={(e) => updateFormData('system_type', e.target.value)}
-            placeholder="BACnet, Modbus, etc."
+            placeholder="e.g., N4.12, AX3.8, Metasys 11.0.2, EBI R800.1"
           />
+          <div className="text-xs text-muted-foreground mt-1">
+            Enter the specific version number for the selected platform
+          </div>
         </div>
+      </div>
+
+      <div>
+        <Label htmlFor="system_architecture">Server Architecture</Label>
+        <Select value={formData.system_architecture} onValueChange={(value) => updateFormData('system_architecture', value)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select server architecture" />
+          </SelectTrigger>
+          <SelectContent>
+            {dropdownData?.systemArchitectures?.map((arch) => (
+              <SelectItem key={arch.id} value={arch.name}>
+                {arch.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div>
@@ -300,23 +597,54 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
     </div>
   );
 
-  const renderStep2 = () => (
-    <div className="space-y-6">
-      <div>
-        <h4 className="font-semibold text-foreground mb-3">Primary Contact</h4>
-        <div className="grid grid-cols-1 gap-4">
-          <div>
-            <Label htmlFor="primary_contact">Contact Name *</Label>
-            <Input
-              id="primary_contact"
-              value={formData.primary_contact}
-              onChange={(e) => updateFormData('primary_contact', e.target.value)}
-              placeholder="Primary contact name"
-            />
-          </div>
+  const renderStep2 = () => {
+    const siteHazardOptions = [
+      'Arc flash gear required',
+      'Fall protection required',
+      'Confined space protocols',
+      'Asbestos awareness required', 
+      'High noise areas',
+      'Chemical hazards present',
+      'Other hazards'
+    ];
+
+    return (
+      <div className="space-y-6">
+        {/* Primary Site Contact */}
+        <div>
+          <h4 className="font-semibold text-foreground mb-3">Primary Site Contact</h4>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="contact_phone">Phone *</Label>
+              <Label htmlFor="primary_contact">Contact Name *</Label>
+              <Input
+                id="primary_contact"
+                value={formData.primary_contact}
+                onChange={(e) => updateFormData('primary_contact', e.target.value)}
+                placeholder="John Smith"
+              />
+            </div>
+            <div>
+              <Label htmlFor="primary_contact_role">Role/Title *</Label>
+              <Select value={formData.primary_contact_role} onValueChange={(value) => updateFormData('primary_contact_role', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select contact role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Facilities Manager">Facilities Manager</SelectItem>
+                  <SelectItem value="Plant Engineer">Plant Engineer</SelectItem>
+                  <SelectItem value="Maintenance Supervisor">Maintenance Supervisor</SelectItem>
+                  <SelectItem value="IT Manager">IT Manager</SelectItem>
+                  <SelectItem value="Property Manager">Property Manager</SelectItem>
+                  <SelectItem value="Building Engineer">Building Engineer</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            <div>
+              <Label htmlFor="contact_phone">Direct Phone *</Label>
               <Input
                 id="contact_phone"
                 value={formData.contact_phone}
@@ -331,175 +659,277 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
                 type="email"
                 value={formData.contact_email}
                 onChange={(e) => updateFormData('contact_email', e.target.value)}
-                placeholder="contact@company.com"
+                placeholder="john.smith@company.com"
               />
             </div>
           </div>
         </div>
-      </div>
 
-      <div>
-        <h4 className="font-semibold text-foreground mb-3">Emergency Contact</h4>
-        <div className="grid grid-cols-1 gap-4">
-          <div>
-            <Label htmlFor="emergency_contact">Emergency Contact Name</Label>
-            <Input
-              id="emergency_contact"
-              value={formData.emergency_contact}
-              onChange={(e) => updateFormData('emergency_contact', e.target.value)}
-              placeholder="Emergency contact name"
-            />
-          </div>
+        {/* Site Access & Security */}
+        <div>
+          <h4 className="font-semibold text-foreground mb-3">Site Access & Security</h4>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="emergency_phone">Emergency Phone</Label>
-              <Input
-                id="emergency_phone"
-                value={formData.emergency_phone}
-                onChange={(e) => updateFormData('emergency_phone', e.target.value)}
-                placeholder="(555) 123-4567"
-              />
+              <Label htmlFor="access_procedure">Access Procedure *</Label>
+              <Select value={formData.access_procedure} onValueChange={(value) => updateFormData('access_procedure', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select access procedure" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Walk-in (No restrictions)">Walk-in (No restrictions)</SelectItem>
+                  <SelectItem value="Check in at front desk">Check in at front desk</SelectItem>
+                  <SelectItem value="Call contact for escort">Call contact for escort</SelectItem>
+                  <SelectItem value="Keycard/FOB required">Keycard/FOB required</SelectItem>
+                  <SelectItem value="Security escort required">Security escort required</SelectItem>
+                  <SelectItem value="After-hours access available">After-hours access available</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <Label htmlFor="emergency_email">Emergency Email</Label>
+              <Label htmlFor="access_hours">Access Hours</Label>
               <Input
-                id="emergency_email"
-                type="email"
-                value={formData.emergency_email}
-                onChange={(e) => updateFormData('emergency_email', e.target.value)}
-                placeholder="emergency@company.com"
+                id="access_hours"
+                value={formData.access_hours}
+                onChange={(e) => updateFormData('access_hours', e.target.value)}
+                placeholder="8:00 AM - 5:00 PM, Weekdays only"
               />
             </div>
           </div>
-        </div>
-      </div>
-
-      <div>
-        <h4 className="font-semibold text-foreground mb-3">Additional Contacts</h4>
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="security_contact">Security Contact</Label>
-              <Input
-                id="security_contact"
-                value={formData.security_contact}
-                onChange={(e) => updateFormData('security_contact', e.target.value)}
-                placeholder="Security contact name"
-              />
-            </div>
-            <div>
-              <Label htmlFor="security_phone">Security Phone</Label>
-              <Input
-                id="security_phone"
-                value={formData.security_phone}
-                onChange={(e) => updateFormData('security_phone', e.target.value)}
-                placeholder="(555) 123-4567"
-              />
-            </div>
-            <div>
-              <Label htmlFor="escalation_contact">Escalation Contact</Label>
-              <Input
-                id="escalation_contact"
-                value={formData.escalation_contact}
-                onChange={(e) => updateFormData('escalation_contact', e.target.value)}
-                placeholder="Escalation contact"
-              />
-            </div>
+          
+          <div className="mt-4">
+            <Label htmlFor="parking_instructions">Parking & Access Instructions</Label>
+            <Textarea
+              id="parking_instructions"
+              value={formData.parking_instructions}
+              onChange={(e) => updateFormData('parking_instructions', e.target.value)}
+              placeholder="Parking location, building entry, equipment access notes..."
+              rows={3}
+            />
           </div>
         </div>
-      </div>
-    </div>
-  );
 
-  const renderStep3 = () => (
-    <div className="space-y-4">
-      <div>
-        <Label htmlFor="building_access_type">Building Access Type</Label>
-        <Select value={formData.building_access_type} onValueChange={(value) => updateFormData('building_access_type', value)}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select access type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Key Card">Key Card</SelectItem>
-            <SelectItem value="Key">Key</SelectItem>
-            <SelectItem value="Code">Code</SelectItem>
-            <SelectItem value="Guard Escort">Guard Escort</SelectItem>
-            <SelectItem value="Badge Required">Badge Required</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div>
-        <Label htmlFor="building_access_details">Building Access Details</Label>
-        <Textarea
-          id="building_access_details"
-          value={formData.building_access_details}
-          onChange={(e) => updateFormData('building_access_details', e.target.value)}
-          placeholder="Detailed access instructions..."
-          rows={3}
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="access_hours">Access Hours</Label>
-        <Input
-          id="access_hours"
-          value={formData.access_hours}
-          onChange={(e) => updateFormData('access_hours', e.target.value)}
-          placeholder="e.g., 8:00 AM - 5:00 PM, Weekdays only"
-        />
-      </div>
-
-      <div className="space-y-3">
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="ppe_required"
-            checked={formData.ppe_required}
-            onCheckedChange={(checked) => updateFormData('ppe_required', checked)}
-          />
-          <Label htmlFor="ppe_required">PPE Required</Label>
+        {/* Safety Requirements */}
+        <div>
+          <h4 className="font-semibold text-foreground mb-3">Safety & PPE Requirements</h4>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="ppe_required"
+                checked={formData.ppe_required}
+                onCheckedChange={(checked) => updateFormData('ppe_required', checked)}
+              />
+              <Label htmlFor="ppe_required">PPE Required</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="badge_required"
+                checked={formData.badge_required}
+                onCheckedChange={(checked) => updateFormData('badge_required', checked)}
+              />
+              <Label htmlFor="badge_required">Badge/ID Required</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="training_required"
+                checked={formData.training_required}
+                onCheckedChange={(checked) => updateFormData('training_required', checked)}
+              />
+              <Label htmlFor="training_required">Special Training Required</Label>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            {siteHazardOptions.map((hazard) => (
+              <div key={hazard} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`hazard_${hazard}`}
+                  checked={selectedHazards.includes(hazard)}
+                  onCheckedChange={(checked) => handleHazardChange(hazard, !!checked)}
+                />
+                <Label htmlFor={`hazard_${hazard}`} className="text-sm">{hazard}</Label>
+              </div>
+            ))}
+          </div>
+          
+          {selectedHazards.includes('Other hazards') && (
+            <div className="mt-3">
+              <Label htmlFor="other_hazards_notes">Specify Other Hazards</Label>
+              <Input
+                id="other_hazards_notes"
+                value={formData.other_hazards_notes}
+                onChange={(e) => updateFormData('other_hazards_notes', e.target.value)}
+                placeholder="Describe other hazards..."
+              />
+            </div>
+          )}
+          
+          <div className="mt-4">
+            <Label htmlFor="safety_notes">Safety Notes</Label>
+            <Textarea
+              id="safety_notes"
+              value={formData.safety_notes}
+              onChange={(e) => updateFormData('safety_notes', e.target.value)}
+              placeholder="Hard hats required in mechanical areas, safety glasses mandatory"
+              rows={2}
+            />
+          </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="badge_required"
-            checked={formData.badge_required}
-            onCheckedChange={(checked) => updateFormData('badge_required', checked)}
-          />
-          <Label htmlFor="badge_required">Badge/ID Required</Label>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="training_required"
-            checked={formData.training_required}
-            onCheckedChange={(checked) => updateFormData('training_required', checked)}
-          />
-          <Label htmlFor="training_required">Special Training Required</Label>
-        </div>
-      </div>
 
-      <div>
-        <Label htmlFor="safety_requirements">Safety Requirements</Label>
-        <Textarea
-          id="safety_requirements"
-          value={formData.safety_requirements}
-          onChange={(e) => updateFormData('safety_requirements', e.target.value)}
-          placeholder="List any specific safety requirements..."
-          rows={3}
-        />
+        {/* Secondary Contact */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-semibold text-foreground">Backup Contact (Optional)</h4>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSecondaryContact(!showSecondaryContact)}
+            >
+              {showSecondaryContact ? 'Remove' : 'Add'} Backup Contact
+            </Button>
+          </div>
+          
+          {showSecondaryContact && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="secondary_contact_name">Contact Name</Label>
+                <Input
+                  id="secondary_contact_name"
+                  value={formData.secondary_contact_name}
+                  onChange={(e) => updateFormData('secondary_contact_name', e.target.value)}
+                  placeholder="Jane Doe"
+                />
+              </div>
+              <div>
+                <Label htmlFor="secondary_contact_role">Role</Label>
+                <Input
+                  id="secondary_contact_role"
+                  value={formData.secondary_contact_role}
+                  onChange={(e) => updateFormData('secondary_contact_role', e.target.value)}
+                  placeholder="Assistant Facilities Manager"
+                />
+              </div>
+              <div>
+                <Label htmlFor="secondary_contact_phone">Phone</Label>
+                <Input
+                  id="secondary_contact_phone"
+                  value={formData.secondary_contact_phone}
+                  onChange={(e) => updateFormData('secondary_contact_phone', e.target.value)}
+                  placeholder="(555) 987-6543"
+                />
+              </div>
+              <div>
+                <Label htmlFor="secondary_contact_email">Email</Label>
+                <Input
+                  id="secondary_contact_email"
+                  type="email"
+                  value={formData.secondary_contact_email}
+                  onChange={(e) => updateFormData('secondary_contact_email', e.target.value)}
+                  placeholder="jane.doe@company.com"
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+    );
+  };
 
-      <div>
-        <Label htmlFor="site_hazards">Site Hazards</Label>
-        <Textarea
-          id="site_hazards"
-          value={formData.site_hazards}
-          onChange={(e) => updateFormData('site_hazards', e.target.value)}
-          placeholder="List any potential hazards at the site..."
-          rows={3}
-        />
-      </div>
-    </div>
-  );
+  const renderStep3 = () => {
+    // Handle credential changes from AccessCredentialsManager
+    const handleCredentialsChange = (credentials: any[]) => {
+      updateFormData('access_credentials', credentials);
+      
+      // For backward compatibility, copy the first credential's values to the old fields
+      if (credentials && credentials.length > 0) {
+        const primaryCred = credentials[0];
+        if (primaryCred.system_type === 'computer_pc') {
+          updateFormData('pc_username', primaryCred.username || '');
+          updateFormData('pc_password', primaryCred.password_encrypted || '');
+        } else if (primaryCred.system_type === 'web_portal') {
+          updateFormData('web_supervisor_url', primaryCred.host_address || '');
+          updateFormData('platform_username', primaryCred.username || '');
+          updateFormData('platform_password', primaryCred.password_encrypted || '');
+        }
+        
+        // For VPN information
+        const vpnCred = credentials.find(c => c.system_type === 'vpn_client');
+        if (vpnCred) {
+          updateFormData('vpn_required', true);
+          updateFormData('vpn_details', vpnCred.connection_instructions || '');
+          updateFormData('remote_access', true);
+          updateFormData('remote_access_type', 'VPN');
+        }
+      }
+    };
+    
+    // Create initial credentials based on existing legacy data
+    const createInitialCredentials = () => {
+      const credentials = [];
+      
+      // Add Computer/PC login if applicable
+      if (formData.pc_username || formData.pc_password) {
+        credentials.push({
+          access_name: 'Main Control Computer',
+          system_type: 'computer_pc',
+          description: 'Primary workstation/PC login for on-site access',
+          username: formData.pc_username || '',
+          password_encrypted: formData.pc_password || '',
+          requires_2fa: false,
+          requires_vpn: false,
+          has_attachment: false,
+          access_level: 'standard',
+          is_active: true
+        });
+      }
+      
+      // Add Web Portal if applicable
+      if (formData.web_supervisor_url || formData.platform_username || formData.platform_password) {
+        credentials.push({
+          access_name: 'Web Supervisor Portal',
+          system_type: 'web_portal',
+          description: 'BMS Web Supervisor Access',
+          host_address: formData.web_supervisor_url || '',
+          username: formData.platform_username || '',
+          password_encrypted: formData.platform_password || '',
+          requires_2fa: false,
+          requires_vpn: formData.vpn_required || false,
+          has_attachment: false,
+          access_level: 'standard',
+          is_active: true
+        });
+      }
+      
+      // Add VPN if applicable
+      if (formData.vpn_required && formData.vpn_details) {
+        credentials.push({
+          access_name: 'VPN Connection',
+          system_type: 'vpn_client',
+          description: 'VPN required for remote access',
+          username: '',
+          password_encrypted: '',
+          requires_2fa: false,
+          requires_vpn: true,
+          vpn_config_name: formData.remote_access_type || 'VPN',
+          connection_instructions: formData.vpn_details || '',
+          has_attachment: false,
+          access_level: 'standard',
+          is_active: true
+        });
+      }
+      
+      return credentials;
+    };
+    
+    return (
+      <AccessCredentialsManager
+        initialCredentials={formData.access_credentials || createInitialCredentials()}
+        onChange={handleCredentialsChange}
+        mode="form"
+      />
+    );
+  };
 
   const renderStep4 = () => (
     <div className="space-y-4">
@@ -615,29 +1045,84 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
 
   const renderStep5 = () => (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="technician_assigned">Assigned Technician</Label>
-          <Input
-            id="technician_assigned"
-            value={formData.technician_assigned}
-            onChange={(e) => updateFormData('technician_assigned', e.target.value)}
-            placeholder="Technician name"
-          />
+      <div>
+        <h4 className="font-semibold text-foreground mb-3">Technician Assignment</h4>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="primary_technician_id">Primary Technician</Label>
+            <SearchableCombobox
+              options={technicianOptions}
+              value={formData.primary_technician_id}
+              onValueChange={(value) => handleTechnicianSelection(value, true)}
+              placeholder="Select primary technician"
+              searchPlaceholder="Search technicians by name..."
+              emptyText="No technicians found. Check your connection."
+              loading={isLoadingDropdowns}
+            />
+            {formData.primary_technician_name && (
+              <div className="mt-2 text-sm text-muted-foreground">
+                <div className="font-medium">{formData.primary_technician_name}</div>
+                {formData.primary_technician_phone && (
+                  <div>📱 {formData.primary_technician_phone}</div>
+                )}
+                {formData.primary_technician_email && (
+                  <div>📧 {formData.primary_technician_email}</div>
+                )}
+              </div>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="secondary_technician_id">Secondary Technician</Label>
+            <SearchableCombobox
+              options={technicianOptions}
+              value={formData.secondary_technician_id}
+              onValueChange={(value) => handleTechnicianSelection(value, false)}
+              placeholder="Select secondary technician"
+              searchPlaceholder="Search technicians by name..."
+              emptyText="No technicians found. Check your connection."
+              loading={isLoadingDropdowns}
+            />
+            {formData.secondary_technician_name && (
+              <div className="mt-2 text-sm text-muted-foreground">
+                <div className="font-medium">{formData.secondary_technician_name}</div>
+                {formData.secondary_technician_phone && (
+                  <div>📱 {formData.secondary_technician_phone}</div>
+                )}
+                {formData.secondary_technician_email && (
+                  <div>📧 {formData.secondary_technician_email}</div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-        <div>
-          <Label htmlFor="service_frequency">Service Frequency</Label>
-          <Select value={formData.service_frequency} onValueChange={(value) => updateFormData('service_frequency', value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select frequency" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Monthly">Monthly</SelectItem>
-              <SelectItem value="Quarterly">Quarterly</SelectItem>
-              <SelectItem value="Semi-Annual">Semi-Annual</SelectItem>
-              <SelectItem value="Annual">Annual</SelectItem>
-            </SelectContent>
-          </Select>
+      </div>
+      
+      <div>
+        <h4 className="font-semibold text-foreground mb-3">Service Information</h4>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="technician_assigned">Legacy Assigned Technician</Label>
+            <Input
+              id="technician_assigned"
+              value={formData.technician_assigned}
+              onChange={(e) => updateFormData('technician_assigned', e.target.value)}
+              placeholder="Technician name (legacy field)"
+            />
+          </div>
+          <div>
+            <Label htmlFor="service_frequency">Service Frequency</Label>
+            <Select value={formData.service_frequency} onValueChange={(value) => updateFormData('service_frequency', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select frequency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Monthly">Monthly</SelectItem>
+                <SelectItem value="Quarterly">Quarterly</SelectItem>
+                <SelectItem value="Semi-Annual">Semi-Annual</SelectItem>
+                <SelectItem value="Annual">Annual</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -676,64 +1161,92 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
   );
 
   const renderStep6 = () => (
-    <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <Label htmlFor="account_manager">Account Manager</Label>
-          <Input
-            id="account_manager"
-            value={formData.account_manager}
-            onChange={(e) => updateFormData('account_manager', e.target.value)}
-            placeholder="Account manager name"
-          />
-        </div>
-        <div>
-          <Label htmlFor="region">Region</Label>
-          <Input
-            id="region"
-            value={formData.region}
-            onChange={(e) => updateFormData('region', e.target.value)}
-            placeholder="Region"
-          />
-        </div>
-        <div>
-          <Label htmlFor="district">District</Label>
-          <Input
-            id="district"
-            value={formData.district}
-            onChange={(e) => updateFormData('district', e.target.value)}
-            placeholder="District"
-          />
-        </div>
-      </div>
-
+    <div className="space-y-6">
+      {/* Account Manager Selection */}
       <div>
-        <Label htmlFor="territory">Territory</Label>
-        <Input
-          id="territory"
-          value={formData.territory}
-          onChange={(e) => updateFormData('territory', e.target.value)}
-          placeholder="Territory"
-        />
+        <h4 className="font-semibold text-foreground mb-3">Account Management</h4>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="account_manager_id">Account Manager</Label>
+            <SearchableCombobox
+              options={accountManagerOptions}
+              value={formData.account_manager_id}
+              onValueChange={handleAccountManagerSelection}
+              placeholder="Select account manager"
+              searchPlaceholder="Search account managers..."
+              emptyText="No account managers found."
+              loading={isLoadingDropdowns}
+            />
+            {formData.account_manager_name && (
+              <div className="mt-2 text-sm text-muted-foreground">
+                <div className="font-medium">{formData.account_manager_name}</div>
+                {formData.account_manager_phone && (
+                  <div>📱 {formData.account_manager_phone}</div>
+                )}
+                {formData.account_manager_email && (
+                  <div>📧 {formData.account_manager_email}</div>
+                )}
+              </div>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="escalation_contact">Escalation Contact</Label>
+            <Input
+              id="escalation_contact"
+              value={formData.escalation_contact}
+              onChange={(e) => updateFormData('escalation_contact', e.target.value)}
+              placeholder="Escalation contact name"
+            />
+            <div className="mt-2">
+              <Label htmlFor="escalation_phone">Escalation Phone</Label>
+              <Input
+                id="escalation_phone"
+                value={formData.escalation_phone}
+                onChange={(e) => updateFormData('escalation_phone', e.target.value)}
+                placeholder="(555) 123-4567"
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
+      {/* Enhanced Google Drive Integration */}
+      <EnhancedGoogleDriveFolderSearch
+        customerData={{
+          company_name: formData.company_name,
+          site_address: formData.site_address,
+          customer_id: '', // New customer, no ID yet
+          service_tier: formData.service_tier,
+          contact_name: formData.primary_contact,
+          phone: formData.contact_phone
+        }}
+        onFolderSelected={handleGoogleDriveFolder}
+        onFolderStructureCreated={handleFolderStructureCreated}
+        initialFolderId={formData.drive_folder_id}
+        initialFolderUrl={formData.drive_folder_url}
+        disabled={isSubmitting}
+      />
+      
+      {/* Manual folder input as fallback */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="drive_folder_id">Drive Folder ID</Label>
+          <Label htmlFor="drive_folder_id">Drive Folder ID (Manual Entry)</Label>
           <Input
             id="drive_folder_id"
             value={formData.drive_folder_id}
             onChange={(e) => updateFormData('drive_folder_id', e.target.value)}
             placeholder="Google Drive folder ID"
+            disabled={isSubmitting}
           />
         </div>
         <div>
-          <Label htmlFor="drive_folder_url">Drive Folder URL</Label>
+          <Label htmlFor="drive_folder_url">Drive Folder URL (Manual Entry)</Label>
           <Input
             id="drive_folder_url"
             value={formData.drive_folder_url}
             onChange={(e) => updateFormData('drive_folder_url', e.target.value)}
             placeholder="https://drive.google.com/..."
+            disabled={isSubmitting}
           />
         </div>
       </div>
@@ -748,6 +1261,8 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
           <div><strong>System:</strong> {formData.system_type}</div>
           <div><strong>Primary Contact:</strong> {formData.primary_contact}</div>
           <div><strong>Phone:</strong> {formData.contact_phone}</div>
+          <div><strong>Primary Tech:</strong> {formData.primary_technician_name}</div>
+          <div><strong>Account Mgr:</strong> {formData.account_manager_name}</div>
         </div>
       </div>
     </div>
@@ -756,10 +1271,9 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
   const getStepTitle = () => {
     const titles = [
       'Basic Information',
-      'Contact Information',
-      'Access & Security',
+      'Site Access & Contacts',
       'System Access',
-      'Service Information',
+      'Service Information', 
       'Administrative & Review'
     ];
     return titles[currentStep - 1];
@@ -770,16 +1284,47 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
       case 1: return renderStep1();
       case 2: return renderStep2();
       case 3: return renderStep3();
-      case 4: return renderStep4();
-      case 5: return renderStep5();
-      case 6: return renderStep6();
+      case 4: return renderStep5();
+      case 5: return renderStep6();
       default: return renderStep1();
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+    <>
+      {/* Close Confirmation Dialog */}
+      <Dialog open={showCloseConfirmation} onOpenChange={setShowCloseConfirmation}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Close</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              You have unsaved changes. Are you sure you want to close the wizard? All progress will be lost.
+            </p>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={cancelClose}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmClose}>
+              Close & Lose Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Main Wizard Dialog */}
+      <Dialog open={isOpen} onOpenChange={(open) => {
+        // Prevent closing by clicking outside - user must explicitly close
+        if (!open) return;
+        handleClose();
+      }}>
+      <DialogContent 
+        className="max-w-4xl max-h-[90vh] overflow-y-auto"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>New Customer - {getStepTitle()}</DialogTitle>
@@ -837,6 +1382,7 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
           </div>
         </div>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+    </>
   );
 };
