@@ -82,7 +82,7 @@ export const NetworkHealthDashboard: React.FC<NetworkHealthDashboardProps> = ({
 
   // Parse resource metrics from datasets
   const resourceData = useMemo(() => {
-    const resourceDatasets = datasets.filter(d => d.type === 'resourceMetrics');
+    const resourceDatasets = datasets.filter(d => (d as any).type === 'resourceMetrics');
     const metrics: Record<string, any> = {};
     
     resourceDatasets.forEach(dataset => {
@@ -101,7 +101,7 @@ export const NetworkHealthDashboard: React.FC<NetworkHealthDashboardProps> = ({
   // Parse device status from datasets
   const deviceStatus = useMemo(() => {
     const deviceDatasets = datasets.filter(d => 
-      d.type === 'networkDevices' || d.type === 'bacnetDevices' || d.type === 'niagaraStations'
+      (d as any).type === 'networkDevices' || (d as any).type === 'bacnetDevices' || (d as any).type === 'niagaraStations'
     );
     
     const statusCounts = {

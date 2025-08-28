@@ -347,7 +347,7 @@ ${'═'.repeat(35)}
 
     datasets.forEach((dataset, index) => {
       section += `Dataset ${index + 1}: ${dataset.filename}\n`;
-      section += `• Type: ${dataset.type}\n`;
+      section += `• Type: ${(dataset as any).type}\n`;
       section += `• Total Records: ${dataset.rows.length}\n`;
       section += `• Selected for Report: ${dataset.rows.filter(r => selectedDevices.has(r.id)).length}\n`;
       

@@ -445,7 +445,7 @@ export const DeviceInventoryTable: React.FC<DeviceInventoryTableProps> = ({
         <div className="p-4 border-b">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold">
-              {currentDataset.filename} - {currentDataset.type}
+              {currentDataset.filename} - {(currentDataset as any).type}
             </h3>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span>

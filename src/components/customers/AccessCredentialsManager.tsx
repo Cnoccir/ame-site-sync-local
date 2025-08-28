@@ -28,9 +28,42 @@ import {
   Info
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { AccessCredential, CredentialTemplate, AccessCredentialsService } from '@/services/accessCredentialsService';
+// import { AccessCredential, CredentialTemplate, AccessCredentialsService } from '@/services/accessCredentialsService';
 
 // Types for the access credentials system
+interface AccessCredential {
+  access_name: string;
+  system_type: 'computer_pc' | 'web_portal' | 'vpn_client' | 'remote_desktop' | 'ssh_terminal' | 'mobile_app' | 'custom_software';
+  description?: string;
+  username?: string;
+  password_encrypted?: string;
+  host_address?: string;
+  port_number?: number;
+  requires_2fa?: boolean;
+  requires_vpn?: boolean;
+  has_attachment?: boolean;
+  access_level?: string;
+  is_active?: boolean;
+  connection_instructions?: string;
+  protocol?: string;
+  additional_auth_details?: string;
+  vpn_config_name?: string;
+}
+
+interface CredentialTemplate {
+  template_name: string;
+  system_type: string;
+  instruction_template?: string;
+  default_port?: number;
+  default_protocol?: string;
+}
+
+const AccessCredentialsService = {
+  async getTemplates(): Promise<CredentialTemplate[]> {
+    return [];
+  }
+};
+
 type SystemAccessType = AccessCredential['system_type'];
 
 interface AccessCredentialsManagerProps {

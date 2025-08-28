@@ -25,7 +25,7 @@ import { NetworkAnalysisResults } from '@/components/assessment/NetworkAnalysisR
 import { SystemStatusCard } from '@/components/assessment/SystemStatusCard';
 import { PriorityDiscussion } from '@/components/assessment/PriorityDiscussion';
 import { NetworkHealthDashboard } from '@/components/assessment/NetworkHealthDashboard';
-import { EnhancedNetworkHealthDashboard } from '@/components/health/NetworkHealthDashboard';
+// import { EnhancedNetworkHealthDashboard } from '@/components/health/NetworkHealthDashboard';
 import { DeviceInventoryTable } from '@/components/assessment/DeviceInventoryTable';
 import { NetworkSummaryGenerator } from '@/components/assessment/NetworkSummaryGenerator';
 import { TridiumDataImporter } from '@/components/assessment/TridiumDataImporter';
@@ -796,11 +796,11 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
                         onlineCount: result.datasets.reduce((sum, ds) => sum + ds.summary.statusBreakdown.ok, 0),
                         downCount: result.datasets.reduce((sum, ds) => sum + ds.summary.statusBreakdown.down, 0),
                         alarmCount: result.datasets.reduce((sum, ds) => sum + ds.summary.statusBreakdown.alarm, 0),
-                        protocolsFound: [...new Set(result.datasets.map(ds => ds.type))],
+                        protocolsFound: [...new Set(result.datasets.map(ds => (ds as any).type))],
                         devices: result.datasets.flatMap(ds => ds.rows.map(row => ({
                           ...row.data,
                           sourceFile: ds.filename,
-                          format: ds.type,
+                          format: (ds as any).type,
                           statusBadge: row.parsedStatus?.badge.variant || 'secondary'
                         })))
                       }

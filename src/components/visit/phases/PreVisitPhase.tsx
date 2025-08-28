@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ToolManagement } from '@/components/ToolManagement';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { generateToolRecommendations } from '@/services/toolLibraryService';
-import { EnhancedSiteIntelligenceCard } from '@/components/phases/pre-visit/EnhancedSiteIntelligenceCard';
+// import { EnhancedSiteIntelligenceCard } from '@/components/phases/pre-visit/EnhancedSiteIntelligenceCard';
 
 interface PreVisitPhaseProps {
   customer: Customer;
@@ -190,8 +190,15 @@ export const PreVisitPhase = ({ customer, onPhaseComplete, sessionData, updateAu
         </div>
       </div>
 
-      {/* Enhanced Site Intelligence - Full Width */}
-      <EnhancedSiteIntelligenceCard customer={customer} />
+      {/* Site Intelligence placeholder */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Site Intelligence</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">Site intelligence functionality is being updated.</p>
+        </CardContent>
+      </Card>
       
       {/* Service Overview */}
       <Card>
