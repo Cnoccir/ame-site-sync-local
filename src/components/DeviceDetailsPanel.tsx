@@ -374,27 +374,27 @@ const DriversView: React.FC<{ node: NetworkNode }> = ({ node }) => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Source File:</span>
-                  <div className="font-medium break-words">{info.filename}</div>
+                  <div className="font-medium break-words">{(info as any)?.filename || 'Unknown'}</div>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Total Devices:</span>
-                  <div className="font-medium">{info.deviceCount.toLocaleString()}</div>
+                  <div className="font-medium">{((info as any)?.deviceCount || 0).toLocaleString()}</div>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Online Devices:</span>
-                  <div className="font-medium text-green-600">{info.deviceStats.online.toLocaleString()}</div>
+                  <div className="font-medium text-green-600">{((info as any)?.deviceStats?.online || 0).toLocaleString()}</div>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Offline/Fault:</span>
-                  <div className="font-medium text-red-600">{info.deviceStats.offline.toLocaleString()}</div>
+                  <div className="font-medium text-red-600">{((info as any)?.deviceStats?.offline || 0).toLocaleString()}</div>
                 </div>
               </div>
               
-              {info.deviceStats.alarm > 0 && (
+              {((info as any)?.deviceStats?.alarm || 0) > 0 && (
                 <div className="flex items-center gap-2 text-sm">
                   <Activity className="h-4 w-4 text-yellow-500" />
                   <span className="text-yellow-600 font-medium">
-                    {info.deviceStats.alarm.toLocaleString()} devices with alarms
+                    {((info as any)?.deviceStats?.alarm || 0).toLocaleString()} devices with alarms
                   </span>
                 </div>
               )}
@@ -405,16 +405,16 @@ const DriversView: React.FC<{ node: NetworkNode }> = ({ node }) => {
                 <div className="flex gap-6 text-xs">
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                    <span>Online: {info.deviceStats.online}</span>
+                    <span>Online: {(info as any)?.deviceStats?.online || 0}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                    <span>Offline: {info.deviceStats.offline}</span>
+                    <span>Offline: {(info as any)?.deviceStats?.offline || 0}</span>
                   </div>
-                  {info.deviceStats.alarm > 0 && (
+                  {((info as any)?.deviceStats?.alarm || 0) > 0 && (
                     <div className="flex items-center gap-1">
                       <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                      <span>Alarm: {info.deviceStats.alarm}</span>
+                      <span>Alarm: {(info as any)?.deviceStats?.alarm || 0}</span>
                     </div>
                   )}
                 </div>
