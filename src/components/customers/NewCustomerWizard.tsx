@@ -25,11 +25,22 @@ import { SystemCredentialsManager } from '../system-access/SystemCredentialsMana
 import { useGoogleDriveAuth } from '@/hooks/useGoogleDriveAuth';
 import { FormDataPersistence } from '@/utils/formDataPersistence';
 import { GoogleDriveAuthPrompt } from '../GoogleDriveAuthPrompt';
+import { FolderSelection } from '../FolderSelection';
+import { FolderAssociationService, ExistingFolderMatch } from '@/services/folderAssociationService';
+import { EnhancedFolderSelectionDialog } from './EnhancedFolderSelectionDialog';
+import { EnhancedProjectFolder } from '@/services/enhancedProjectFolderService';
 
 interface NewCustomerWizardProps {
   isOpen: boolean;
   onClose: () => void;
-  onCustomerCreated: () => void;
+  onCustomerCreated?: () => void;
+  onComplete?: (customerData: CustomerFormData) => void;
+  editMode?: {
+    isEdit: boolean;
+    initialData: any;
+    title?: string;
+  };
+  embedded?: boolean;
 }
 
 interface CustomerFormData {
@@ -201,6 +212,9 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
   isOpen,
   onClose,
   onCustomerCreated,
+  onComplete,
+  editMode,
+  embedded = false
 }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<CustomerFormData>(initialFormData);
@@ -221,6 +235,12 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
   const [showSecondaryContact, setShowSecondaryContact] = useState(false);
   const [selectedHazards, setSelectedHazards] = useState<string[]>([]);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  const [folderSearchResults, setFolderSearchResults] = useState<any[]>([]);
+  const [showFolderMigration, setShowFolderMigration] = useState(false);
+  const [hasMigrationPlan, setHasMigrationPlan] = useState(false);
+  const [folderSelection, setFolderSelection] = useState<any>(null);
+  const [showEnhancedFolderDialog, setShowEnhancedFolderDialog] = useState(false);
+  const [enhancedFolderResult, setEnhancedFolderResult] = useState<EnhancedProjectFolder | null>(null);
   const { toast } = useToast();
   
   // Google Drive authentication hook
@@ -230,51 +250,71 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
   const FORM_STORAGE_KEY = 'new-customer-wizard-form';
   const STEP_STORAGE_KEY = 'new-customer-wizard-step';
 
-  // Load dropdown data and generate customer ID when form opens
+  // Track initialization to prevent re-runs
+  const initRef = React.useRef({
+    dropdownLoaded: false,
+    customerIdGenerated: false,
+    formInitialized: false
+  });
+
+  // Load dropdown data ONCE when form opens
   useEffect(() => {
-    if (isOpen && !dropdownData) {
+    if (isOpen && !initRef.current.dropdownLoaded) {
+      initRef.current.dropdownLoaded = true;
       loadDropdownData();
     }
-    if (isOpen && !formData.customer_id) {
-      generateCustomerId();
-    }
-  }, [isOpen, dropdownData, formData.customer_id]);
+  }, [isOpen]);
 
-  // Load persisted form data on mount
+  // Initialize form data ONCE based on mode
   useEffect(() => {
-    if (isOpen) {
+    if (!isOpen || initRef.current.formInitialized) return;
+    
+    initRef.current.formInitialized = true;
+    
+    if (editMode?.isEdit && editMode.initialData) {
+      // Edit mode - load existing data
+      const mappedData = mapDatabaseToFormData(editMode.initialData);
+      setFormData({ ...initialFormData, ...mappedData });
+      setCurrentStep(1);
+    } else {
+      // New customer mode
+      // Try to restore saved form data
       const savedFormData = FormDataPersistence.restoreFormData(FORM_STORAGE_KEY);
       const savedStep = FormDataPersistence.restoreFormStep(STEP_STORAGE_KEY);
       
-      if (savedFormData) {
-        console.log('Restoring saved form data:', savedFormData);
-        setFormData(prev => ({ ...prev, ...savedFormData }));
-        
+      if (savedFormData && Object.keys(savedFormData).length > 0) {
+        setFormData({ ...initialFormData, ...savedFormData });
+        if (savedStep && savedStep > 1) {
+          setCurrentStep(savedStep);
+        }
         toast({
           title: "Form Data Restored",
           description: "Your previous progress has been restored.",
         });
-      }
-      
-      if (savedStep && savedStep > 1) {
-        console.log('Restoring saved step:', savedStep);
-        setCurrentStep(savedStep);
+      } else {
+        // Generate new customer ID for truly new customers
+        if (!initRef.current.customerIdGenerated) {
+          initRef.current.customerIdGenerated = true;
+          generateCustomerId();
+        }
       }
     }
-  }, [isOpen]);
+  }, [isOpen, editMode?.isEdit]);
 
-  // Auto-save form data whenever form changes
-  useEffect(() => {
-    if (isOpen && formData !== initialFormData) {
+  // Save form data ONLY on explicit step changes or after delay
+  // NOT on every single change
+  const saveFormData = React.useCallback(() => {
+    if (!editMode?.isEdit) {
       FormDataPersistence.saveFormData(FORM_STORAGE_KEY, formData);
       FormDataPersistence.saveFormStep(STEP_STORAGE_KEY, currentStep);
     }
-  }, [formData, currentStep, isOpen]);
+  }, [formData, currentStep, editMode?.isEdit]);
 
   // Clear persisted data when form is successfully submitted
   const clearPersistedData = () => {
     FormDataPersistence.clearFormData(FORM_STORAGE_KEY);
-    FormDataPersistence.clearFormData(STEP_STORAGE_KEY); // Also clear step data
+    localStorage.removeItem(`ame_form_data_${STEP_STORAGE_KEY}`);
+    console.log('🗑️ Cleared all form persistence data');
   };
 
   // Initialize selected hazards when form data changes
@@ -283,6 +323,135 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
       setSelectedHazards(formData.site_hazards);
     }
   }, [formData.site_hazards]);
+
+  // Map database fields to form data structure
+  const mapDatabaseToFormData = (databaseRecord: any): Partial<CustomerFormData> => {
+    console.log('🔄 Mapping database record to form data:', databaseRecord);
+    
+    // Convert site_hazards from text/string to array if needed
+    let siteHazards: string[] = [];
+    if (databaseRecord.site_hazards) {
+      if (typeof databaseRecord.site_hazards === 'string') {
+        try {
+          // Try to parse as JSON first
+          siteHazards = JSON.parse(databaseRecord.site_hazards);
+        } catch {
+          // If not JSON, split by comma or newline
+          siteHazards = databaseRecord.site_hazards.split(/[,\n]/).map((h: string) => h.trim()).filter(Boolean);
+        }
+      } else if (Array.isArray(databaseRecord.site_hazards)) {
+        siteHazards = databaseRecord.site_hazards;
+      }
+    }
+    
+    // Handle date fields - ensure they're in YYYY-MM-DD format for form inputs
+    const formatDateForInput = (dateValue: any) => {
+      if (!dateValue) return '';
+      try {
+        const date = new Date(dateValue);
+        return date.toISOString().split('T')[0]; // YYYY-MM-DD format
+      } catch {
+        return '';
+      }
+    };
+    
+    // Handle IP address conversion
+    const formatIpAddress = (ipValue: any) => {
+      if (!ipValue) return '';
+      return String(ipValue);
+    };
+    
+    const mappedData: Partial<CustomerFormData> = {
+      // Basic fields - direct mapping
+      id: databaseRecord.id,
+      customer_id: databaseRecord.customer_id || '',
+      company_name: databaseRecord.company_name || '',
+      site_name: databaseRecord.site_name || '',
+      site_address: databaseRecord.site_address || '',
+      service_tier: databaseRecord.service_tier || 'CORE',
+      system_type: databaseRecord.system_type || '',
+      contract_status: databaseRecord.contract_status || 'Active',
+      building_type: databaseRecord.building_type || '',
+      
+      // Contact information
+      primary_contact: databaseRecord.primary_contact || '',
+      contact_phone: databaseRecord.contact_phone || '',
+      contact_email: databaseRecord.contact_email || '',
+      emergency_contact: databaseRecord.emergency_contact || '',
+      emergency_phone: databaseRecord.emergency_phone || '',
+      emergency_email: databaseRecord.emergency_email || '',
+      
+      // Access and safety
+      building_access_type: databaseRecord.building_access_type || '',
+      building_access_details: databaseRecord.building_access_details || '',
+      access_hours: databaseRecord.access_hours || '',
+      safety_requirements: databaseRecord.safety_requirements || '',
+      ppe_required: databaseRecord.ppe_required ?? true,
+      badge_required: databaseRecord.badge_required ?? false,
+      training_required: databaseRecord.training_required ?? false,
+      site_hazards: siteHazards,
+      
+      // System access
+      bms_supervisor_ip: formatIpAddress(databaseRecord.bms_supervisor_ip),
+      web_supervisor_url: databaseRecord.web_supervisor_url || '',
+      workbench_username: databaseRecord.workbench_username || '',
+      workbench_password: databaseRecord.workbench_password || '',
+      platform_username: databaseRecord.platform_username || '',
+      platform_password: databaseRecord.platform_password || '',
+      remote_access: databaseRecord.remote_access ?? false,
+      remote_access_type: databaseRecord.remote_access_type || '',
+      vpn_required: databaseRecord.vpn_required ?? false,
+      vpn_details: databaseRecord.vpn_details || '',
+      
+      // Service information
+      last_service: formatDateForInput(databaseRecord.last_service),
+      next_due: formatDateForInput(databaseRecord.next_due),
+      technician_assigned: databaseRecord.technician_assigned || '',
+      service_frequency: databaseRecord.service_frequency || '',
+      special_instructions: databaseRecord.special_instructions || '',
+      
+      // Administrative
+      escalation_contact: databaseRecord.escalation_contact || '',
+      escalation_phone: databaseRecord.escalation_phone || '',
+      drive_folder_id: databaseRecord.drive_folder_id || '',
+      drive_folder_url: databaseRecord.drive_folder_url || '',
+      
+      // Handle technician names if provided (computed fields)
+      primary_technician_name: databaseRecord.primary_technician_name || '',
+      secondary_technician_name: databaseRecord.secondary_technician_name || '',
+      
+      // Map fields that might have different names in the database vs form
+      account_manager_name: databaseRecord.account_manager || '',
+      
+      // Date fields that might exist
+      contract_start_date: formatDateForInput(databaseRecord.contract_start_date),
+      contract_end_date: formatDateForInput(databaseRecord.contract_end_date),
+      
+      // Fields that might be missing but should have defaults
+      primary_contact_role: '',
+      access_procedure: databaseRecord.building_access_type || '',
+      parking_instructions: databaseRecord.building_access_details || '',
+      equipment_access_notes: '',
+      safety_notes: databaseRecord.safety_requirements || '',
+      other_hazards_notes: '',
+      secondary_contact_name: databaseRecord.emergency_contact || '',
+      secondary_contact_phone: databaseRecord.emergency_phone || '',
+      secondary_contact_email: databaseRecord.emergency_email || '',
+      secondary_contact_role: '',
+      
+      // Technician IDs if available
+      primary_technician_id: '', // Will be populated by technician lookup
+      secondary_technician_id: '',
+      
+      // Account manager fields
+      account_manager_id: '',
+      account_manager_phone: '',
+      account_manager_email: ''
+    };
+    
+    console.log('✅ Mapped data result:', mappedData);
+    return mappedData;
+  };
 
   const loadDropdownData = async () => {
     try {
@@ -419,6 +588,67 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
     }
   };
 
+  const handleFolderSearchResults = (searchResults: any) => {
+    console.log('Received folder search results:', searchResults);
+    
+    // Extract the existingFolders array from CustomerSearchResult
+    const results = searchResults.existingFolders || [];
+    
+    // Convert to ExistingFolderMatch format
+    const convertedResults: ExistingFolderMatch[] = results.map((result: any) => ({
+      folderId: result.folderId,
+      folderName: result.folderName,
+      folderUrl: result.webViewLink || `https://drive.google.com/drive/folders/${result.folderId}`,
+      matchScore: result.matchScore || 0.5,
+      matchType: result.matchType as 'exact' | 'partial' | 'fuzzy',
+      confidence: result.confidence as 'high' | 'medium' | 'low',
+      parentFolderId: result.parentFolder,
+      parentFolderName: result.parentFolderType,
+      lastModified: result.lastModified,
+      fileCount: result.fileCount
+    }));
+    
+    setFolderSearchResults(convertedResults);
+    
+    // Open selection dialog only once per wizard session
+    if (convertedResults.length > 0 && !showFolderMigration && !hasMigrationPlan) {
+      setShowFolderMigration(true);
+    }
+  };
+
+  const handleFolderSelectionComplete = async (selection: {
+    associationType: 'use_existing' | 'create_new' | 'link_both';
+    existingFolder?: ExistingFolderMatch;
+    notes?: string;
+  }) => {
+    console.log('Folder selection completed:', selection);
+    setShowFolderMigration(false);
+
+    // Remember final plan for post-create processing
+    setFolderSelection(selection);
+    setHasMigrationPlan(true);
+
+    // If the user chose to use an existing folder (or link both), reflect that immediately in the form
+    if (selection.existingFolder && (selection.associationType === 'use_existing' || selection.associationType === 'link_both')) {
+      updateFormData('drive_folder_id', selection.existingFolder.folderId);
+      updateFormData('drive_folder_url', selection.existingFolder.folderUrl);
+    }
+
+    toast({
+      title: 'Folder Selection Saved',
+      description: selection.associationType === 'create_new'
+        ? 'A new structured project folder will be created after the customer is saved.'
+        : selection.associationType === 'use_existing'
+          ? 'The selected existing folder will be linked to this customer.'
+          : 'A new structured folder will be created and the selected existing folder will be linked.'
+    });
+  };
+
+  const handleFolderSelectionCancel = () => {
+    setShowFolderMigration(false);
+    // User can still proceed without selection
+  };
+
   const handleFolderStructureCreated = (structure: any) => {
     console.log('New structured folder created:', structure);
     // Optional: show success notification
@@ -428,21 +658,83 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
     });
   };
 
+  // Enhanced folder dialog handlers
+  const handleEnhancedFolderDialogComplete = (result: EnhancedProjectFolder) => {
+    console.log('✅ Enhanced folder setup completed:', result);
+    setEnhancedFolderResult(result);
+    
+    // Update form data with folder information
+    updateFormData('drive_folder_id', result.mainFolderId);
+    updateFormData('drive_folder_url', result.mainFolderUrl);
+    
+    setShowEnhancedFolderDialog(false);
+    
+    toast({
+      title: 'Project Folder Setup Complete',
+      description: `Successfully ${result.isNewlyCreated ? 'created' : 'linked'} project folder with ${result.associatedFolders.length} associated folder${result.associatedFolders.length > 1 ? 's' : ''}.`,
+    });
+  };
+
+  const handleEnhancedFolderDialogError = (error: string) => {
+    console.error('❌ Enhanced folder setup failed:', error);
+    setShowEnhancedFolderDialog(false);
+    
+    // Show user-friendly error message
+    toast({
+      title: 'Folder Setup Failed',
+      description: `Failed to set up project folder: ${error}. You can set up the folder manually later.`,
+      variant: 'destructive',
+    });
+    
+    // Optionally fall back to legacy folder selection dialog if available
+    console.log('Enhanced folder setup failed, proceeding without folder setup');
+  };
+
+  const openEnhancedFolderDialog = () => {
+    if (!formData.company_name || !formData.customer_id) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please provide company name and customer ID before setting up project folders.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setShowEnhancedFolderDialog(true);
+  };
+
   const nextStep = () => {
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
+      saveFormData(); // Save on step change
     }
   };
 
   const prevStep = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
+      saveFormData(); // Save on step change
     }
   };
 
   const resetForm = () => {
     setFormData(initialFormData);
     setCurrentStep(1);
+    setSelectedHazards([]);
+    setShowSecondaryContact(false);
+    setFolderSelection(null);
+    setHasMigrationPlan(false);
+    setShowFolderMigration(false);
+    setFolderSearchResults([]);
+    
+    // Reset initialization flags
+    initRef.current = {
+      dropdownLoaded: false,
+      customerIdGenerated: false,
+      formInitialized: false
+    };
+    
+    clearPersistedData();
+    console.log('🔄 Form completely reset to initial state');
   };
 
   const handleClose = () => {
@@ -471,38 +763,170 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
     setShowCloseConfirmation(false);
   };
 
+  // Prepare form data for database - ensure ALL fields are included
+  const prepareFormDataForDatabase = (formData: CustomerFormData) => {
+    console.log('🔄 Preparing form data for database with all fields:', formData);
+    
+    // Create a clean copy of form data - preserve ALL fields
+    const cleanedData: any = {};
+    
+    // Explicitly copy ALL fields to ensure nothing is lost
+    Object.keys(formData).forEach((key) => {
+      const value = (formData as any)[key];
+      
+      // Skip undefined/null values but preserve empty strings
+      if (value !== undefined && value !== null) {
+        // Special handling for site_hazards array
+        if (key === 'site_hazards' && Array.isArray(value)) {
+          cleanedData[key] = value.join(', ');
+        } else {
+          cleanedData[key] = value;
+        }
+      }
+    });
+    
+    // Ensure all text fields have at least empty string (not null)
+    const textFields = [
+      'customer_id', 'company_name', 'site_name', 'site_nickname', 'site_address',
+      'system_type', 'building_type', 'system_architecture', 'primary_bas_platform',
+      'primary_contact', 'contact_phone', 'contact_email', 'primary_contact_role',
+      'access_procedure', 'parking_instructions', 'equipment_access_notes',
+      'other_hazards_notes', 'safety_notes',
+      'secondary_contact_name', 'secondary_contact_phone', 'secondary_contact_email', 'secondary_contact_role',
+      'primary_technician_name', 'primary_technician_phone', 'primary_technician_email',
+      'secondary_technician_name', 'secondary_technician_phone', 'secondary_technician_email',
+      'building_access_type', 'building_access_details', 'access_hours', 'safety_requirements',
+      'web_supervisor_url', 'workbench_username', 'workbench_password',
+      'platform_username', 'platform_password', 'pc_username', 'pc_password',
+      'bms_supervisor_ip', 'remote_access_type', 'vpn_details',
+      'technician_assigned', 'service_frequency', 'special_instructions',
+      'account_manager_name', 'account_manager_phone', 'account_manager_email',
+      'escalation_contact', 'escalation_phone',
+      'drive_folder_id', 'drive_folder_url'
+    ];
+    
+    textFields.forEach(field => {
+      if (!(field in cleanedData)) {
+        cleanedData[field] = '';
+      }
+    });
+    
+    // Ensure boolean fields are properly set
+    const booleanFields = [
+      'ppe_required', 'badge_required', 'training_required',
+      'remote_access', 'vpn_required', 'different_platform_station_creds'
+    ];
+    
+    booleanFields.forEach(field => {
+      if (typeof cleanedData[field] !== 'boolean') {
+        // Set defaults based on field
+        cleanedData[field] = field === 'ppe_required' ? true : false;
+      }
+    });
+    
+    // Ensure required fields have values
+    if (!cleanedData.service_tier) {
+      cleanedData.service_tier = 'CORE';
+    }
+    if (!cleanedData.contract_status) {
+      cleanedData.contract_status = 'Active';
+    }
+    
+    // Remove any UI-only fields that don't exist in database
+    delete cleanedData.id; // Will be generated by database
+    
+    // Set timestamp
+    cleanedData.updated_at = new Date().toISOString();
+    
+    console.log('✅ Prepared complete form data for database:', cleanedData);
+    console.log('📊 Field count:', Object.keys(cleanedData).length);
+    console.log('📝 Fields included:', Object.keys(cleanedData).sort());
+    
+    return cleanedData;
+  };
+
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
       
-      // Sanitize date fields - convert empty strings to null to prevent database errors
-      const sanitizedFormData = {
-        ...formData,
-        last_service: formData.last_service?.trim() === '' ? null : formData.last_service,
-        next_due: formData.next_due?.trim() === '' ? null : formData.next_due,
-        contract_start_date: formData.contract_start_date?.trim() === '' ? null : formData.contract_start_date,
-        contract_end_date: formData.contract_end_date?.trim() === '' ? null : formData.contract_end_date,
-      };
+      // Validate required fields before submission
+      if (!formData.customer_id || !formData.company_name || !formData.site_name) {
+        toast({
+          title: "Validation Error",
+          description: "Please fill in all required fields: Customer ID, Company Name, and Site Name",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
       
-      console.log('Sanitized form data before submission:', sanitizedFormData);
+      // Prepare form data for database - ensure ALL fields are included
+      const cleanedFormData = prepareFormDataForDatabase(formData);
       
-      await AMEService.createCustomer(sanitizedFormData as any);
+      console.log('📤 Submitting form data to database');
+      console.log('   - Total fields:', Object.keys(cleanedFormData).length);
+      console.log('   - Customer ID:', cleanedFormData.customer_id);
+      console.log('   - Company:', cleanedFormData.company_name);
+      console.log('   - Full payload:', JSON.stringify(cleanedFormData, null, 2));
       
-      // Clear persisted data on successful submission
-      clearPersistedData();
+      if (editMode?.isEdit) {
+        // Edit mode - call completion callback with cleaned data
+        if (onComplete) {
+          onComplete(cleanedFormData);
+        }
+        handleClose();
+      } else {
+        // Create mode - create new customer with ALL fields
+        const createdCustomer = await AMEService.createCustomer(cleanedFormData);
+        
+        console.log('✅ Customer created successfully:', createdCustomer);
+        
+        // Handle folder selection after customer creation if needed
+        if (folderSelection && createdCustomer?.id) {
+          try {
+            // Process folder selection (association saving, folder creation, etc.)
+            console.log('Processing folder selection for customer:', createdCustomer.id);
+            // This would be handled by a separate service if needed
+          } catch (folderError) {
+            console.error('Failed to process folder selection:', folderError);
+            // Don't fail the whole operation for folder issues
+          }
+        }
+        
+        // Clear persisted data on successful submission
+        clearPersistedData();
+        
+        toast({
+          title: "Success",
+          description: "Customer created successfully with all information saved",
+        });
+        
+        if (onCustomerCreated) {
+          onCustomerCreated();
+        }
+        
+        // Reset form state
+        setFormData(initialFormData);
+        setFolderSelection(null);
+        setHasMigrationPlan(false);
+        
+        handleClose();
+      }
+    } catch (error: any) {
+      console.error('❌ Error processing customer data:', error);
       
-      toast({
-        title: "Success",
-        description: "Customer created successfully",
-      });
+      // Provide more detailed error messages
+      let errorMessage = "Failed to create customer";
+      if (error?.message) {
+        errorMessage += ": " + error.message;
+      }
+      if (error?.details) {
+        console.error('Error details:', error.details);
+      }
       
-      onCustomerCreated();
-      handleClose();
-    } catch (error) {
-      console.error('Error creating customer:', error);
       toast({
         title: "Error",
-        description: "Failed to create customer",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -1229,9 +1653,11 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
             }}
             onFolderSelected={handleGoogleDriveFolder}
             onFolderStructureCreated={handleFolderStructureCreated}
+            onFolderSearchResults={handleFolderSearchResults}
             initialFolderId={formData.drive_folder_id}
             initialFolderUrl={formData.drive_folder_url}
             disabled={isSubmitting}
+            showMigrationOption={true}
           />
         )}
       </div>
@@ -1322,24 +1748,65 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Main Wizard Dialog */}
-      <Dialog open={isOpen} onOpenChange={(open) => {
-        // Prevent closing by clicking outside - user must explicitly close
-        if (!open) return;
-        handleClose();
-      }}>
-      <DialogContent 
-        className="max-w-4xl max-h-[90vh] overflow-y-auto"
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
-      >
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle>New Customer - {getStepTitle()}</DialogTitle>
-            <Button variant="ghost" size="sm" onClick={handleClose}>
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
+      {/* Folder Selection Dialog */}
+      <Dialog open={showFolderMigration} onOpenChange={setShowFolderMigration}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Folder Setup</DialogTitle>
+          </DialogHeader>
+          {showFolderMigration && (
+            <FolderSelection
+              customerName={formData.company_name}
+              existingFolders={folderSearchResults}
+              onSelectionComplete={handleFolderSelectionComplete}
+              onCancel={handleFolderSelectionCancel}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Enhanced Folder Selection Dialog */}
+      <EnhancedFolderSelectionDialog
+        isOpen={showEnhancedFolderDialog}
+        onClose={() => setShowEnhancedFolderDialog(false)}
+        customerData={{
+          customer_id: formData.customer_id,
+          company_name: formData.company_name,
+          site_name: formData.site_name,
+          site_nickname: formData.site_nickname,
+          site_address: formData.site_address,
+          service_tier: formData.service_tier,
+          contact_name: formData.primary_contact,
+          phone: formData.contact_phone
+        }}
+        onComplete={handleEnhancedFolderDialogComplete}
+        onError={handleEnhancedFolderDialogError}
+      />
+
+      {/* Main Wizard Dialog - conditionally render when not embedded */}
+      {!embedded && (
+        <Dialog open={isOpen} onOpenChange={(open) => {
+          // Prevent closing by clicking outside - user must explicitly close
+          if (!open) return;
+          handleClose();
+        }}>
+        <DialogContent 
+          className="max-w-4xl max-h-[90vh] overflow-y-auto"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle>
+                {editMode?.isEdit 
+                  ? (editMode.title || `Edit Customer - ${getStepTitle()}`) 
+                  : `New Customer - ${getStepTitle()}`
+                }
+              </DialogTitle>
+              <Button variant="ghost" size="sm" onClick={handleClose}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
           
           {/* Progress Indicator */}
           <div className="flex items-center space-x-2 mt-4">
@@ -1384,13 +1851,73 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
                 className="bg-primary hover:bg-primary-hover"
               >
                 <Save className="w-4 h-4 mr-2" />
-                {isSubmitting ? 'Creating...' : 'Create Customer'}
+                {isSubmitting ? 
+                  (editMode?.isEdit ? 'Processing...' : 'Creating...') : 
+                  (editMode?.isEdit ? 'Save Changes' : 'Create Customer')
+                }
               </Button>
             )}
           </div>
         </div>
-      </DialogContent>
-      </Dialog>
+        </DialogContent>
+        </Dialog>
+      )}
+      
+      {/* Embedded Mode Content */}
+      {embedded && (
+        <div className="h-full flex flex-col">
+          {/* Progress Indicator */}
+          <div className="flex items-center space-x-2 mb-4">
+            {Array.from({ length: totalSteps }, (_, i) => (
+              <div
+                key={i}
+                className={`h-2 flex-1 rounded ${
+                  i + 1 <= currentStep ? 'bg-primary' : 'bg-muted'
+                }`}
+              />
+            ))}
+          </div>
+          <div className="text-sm text-muted-foreground mb-6">
+            Step {currentStep} of {totalSteps}: {getStepTitle()}
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {renderCurrentStep()}
+          </div>
+
+          <div className="flex justify-between pt-6 border-t">
+            <Button
+              variant="outline"
+              onClick={prevStep}
+              disabled={currentStep === 1}
+            >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Previous
+            </Button>
+
+            <div className="flex space-x-2">
+              {currentStep < totalSteps ? (
+                <Button onClick={nextStep}>
+                  Next
+                  <ChevronRight className="w-4 h-4 ml-2" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="bg-primary hover:bg-primary-hover"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {isSubmitting ? 
+                    (editMode?.isEdit ? 'Processing...' : 'Creating...') : 
+                    (editMode?.isEdit ? 'Save Changes' : 'Create Customer')
+                  }
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

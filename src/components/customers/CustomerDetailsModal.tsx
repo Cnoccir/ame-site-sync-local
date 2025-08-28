@@ -163,7 +163,7 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto" aria-describedby="customer-details-desc">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -208,14 +208,19 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
             </div>
           </div>
         </DialogHeader>
+        
+        <p id="customer-details-desc" className="sr-only">
+          Customer details and edit form for {formData.company_name} - {formData.site_name}
+        </p>
 
         <Tabs defaultValue="basic" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
             <TabsTrigger value="contacts">Contacts</TabsTrigger>
             <TabsTrigger value="access">Access & Security</TabsTrigger>
             <TabsTrigger value="system">System Access</TabsTrigger>
             <TabsTrigger value="service">Service Info</TabsTrigger>
+            <TabsTrigger value="contract">Contract</TabsTrigger>
             <TabsTrigger value="admin">Administrative</TabsTrigger>
           </TabsList>
 
@@ -231,7 +236,11 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <InputField label="Site Name" field="site_name" />
+                  <InputField label="Site Nickname" field="site_nickname" placeholder="e.g., 23-1220-300NJ" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <InputField label="Building Type" field="building_type" />
+                  <InputField label="System Architecture" field="system_architecture" />
                 </div>
                 <InputField label="Site Address" field="site_address" type="textarea" />
                 <div className="grid grid-cols-3 gap-4">
@@ -245,17 +254,18 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                     ]}
                   />
                   <InputField label="System Type" field="system_type" />
-                  <SelectField 
-                    label="Contract Status" 
-                    field="contract_status"
-                    options={[
-                      { value: 'Active', label: 'Active' },
-                      { value: 'Inactive', label: 'Inactive' },
-                      { value: 'Pending', label: 'Pending' },
-                      { value: 'Expired', label: 'Expired' }
-                    ]}
-                  />
+                  <InputField label="Primary BAS Platform" field="primary_bas_platform" />
                 </div>
+                <SelectField 
+                  label="Contract Status" 
+                  field="contract_status"
+                  options={[
+                    { value: 'Active', label: 'Active' },
+                    { value: 'Inactive', label: 'Inactive' },
+                    { value: 'Pending', label: 'Pending' },
+                    { value: 'Expired', label: 'Expired' }
+                  ]}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -268,8 +278,10 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <InputField label="Contact Name" field="primary_contact" />
+                  <InputField label="Primary Contact Name" field="primary_contact_name" />
                   <InputField label="Phone" field="contact_phone" />
                   <InputField label="Email" field="contact_email" type="email" />
+                  <InputField label="Role" field="primary_contact_role" />
                 </CardContent>
               </Card>
 
@@ -407,6 +419,37 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                     disabled={!isEditing}
                     rows={3}
                   />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="contract" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Contract Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Contract Number" field="contract_number" />
+                  <InputField label="Contract Name" field="contract_name" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Contract Value" field="contract_value" type="number" />
+                  <SelectField 
+                    label="Contract Status" 
+                    field="contract_status"
+                    options={[
+                      { value: 'Active', label: 'Active' },
+                      { value: 'Inactive', label: 'Inactive' },
+                      { value: 'Pending', label: 'Pending' },
+                      { value: 'Expired', label: 'Expired' }
+                    ]}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Contract Start Date" field="contract_start_date" type="date" />
+                  <InputField label="Contract End Date" field="contract_end_date" type="date" />
                 </div>
               </CardContent>
             </Card>

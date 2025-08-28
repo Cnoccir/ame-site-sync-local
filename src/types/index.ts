@@ -64,6 +64,7 @@ export interface Customer {
   
   // Contact Information
   primary_contact: string;
+  primary_contact_name?: string;  // Alternative primary contact name field
   contact_phone: string;
   contact_email: string;
   primary_contact_role?: string;
@@ -147,6 +148,13 @@ export interface Customer {
   territory?: string;
   escalation_contact?: string;
   escalation_phone?: string;
+  
+  // Contract Information
+  contract_number?: string;
+  contract_value?: number;
+  contract_name?: string;
+  contract_start_date?: string;
+  contract_end_date?: string;
   
   // Metadata
   drive_folder_id?: string;

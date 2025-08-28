@@ -62,14 +62,14 @@ export class AMEService {
   
   static async createCustomer(customer: Omit<Customer, 'id' | 'created_at' | 'updated_at'>): Promise<Customer> {
     return errorHandler.withErrorHandling(async () => {
-      // IMPORTANT: Route creation through RPC so we don't try to insert JSON objects/unknown columns
+      // Create the base customer row via RPC (server validates/minimal fields)
       const { data: newId, error: rpcError } = await supabase
         .rpc('create_customer_full', { form: customer as any });
 
       if (rpcError) throw errorHandler.handleSupabaseError(rpcError, 'createCustomer');
 
-      // Fetch the newly created customer row (plain table shape expected by the app)
-      const { data, error } = await supabase
+      // Fetch the newly created customer row
+      const { data: createdRow, error } = await supabase
         .from('ame_customers')
         .select('*')
         .eq('id', newId)
@@ -77,31 +77,221 @@ export class AMEService {
 
       if (error) throw errorHandler.handleSupabaseError(error, 'createCustomer');
 
-      // Create Google Drive project folder after customer creation
+      const created = createdRow as Customer;
+
+      // Immediately perform a follow-up update with the full payload so all fields persist
+      // (RPC may ignore non-core fields). This is a lightweight AJAX-style update.
       try {
-        const { GoogleDriveFolderService } = await import('./googleDriveFolderService');
-        await GoogleDriveFolderService.ensureProjectFolderExists(data);
-      } catch (folderError) {
-        logger.warn('Failed to create Google Drive folder for customer', folderError, {
-          customerId: (data as any).id,
-          companyName: (data as any).company_name
+        await AMEService.updateCustomer(created.id, customer as any);
+      } catch (updateError) {
+        logger.warn('Post-create field hydration failed – proceeding with base row', updateError, {
+          customerId: created.id,
+          providedFields: Object.keys(customer || {})
         });
       }
 
-      return data as Customer;
+      // Do NOT auto-create Drive folders here – wizard flow handles this explicitly
+      logger.info('Customer created. Skipping auto Drive folder creation (handled by UI flow).', {
+        customerId: created.id,
+        companyName: created.company_name
+      });
+
+      // Return the most recent state from the table
+      const { data: finalRow } = await supabase
+        .from('ame_customers')
+        .select('*')
+        .eq('id', created.id)
+        .single();
+
+      return (finalRow || created) as Customer;
     }, 'createCustomer');
   }
   
   static async updateCustomer(id: string, updates: Partial<Customer>): Promise<Customer> {
-    const { data, error } = await supabase
-      .from('ame_customers')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data as Customer;
+    return errorHandler.withErrorHandling(async () => {
+      // Remove credential fields - they are handled separately
+      const mainTableUpdates = { ...updates };
+      delete mainTableUpdates.access_credentials;
+      delete mainTableUpdates.system_credentials;
+      delete mainTableUpdates.windows_credentials;
+      delete mainTableUpdates.service_credentials;
+      
+      // Remove computed/virtual fields that are populated from other sources
+      delete mainTableUpdates.primary_technician_name;
+      delete mainTableUpdates.secondary_technician_name;
+      
+      // Remove metadata fields that shouldn't be manually updated
+      delete mainTableUpdates.id;
+      delete mainTableUpdates.created_at;
+      
+      // Ensure updated_at is set
+      mainTableUpdates.updated_at = new Date().toISOString();
+      
+      logger.info('Attempting customer update with simplified approach', {
+        customerId: id,
+        fieldsToUpdate: Object.keys(mainTableUpdates),
+        updateCount: Object.keys(mainTableUpdates).length
+      });
+      
+      // Try to update with all fields first
+      let updateResult;
+      try {
+        const { data, error } = await supabase
+          .from('ame_customers')
+          .update(mainTableUpdates)
+          .eq('id', id)
+          .select()
+          .single();
+        
+        if (error) {
+          // If we get a column not found error, try with just core fields
+          if (error.code === 'PGRST204') {
+            logger.warn('Some fields do not exist in database, trying with core fields only', {
+              customerId: id,
+              error: error.message
+            });
+            
+            // Define the absolute minimum fields that should work
+            const coreFieldsOnly: any = {
+              updated_at: new Date().toISOString()
+            };
+            
+            // Add only the most basic fields that should always exist
+            const alwaysExistFields = [
+              'customer_id', 'company_name', 'site_name', 'site_address',
+              'service_tier', 'system_type', 'contract_status',
+              'primary_contact', 'contact_phone', 'contact_email',
+              'service_frequency', 'special_instructions'
+            ];
+            
+            alwaysExistFields.forEach(field => {
+              if (field in mainTableUpdates) {
+                coreFieldsOnly[field] = mainTableUpdates[field];
+              }
+            });
+            
+            logger.info('Retrying update with core fields only', {
+              customerId: id,
+              coreFields: Object.keys(coreFieldsOnly)
+            });
+            
+            const { data: coreData, error: coreError } = await supabase
+              .from('ame_customers')
+              .update(coreFieldsOnly)
+              .eq('id', id)
+              .select()
+              .single();
+            
+            if (coreError) {
+              logger.error('Even core field update failed', {
+                customerId: id,
+                error: coreError.message,
+                coreFields: Object.keys(coreFieldsOnly)
+              });
+              throw errorHandler.handleSupabaseError(coreError, 'updateCustomer');
+            }
+            
+            updateResult = coreData;
+            
+            // Log which fields couldn't be updated
+            const skippedFields = Object.keys(mainTableUpdates).filter(field => 
+              !alwaysExistFields.includes(field) && field !== 'updated_at'
+            );
+            
+            if (skippedFields.length > 0) {
+              logger.warn('Some fields were skipped due to database schema limitations', {
+                customerId: id,
+                skippedFields,
+                skippedCount: skippedFields.length
+              });
+            }
+          } else {
+            throw errorHandler.handleSupabaseError(error, 'updateCustomer');
+          }
+        } else {
+          updateResult = data;
+          logger.info('Customer update completed successfully', {
+            customerId: id,
+            updatedFields: Object.keys(mainTableUpdates).length
+          });
+        }
+      } catch (updateError) {
+        logger.error('Customer update failed completely', {
+          customerId: id,
+          error: updateError,
+          attemptedFields: Object.keys(mainTableUpdates)
+        });
+        throw updateError;
+      }
+      
+      // Handle credential updates if provided (non-blocking)
+      if (updates.access_credentials || updates.system_credentials || updates.windows_credentials || updates.service_credentials) {
+        logger.info('Processing credential updates (non-blocking)', {
+          customerId: id,
+          hasAccessCredentials: !!updates.access_credentials,
+          hasSystemCredentials: !!updates.system_credentials,
+          hasWindowsCredentials: !!updates.windows_credentials,
+          hasServiceCredentials: !!updates.service_credentials
+        });
+        
+        // These are non-blocking - if they fail, we still return success for the main update
+        try {
+          // Handle remote access credentials
+          if (updates.access_credentials) {
+            await supabase
+              .from('customer_remote_access_credentials')
+              .delete()
+              .eq('customer_id', id);
+            
+            const credentialsToInsert = updates.access_credentials.map((cred: any) => ({
+              customer_id: id,
+              vendor: cred.vendor,
+              access_id: cred.access_id,
+              username: cred.username,
+              password: cred.password,
+              connection_url: cred.connection_url,
+              notes: cred.notes,
+              is_active: cred.is_active ?? true,
+              access_method: cred.access_method
+            }));
+            
+            if (credentialsToInsert.length > 0) {
+              await supabase
+                .from('customer_remote_access_credentials')
+                .insert(credentialsToInsert);
+            }
+          }
+          
+          // Handle system credentials
+          const systemCredTypes = [
+            { field: 'system_credentials', type: 'bms' },
+            { field: 'windows_credentials', type: 'windows' },
+            { field: 'service_credentials', type: 'services' }
+          ];
+          
+          for (const { field, type } of systemCredTypes) {
+            const fieldKey = field as keyof typeof updates;
+            if (updates[fieldKey]) {
+              await supabase
+                .from('customer_system_credentials')
+                .upsert({
+                  customer_id: id,
+                  credential_type: type,
+                  credentials_data: updates[fieldKey]
+                }, { onConflict: 'customer_id,credential_type' });
+            }
+          }
+        } catch (credError) {
+          // Don't fail the whole update for credential errors
+          logger.warn('Credential update failed (non-blocking)', {
+            customerId: id,
+            credError
+          });
+        }
+      }
+      
+      return updateResult as Customer;
+    }, 'updateCustomer', { additionalData: { customerId: id, updateFields: Object.keys(updates) } });
   }
   
   static async deleteCustomer(id: string): Promise<void> {

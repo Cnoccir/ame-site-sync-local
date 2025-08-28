@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { AMEService } from '@/services/ameService';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { RequiredField } from '@/components/ui/required-field';
+import { IntelligentAutoPopulationService } from '@/services/intelligentAutoPopulationService';
 
 // Import assessment components
 
@@ -314,34 +315,18 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
 
   // Pre-populate form fields from customer data
   const prePopulateFromCustomer = (customerData: any) => {
-    setStep1Data(prev => ({
-      ...prev,
-      contactPerson: customerData.primary_contact || prev.contactPerson,
-      contactNumber: customerData.contact_phone || prev.contactNumber,
-      contactEmail: customerData.contact_email || prev.contactEmail
-    }));
+    const autoPopulated = IntelligentAutoPopulationService.populateAssessmentFromCustomer(customerData);
     
-    setStep2Data(prev => ({
-      ...prev,
-      safetyRequirements: customerData.safety_requirements || prev.safetyRequirements,
-      siteHazards: customerData.site_hazards || prev.siteHazards
-    }));
+    setStep1Data(prev => ({ ...prev, ...autoPopulated.step1Data }));
+    setStep2Data(prev => ({ ...prev, ...autoPopulated.step2Data }));
+    setStep3Data(prev => ({ ...prev, ...autoPopulated.step3Data }));
+    setStep4Data(prev => ({ ...prev, ...autoPopulated.step4Data }));
     
-    setStep3Data(prev => ({
-      ...prev,
-      buildingAccessType: customerData.building_access_type || prev.buildingAccessType,
-      buildingAccessDetails: customerData.building_access_details || prev.buildingAccessDetails
-    }));
-    
-    setStep4Data(prev => ({
-      ...prev,
-      supervisorIp: customerData.bms_supervisor_ip || prev.supervisorIp,
-      workbenchUsername: customerData.workbench_username || prev.workbenchUsername,
-      platformUsername: customerData.platform_username || prev.platformUsername,
-      webSupervisorUrl: customerData.web_supervisor_url || prev.webSupervisorUrl,
-      vpnRequired: customerData.vpn_required || prev.vpnRequired,
-      vpnDetails: customerData.vpn_details || prev.vpnDetails
-    }));
+    // Show toast to inform user about auto-population
+    toast({
+      title: "Assessment Pre-Populated",
+      description: "Customer data has been automatically loaded. Please verify all information.",
+    });
   };
 
   const handleStepStart = (stepNumber: number) => {

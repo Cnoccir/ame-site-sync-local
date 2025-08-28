@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Customer } from '@/types';
 import { NewCustomerWizard } from './NewCustomerWizard';
-import { CustomerCard } from './CustomerCard';
+import { EnhancedCustomerDetail } from './EnhancedCustomerDetail';
 
 interface CustomerTableProps {
   customers: Customer[];
@@ -94,7 +94,7 @@ export const CustomerTable = ({ customers, onCustomerSelect, onCustomersChanged 
         {/* Customer Cards */}
         <div className="space-y-4">
           {filteredCustomers.map((customer) => (
-            <CustomerCard
+            <EnhancedCustomerDetail
               key={customer.id}
               customer={customer}
               onCustomerUpdated={() => onCustomersChanged?.()}

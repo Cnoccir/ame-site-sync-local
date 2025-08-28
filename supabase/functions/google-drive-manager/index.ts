@@ -3,6 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 }
 
 interface CreateProjectFolderRequest {
@@ -44,7 +46,9 @@ Deno.serve(async (req) => {
     console.log('Google Client Secret exists:', !!clientSecret)
 
     if (!clientId || !clientSecret) {
-      throw new Error('Google OAuth credentials not configured. Please add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to Supabase secrets.')
+      console.error('Missing Google OAuth credentials')
+      console.error('Available env vars:', Object.keys(Deno.env.toObject()).filter(key => key.includes('GOOGLE')))
+      throw new Error('Google OAuth credentials not configured. Please add GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET to Supabase secrets.')
     }
 
     const { action, ...data } = await req.json()
@@ -74,8 +78,16 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Google Drive manager error:', error)
+    console.error('Error stack:', error.stack)
+    console.error('Error details:', JSON.stringify(error))
+    
+    // Return more detailed error information
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: error.stack,
+        type: error.name
+      }),
       { 
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -230,29 +242,127 @@ async function createStructuredProjectFolder(
   const { customerName, customerData, parentFolderId, folderName, year, accessToken } = data
 
   console.log(`Creating structured project folder: ${folderName} in parent ${parentFolderId}`)
+  console.log('Access token provided:', !!accessToken)
+  console.log('Access token length:', accessToken?.length || 0)
   
   try {
     // Use the access token passed from the client
     if (!accessToken) {
+      console.error('No access token provided')
       throw new Error('Access token is required for folder creation')
     }
     
+    // Test access token first with a simple request
+    console.log('Testing access token with Google Drive API...')
+    const testResponse = await fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    })
+    
+    if (!testResponse.ok) {
+      const errorText = await testResponse.text()
+      console.error('Access token test failed:', testResponse.status, errorText)
+      throw new Error(`Invalid access token: ${testResponse.status} - ${errorText}`)
+    }
+    
+    const userInfo = await testResponse.json()
+    console.log('Access token valid for user:', userInfo.user?.emailAddress)
+    
+    // First, verify the parent folder exists and we have access
+    let finalParentId = parentFolderId
+    if (parentFolderId) {
+      console.log('Verifying parent folder access:', parentFolderId)
+      const checkParentResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${parentFolderId}?fields=id,name`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      })
+      
+      if (!checkParentResponse.ok) {
+        const errorText = await checkParentResponse.text()
+        console.error('Parent folder not accessible:', checkParentResponse.status, errorText)
+        
+        // Try to find or create the year folder in the root of My Drive
+        console.log('Creating year folder in root of My Drive as fallback')
+        const yearFolderName = `AME Engineering ${year}`
+        
+        // Search for existing year folder
+        const searchResponse = await fetch(`https://www.googleapis.com/drive/v3/files?` + new URLSearchParams({
+          q: `name='${yearFolderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+          fields: 'files(id,name)',
+          pageSize: '1'
+        }), {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        })
+        
+        if (searchResponse.ok) {
+          const searchData = await searchResponse.json()
+          if (searchData.files && searchData.files.length > 0) {
+            finalParentId = searchData.files[0].id
+            console.log('Using existing year folder:', finalParentId)
+          } else {
+            // Create the year folder
+            const createYearFolderResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                name: yearFolderName,
+                mimeType: 'application/vnd.google-apps.folder',
+                // No parent means it goes to root of My Drive
+              }),
+            })
+            
+            if (createYearFolderResponse.ok) {
+              const yearFolder = await createYearFolderResponse.json()
+              finalParentId = yearFolder.id
+              console.log('Created new year folder:', finalParentId)
+            } else {
+              // Last resort: use root
+              finalParentId = null
+              console.log('Using root of My Drive as fallback')
+            }
+          }
+        } else {
+          finalParentId = null
+          console.log('Using root of My Drive as fallback')
+        }
+      } else {
+        const parentData = await checkParentResponse.json()
+        console.log('Parent folder verified:', parentData.name)
+      }
+    }
+    
     // Create main project folder
+    console.log('Creating main folder:', folderName, 'in parent:', finalParentId || 'root')
+    const createFolderBody: any = {
+      name: folderName,
+      mimeType: 'application/vnd.google-apps.folder',
+    }
+    
+    // Only add parents if we have a valid parent ID
+    if (finalParentId) {
+      createFolderBody.parents = [finalParentId]
+    }
+    
     const createFolderResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        name: folderName,
-        mimeType: 'application/vnd.google-apps.folder',
-        parents: [parentFolderId || '1rSYKqg5VGKGo9JFzNVYABk0nVlpL5Yoo'] // Use provided parent or default AME folder
-      }),
+      body: JSON.stringify(createFolderBody),
     })
 
     if (!createFolderResponse.ok) {
-      throw new Error(`Failed to create main folder: ${createFolderResponse.statusText}`)
+      const errorText = await createFolderResponse.text()
+      console.error('Folder creation failed:', createFolderResponse.status, errorText)
+      throw new Error(`Failed to create main folder: ${createFolderResponse.status} - ${errorText}`)
     }
 
     const mainFolder = await createFolderResponse.json()
@@ -314,7 +424,7 @@ async function createStructuredProjectFolder(
 ## Folder Structure
 
 ${Object.entries(projectSubfolders).map(([name, key]) => 
-  `- **${name}**: For ${getFolderDescription(key)}`
+  '- **' + name + '**: For ' + getFolderDescription(key)
 ).join('\n')}
 `
 

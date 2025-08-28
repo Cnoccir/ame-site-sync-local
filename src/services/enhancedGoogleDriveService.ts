@@ -14,9 +14,9 @@ const AME_DRIVE_FOLDERS = {
   ENGINEERING_2022: '10uM5VcqEfBqDuHOi9of3Nj0gfGfxo2QU',
   ENGINEERING_2023: '1UjzlUQaleGSedk39ZYxQCTAUhu9TLBrM',
   ENGINEERING_2024: '1kh6bp8m80Lt-GyqBFY2fPMFmFZfhGyMy',
-  ENGINEERING_2025: '17t5MFAl1Hr0iZgWfYbu2TJ-WckFZt41K',
+  ENGINEERING_2025: '1kHsxb9AAeeMtG3G_LjIAoR4UCPky6efU', // This is the actual 2025 folder
   SERVICE_MAINTENANCE: '0AEG566vw75FqUk9PVA',
-  // Add the new job folder location
+  // Main project folder location (same as 2025 for now)
   NEW_JOB_FOLDER: '1kHsxb9AAeeMtG3G_LjIAoR4UCPky6efU'
 };
 
@@ -266,8 +266,16 @@ export class EnhancedGoogleDriveService {
         throw new Error('No valid Google OAuth tokens available. Please re-authenticate with Google.');
       }
       
+      console.log('🔧 About to call Edge Function with:');
+      console.log('- Customer Name:', sanitizedName);
+      console.log('- Parent Folder ID:', currentYearFolderId);
+      console.log('- Folder Name:', folderName);
+      console.log('- Year:', currentYear);
+      console.log('- Access Token available:', !!tokens.access_token);
+      console.log('- Access Token length:', tokens.access_token?.length || 0);
+      
       // Call edge function to create the main project folder and subfolders
-      const { data, error } = await supabase.functions.invoke('google-drive-manager', {
+      const response = await supabase.functions.invoke('google-drive-manager', {
         body: {
           action: 'create_structured_project_folder',
           customerName: sanitizedName,
@@ -279,8 +287,74 @@ export class EnhancedGoogleDriveService {
         }
       });
       
+      const { data, error } = response;
+      
+      console.log('🔧 Edge Function response:');
+      console.log('- Data:', data);
+      console.log('- Error:', error);
+      
       if (error) {
-        throw new Error(`Folder creation failed: ${error.message}`);
+        console.error('❌ Edge Function returned error:', error);
+        
+        // Try to extract detailed error from the response
+        let detailedError = error.message;
+        
+        // Check if the error is a FunctionsHttpError with response data
+        if (error.name === 'FunctionsHttpError' || error.message?.includes('non-2xx')) {
+          // The actual error details might be in the response data
+          if (data && typeof data === 'object') {
+            // Edge Function returned error details in the data field
+            if (data.error) {
+              detailedError = data.error;
+              if (data.details) {
+                detailedError += `: ${data.details}`;
+              }
+              if (data.message) {
+                detailedError += ` - ${data.message}`;
+              }
+              console.error('📋 Extracted error details from data:', data);
+            }
+          }
+          
+          // Also check if error has a context field with response details
+          if (error.context?.body) {
+            try {
+              const errorBody = typeof error.context.body === 'string' 
+                ? JSON.parse(error.context.body) 
+                : error.context.body;
+              if (errorBody.error) {
+                detailedError = errorBody.error;
+                if (errorBody.details) {
+                  detailedError += `: ${errorBody.details}`;
+                }
+                console.error('📋 Extracted error from context:', errorBody);
+              }
+            } catch (parseError) {
+              console.error('Failed to parse error context:', parseError);
+            }
+          }
+        }
+        
+        console.error('❌ Final error details:', detailedError);
+        
+        // Provide more helpful error messages
+        if (detailedError?.includes('CORS')) {
+          throw new Error('Cross-origin request blocked. Please check browser console for CORS errors.');
+        } else if (detailedError?.includes('unauthorized') || detailedError?.includes('403') || detailedError?.includes('401')) {
+          throw new Error('Google Drive access denied. Access token may be expired or invalid. Please re-authenticate with Google Drive.');
+        } else if (detailedError?.includes('quota') || detailedError?.includes('rate limit')) {
+          throw new Error('Google Drive API quota exceeded. Please try again later.');
+        } else if (detailedError?.includes('invalid_request') || detailedError?.includes('Invalid token')) {
+          throw new Error('Invalid access token. Please re-authenticate with Google Drive.');
+        } else {
+          throw new Error(`Folder creation failed: ${detailedError || 'Unknown error'}`);
+        }
+      }
+      
+      // Also check if data contains error information
+      if (data && data.error) {
+        console.error('❌ Edge Function returned error in data:', data);
+        throw new Error(`Folder creation failed: ${data.error}. Details: ${data.details || 'No additional details'}`);
       }
       
       if (!data || !data.success) {
@@ -1013,26 +1087,60 @@ export class EnhancedGoogleDriveService {
       const isAuthenticated = await GoogleOAuthService.isAuthenticated();
       
       if (!isAuthenticated) {
+        console.log('Not authenticated with Google OAuth');
         return null;
       }
       
       // Get tokens from stored data
       const { data: { user } } = await supabase.auth.getUser();
       
-      // OAuth exchange function stores tokens under 'google_oauth'
-      if (user?.user_metadata?.google_oauth?.access_token) {
-        return {
-          access_token: user.user_metadata.google_oauth.access_token
-        };
-      }
-      
-      // Fallback: check alternate format
+      // Check both possible locations for tokens
+      // First check google_oauth_tokens (current format)
       if (user?.user_metadata?.google_oauth_tokens?.access_token) {
+        console.log('Found token in google_oauth_tokens');
+        const tokens = user.user_metadata.google_oauth_tokens;
+        
+        // Check if token is expired
+        if (tokens.expires_at && new Date(tokens.expires_at) <= new Date()) {
+          console.error('Access token expired, needs refresh');
+          // TODO: Implement token refresh
+          return null;
+        }
+        
         return {
-          access_token: user.user_metadata.google_oauth_tokens.access_token
+          access_token: tokens.access_token
         };
       }
       
+      // Fallback: check old format (google_oauth)
+      if (user?.user_metadata?.google_oauth?.access_token) {
+        console.log('Found token in google_oauth (legacy)');
+        const tokens = user.user_metadata.google_oauth;
+        
+        // Check if token is expired
+        if (tokens.expires_at && new Date(tokens.expires_at) <= new Date()) {
+          console.error('Access token expired, needs refresh');
+          return null;
+        }
+        
+        return {
+          access_token: tokens.access_token
+        };
+      }
+      
+      // Last resort: check localStorage
+      const storedTokens = localStorage.getItem('google_oauth_tokens');
+      if (storedTokens) {
+        console.log('Found token in localStorage');
+        const tokens = JSON.parse(storedTokens);
+        if (tokens.access_token) {
+          return {
+            access_token: tokens.access_token
+          };
+        }
+      }
+      
+      console.error('No access token found in any location');
       return null;
       
     } catch (error) {

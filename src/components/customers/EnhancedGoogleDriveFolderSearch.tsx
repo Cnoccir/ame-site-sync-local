@@ -66,19 +66,31 @@ interface EnhancedGoogleDriveFolderSearchProps {
   };
   onFolderSelected: (folderId: string, folderUrl: string, folderStructure?: ProjectFolderStructure) => void;
   onFolderStructureCreated?: (structure: ProjectFolderStructure) => void;
+  onFolderSearchResults?: (results: CustomerSearchResult) => void;
   initialFolderId?: string;
   initialFolderUrl?: string;
   disabled?: boolean;
+  showMigrationOption?: boolean;
 }
 
 export const EnhancedGoogleDriveFolderSearch: React.FC<EnhancedGoogleDriveFolderSearchProps> = ({
   customerData,
   onFolderSelected,
   onFolderStructureCreated,
+  onFolderSearchResults,
   initialFolderId = '',
   initialFolderUrl = '',
-  disabled = false
+  disabled = false,
+  showMigrationOption = false
 }) => {
+  // Early return if no customer data
+  if (!customerData || !customerData.company_name) {
+    return (
+      <div className="text-center py-4 text-gray-500">
+        <p className="text-sm">Customer data not available</p>
+      </div>
+    );
+  }
   const [isSearching, setIsSearching] = useState(false);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [searchResults, setSearchResults] = useState<CustomerSearchResult | null>(null);
@@ -107,12 +119,15 @@ export const EnhancedGoogleDriveFolderSearch: React.FC<EnhancedGoogleDriveFolder
     }
   }, [initialFolderId, initialFolderUrl, customerData]);
 
-  // Auto-search when component loads
+  // Auto-search when component loads or check for existing folder
   useEffect(() => {
-    if (customerData?.company_name && !selectedFolder) {
-      handleAutoSearch();
+    if (customerData?.company_name) {
+      // If we have an existing folder, don't auto-search
+      if (!initialFolderId && !selectedFolder) {
+        handleAutoSearch();
+      }
     }
-  }, [customerData?.company_name]);
+  }, [customerData?.company_name, initialFolderId]);
 
   const handleSearch = async (isManualSearch = false) => {
     if (!customerData?.company_name || isSearching) return;
@@ -130,6 +145,11 @@ export const EnhancedGoogleDriveFolderSearch: React.FC<EnhancedGoogleDriveFolder
       
       setSearchResults(results);
       setActiveTab('search'); // Always show search results when searching
+      
+      // Call the callback if provided
+      if (onFolderSearchResults) {
+        onFolderSearchResults(results);
+      }
       
       // Check if authentication is required
       if (results.authenticationRequired) {
@@ -429,7 +449,12 @@ export const EnhancedGoogleDriveFolderSearch: React.FC<EnhancedGoogleDriveFolder
           <div className="text-center py-8 text-gray-500">
             <Folder className="w-12 h-12 mx-auto mb-3 text-gray-300" />
             <h3 className="font-medium text-gray-900 mb-2">No Matching Folders Found</h3>
-            <p className="text-sm mb-4">We searched all AME Drive locations but couldn't find folders matching "{customerData.company_name}".</p>
+            <p className="text-sm mb-4">We searched all AME Drive locations but couldn't find folders matching "{customerData?.company_name || 'the customer'}".</p>
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4">
+              <p className="text-sm text-blue-800">
+                💡 <strong>Recommended:</strong> Create a new structured project folder to ensure proper organization and consistency with AME standards.
+              </p>
+            </div>
             <div className="flex justify-center gap-3">
               <Button variant="outline" size="sm" onClick={handleManualSearch}>
                 <Search className="w-4 h-4 mr-2" />
@@ -462,7 +487,7 @@ export const EnhancedGoogleDriveFolderSearch: React.FC<EnhancedGoogleDriveFolder
             Create New Project Folder
           </h3>
           <p className="text-gray-600 mb-6">
-            Create a professionally structured project folder for <strong>{customerData.company_name}</strong> 
+            Create a professionally structured project folder for <strong>{customerData?.company_name || 'this customer'}</strong> 
             with organized subfolders for all your project needs.
           </p>
           
