@@ -318,7 +318,7 @@ export function DeviceInventoryAggregator({
                             <input type="checkbox" className="rounded" />
                           </td>
                           <td className="border border-gray-300 px-2 py-1 font-medium">
-                            {device.deviceName || 'Unknown'}
+                            {(device as any)?.deviceName || (device as any)?.name || 'Unknown'}
                           </td>
                           <td className="border border-gray-300 px-2 py-1">
                             <Badge
@@ -329,22 +329,22 @@ export function DeviceInventoryAggregator({
                             </Badge>
                           </td>
                           <td className="border border-gray-300 px-2 py-1 text-sm">
-                            {device.deviceType || device.protocol || 'Unknown'}
+                            {(device as any)?.deviceType || (device as any)?.protocol || 'Unknown'}
                           </td>
                           <td className="border border-gray-300 px-2 py-1 text-sm font-mono">
-                            {device.address || device.deviceId || 'N/A'}
+                            {(device as any)?.address || (device as any)?.deviceId || 'N/A'}
                           </td>
                           <td className="border border-gray-300 px-2 py-1 text-sm">
-                            {device.metadata?.foxPort || 'N/A'}
+                            {(device as any)?.metadata?.foxPort || 'N/A'}
                           </td>
                           <td className="border border-gray-300 px-2 py-1 text-sm">
-                            {device.metadata?.hostModel || device.deviceModel || 'N/A'}
+                            {(device as any)?.metadata?.hostModel || (device as any)?.deviceModel || 'N/A'}
                           </td>
                           <td className="border border-gray-300 px-2 py-1 text-sm">
                             {device.version || 'N/A'}
                           </td>
                           <td className="border border-gray-300 px-2 py-1 text-xs text-muted-foreground">
-                            {device.sourceFile || 'N/A'}
+                            {(device as any)?.sourceFile || 'N/A'}
                           </td>
                         </tr>
                       ))}

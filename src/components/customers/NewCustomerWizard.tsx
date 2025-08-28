@@ -262,12 +262,12 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
       const formattedTechnicians = technicians.map(tech => ({
         id: tech.id,
         name: tech.name,
-        description: `${tech.phone ? `📱 ${tech.phone}` : ''}${tech.email ? ` 📧 ${tech.email}` : ''}${tech.extension ? ` ☎️ Ext: ${tech.extension}` : ''}`.trim(),
+        description: `${(tech as any)?.phone ? `📱 ${(tech as any).phone}` : ''}${(tech as any)?.email ? ` 📧 ${(tech as any).email}` : ''}${(tech as any)?.extension ? ` ☎️ Ext: ${(tech as any).extension}` : ''}`.trim(),
         subtitle: tech.role || 'Technician',
         phone: tech.phone,
         email: tech.email,
-        extension: tech.extension,
-        direct_line: tech.direct_line
+        extension: (tech as any)?.extension,
+        direct_line: (tech as any)?.direct_line
       }));
       
       console.log('Formatted technicians:', formattedTechnicians);
@@ -421,7 +421,7 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
-      await AMEService.createCustomer(formData);
+      await AMEService.createCustomer(formData as any);
       
       toast({
         title: "Success",

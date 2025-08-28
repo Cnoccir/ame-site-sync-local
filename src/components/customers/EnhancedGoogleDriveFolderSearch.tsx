@@ -338,7 +338,7 @@ export const EnhancedGoogleDriveFolderSearch: React.FC<EnhancedGoogleDriveFolder
                       >
                         <div className="flex items-center justify-between">
                           <span className="truncate">{folder.folderName}</span>
-                          <Badge size="sm" className={getConfidenceBadgeColor(folder.confidence)}>
+                          <Badge className={getConfidenceBadgeColor(folder.confidence)}>
                             {folder.confidence}
                           </Badge>
                         </div>
@@ -606,7 +606,7 @@ export const EnhancedGoogleDriveFolderSearch: React.FC<EnhancedGoogleDriveFolder
 
       {/* Main Interface */}
       {!isSearching && (
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="search" className="flex items-center gap-2">
               <Search className="w-4 h-4" />
