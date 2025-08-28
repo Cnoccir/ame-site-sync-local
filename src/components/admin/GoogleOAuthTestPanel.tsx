@@ -52,13 +52,15 @@ export const GoogleOAuthTestPanel: React.FC = () => {
     try {
       const isAuth = await GoogleOAuthService.isAuthenticated();
       if (isAuth) {
-        const tokens = await GoogleOAuthService.getValidTokens();
+        const tokens = await GoogleOAuthService['getValidTokens']();
         const userInfo = await GoogleOAuthService.getUserInfo();
-        setTokenInfo({
-          access_token: tokens.access_token.substring(0, 20) + '...',
-          expires_at: tokens.expires_at,
-          user_info: userInfo || undefined,
-        });
+        if (tokens) {
+          setTokenInfo({
+            access_token: tokens.access_token.substring(0, 20) + '...',
+            expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+            user_info: userInfo || undefined,
+          });
+        }
         setAuthStatus('authenticated');
       } else {
         setAuthStatus('unauthenticated');
@@ -83,14 +85,7 @@ export const GoogleOAuthTestPanel: React.FC = () => {
   const handleRefreshToken = async () => {
     setIsRefreshing(true);
     try {
-      const tokens = await GoogleOAuthService.refreshAccessToken();
-      setTokenInfo(prev => prev ? {
-        ...prev,
-        access_token: tokens.access_token.substring(0, 20) + '...',
-        expires_at: tokens.expires_at,
-      } : null);
-      
-      // Re-check auth status
+      // Re-check auth status to get fresh tokens
       await checkAuthStatus();
     } catch (error) {
       console.error('Failed to refresh token:', error);

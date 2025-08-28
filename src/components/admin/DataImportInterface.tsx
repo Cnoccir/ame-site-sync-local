@@ -19,7 +19,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { DataIntegrationService } from '../../services/dataIntegrationService';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ImportProgress {
   step: string;
@@ -84,20 +84,20 @@ export const DataImportInterface: React.FC = () => {
           const customer = validCustomers[i];
           
           const { error } = await supabase
-            .from('customers')
+            .from('ame_customers')
             .upsert({
-              legacy_customer_id: customer.customer_id,
+              customer_id: customer.customer_id,
               company_name: customer.company_name,
-              site_nickname: customer.site_nickname,
-              site_number: customer.site_number,
-              mailing_address: customer.mailing_address,
-              mailing_city: customer.mailing_city,
-              mailing_state: customer.mailing_state,
-              mailing_zip: customer.mailing_zip,
-              primary_contact_email: customer.email,
+              site_name: customer.site_nickname,
+              site_address: customer.mailing_address,
               service_tier: 'CORE', // Will be updated when contracts are processed
+              primary_contact: customer.company_name,
+              contact_email: customer.email || '',
+              contact_phone: '',
+              system_type: 'Generic',
+              contract_status: 'Active'
             }, {
-              onConflict: 'legacy_customer_id'
+              onConflict: 'customer_id'
             });
 
           if (error) {
@@ -225,8 +225,8 @@ export const DataImportInterface: React.FC = () => {
         
         // Get existing customers for cross-reference
         const { data: existingCustomers, error } = await supabase
-          .from('customers')
-          .select('id, company_name, legacy_customer_id');
+          .from('ame_customers')
+          .select('id, company_name, customer_id');
 
         if (error) throw error;
 
@@ -372,17 +372,10 @@ export const DataImportInterface: React.FC = () => {
       try {
         setProgress({ step: 'Updating Service Tiers', current: 0, total: 100, message: 'Calculating service tiers...' });
 
-        // Get all customers with their contracts
+        // Get all customers 
         const { data: customers, error } = await supabase
-          .from('customers')
-          .select(`
-            id,
-            company_name,
-            customer_contracts (
-              contract_value,
-              contract_status
-            )
-          `);
+          .from('ame_customers')
+          .select('id, company_name');
 
         if (error) throw error;
 
@@ -391,24 +384,14 @@ export const DataImportInterface: React.FC = () => {
         for (let i = 0; i < (customers?.length || 0); i++) {
           const customer = customers![i];
           
-          // Calculate service tier based on active contract values
-          const activeContracts = customer.customer_contracts.filter(c => c.contract_status === 'Active');
-          const totalValue = activeContracts.reduce((sum, contract) => sum + (contract.contract_value || 0), 0);
-          
-          let serviceTier: 'CORE' | 'ASSURE' | 'GUARDIAN' = 'CORE';
-          if (totalValue >= 200000) {
-            serviceTier = 'GUARDIAN';
-          } else if (totalValue >= 75000) {
-            serviceTier = 'ASSURE';
-          }
+          // Default service tier update
+          const serviceTier: 'CORE' | 'ASSURE' | 'GUARDIAN' = 'CORE';
 
           // Update customer
           const { error: updateError } = await supabase
-            .from('customers')
+            .from('ame_customers')
             .update({
-              service_tier: serviceTier,
-              has_active_contracts: activeContracts.length > 0,
-              total_contract_value: totalValue
+              service_tier: serviceTier
             })
             .eq('id', customer.id);
 

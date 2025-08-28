@@ -25,7 +25,7 @@ import {
   Activity
 } from 'lucide-react';
 import { GoogleDriveService, type DriveFolder, type IndexingProgress } from '../../services/googleDriveService';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FolderMapping {
   id: string;

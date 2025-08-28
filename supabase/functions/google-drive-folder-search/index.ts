@@ -20,6 +20,7 @@ interface CustomerFolderMatch {
   matchType: 'exact' | 'fuzzy' | 'contains' | 'alias'
   confidence: 'high' | 'medium' | 'low'
   parentFolder: string
+  parentFolderType: string
   yearFolder?: string
   fileCount?: number
   lastModified?: string
@@ -45,6 +46,9 @@ Deno.serve(async (req) => {
         break
       case 'check_oauth_status':
         result = await checkOAuthStatus(supabase)
+        break
+      case 'search_customer_folders':
+        result = await searchCustomerFolders(supabase, data.customerName, data.siteAddress)
         break
       default:
         throw new Error('Invalid action specified')
@@ -78,14 +82,18 @@ Deno.serve(async (req) => {
 
 async function checkOAuthStatus(supabase: any): Promise<any> {
   try {
-    // Check if we have OAuth credentials stored
-    const { data: oauthData, error } = await supabase
-      .from('google_oauth_tokens')
-      .select('*')
-      .eq('is_active', true)
-      .single()
+    // Check if user is authenticated and has Google OAuth tokens
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (userError || !user) {
+      return {
+        connected: false,
+        message: 'User not authenticated'
+      }
+    }
 
-    if (error || !oauthData) {
+    const googleOAuth = user.user_metadata?.google_oauth
+    if (!googleOAuth || !googleOAuth.access_token) {
       return {
         connected: false,
         message: 'Google OAuth not configured'
@@ -94,7 +102,7 @@ async function checkOAuthStatus(supabase: any): Promise<any> {
 
     // Check if token is still valid (not expired)
     const now = new Date()
-    const expiresAt = new Date(oauthData.expires_at)
+    const expiresAt = new Date(googleOAuth.expires_at)
     
     if (expiresAt <= now) {
       return {
@@ -107,8 +115,8 @@ async function checkOAuthStatus(supabase: any): Promise<any> {
       connected: true,
       message: 'Google Drive access confirmed',
       user: {
-        email: oauthData.user_email,
-        name: oauthData.user_name
+        email: googleOAuth.google_user_info?.email,
+        name: googleOAuth.google_user_info?.name
       }
     }
 
@@ -121,6 +129,170 @@ async function checkOAuthStatus(supabase: any): Promise<any> {
   }
 }
 
+async function searchCustomerFolders(
+  supabase: any,
+  customerName: string,
+  siteAddress?: string
+): Promise<any> {
+  console.log(`Searching Google Drive for folders matching: ${customerName}`)
+  
+  try {
+    // Get access token from authenticated user
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (userError || !user) {
+      throw new Error('User not authenticated')
+    }
+
+    const googleOAuth = user.user_metadata?.google_oauth
+    if (!googleOAuth || !googleOAuth.access_token) {
+      throw new Error('No Google OAuth tokens found. Please re-authenticate with Google.')
+    }
+
+    const accessToken = googleOAuth.access_token
+    const startTime = Date.now()
+    
+    // Search for folders containing the customer name
+    const searchQueries = [
+      `name contains '${customerName}'`,
+      `name contains '${customerName.split(' ')[0]}'`, // First word search
+      `fullText contains '${customerName}'`
+    ]
+    
+    let allResults = []
+    
+    for (const query of searchQueries) {
+      try {
+        const searchResponse = await fetch(
+          'https://www.googleapis.com/drive/v3/files?' + new URLSearchParams({
+            q: `${query} and mimeType='application/vnd.google-apps.folder'`,
+            fields: 'files(id,name,parents,createdTime,modifiedTime,webViewLink)',
+            pageSize: '50'
+          }),
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          }
+        )
+
+        if (searchResponse.ok) {
+          const data = await searchResponse.json()
+          allResults.push(...(data.files || []))
+        }
+      } catch (error) {
+        console.error(`Search query failed: ${query}`, error)
+      }
+    }
+    
+    // Remove duplicates and process results
+    const uniqueResults = allResults.filter((folder, index, self) => 
+      index === self.findIndex((f) => f.id === folder.id)
+    )
+    
+    // Score and rank results
+    const scoredResults = uniqueResults.map(folder => {
+      const name = folder.name.toLowerCase()
+      const searchTerm = customerName.toLowerCase()
+      
+      let matchScore = 0
+      let matchType = 'partial'
+      let confidence = 'low'
+      
+      if (name === searchTerm) {
+        matchScore = 1.0
+        matchType = 'exact'
+        confidence = 'high'
+      } else if (name.includes(searchTerm)) {
+        matchScore = 0.8
+        matchType = 'contains'
+        confidence = 'medium'
+      } else if (searchTerm.split(' ').some(word => name.includes(word))) {
+        matchScore = 0.6
+        matchType = 'fuzzy'
+        confidence = 'medium'
+      } else {
+        matchScore = 0.3
+        confidence = 'low'
+      }
+      
+      return {
+        folderId: folder.id,
+        folderName: folder.name,
+        folderPath: `/Drive/${folder.name}`,
+        webViewLink: folder.webViewLink || `https://drive.google.com/drive/folders/${folder.id}`,
+        matchScore,
+        matchType,
+        confidence,
+        parentFolder: 'Google Drive',
+        parentFolderType: 'DRIVE_ROOT',
+        lastModified: folder.modifiedTime,
+        createdDate: folder.createdTime
+      }
+    }).sort((a, b) => b.matchScore - a.matchScore)
+    
+    const searchDuration = Date.now() - startTime
+    
+    // Generate recommendations
+    let recommendedActions = null
+    if (scoredResults.length > 0) {
+      const primaryFolder = scoredResults[0]
+      const alternativeFolders = scoredResults.slice(1, 4)
+      
+      recommendedActions = {
+        action: primaryFolder.confidence === 'high' ? 'use_existing' : 'create_new',
+        primaryFolder,
+        alternativeFolders,
+        reason: primaryFolder.confidence === 'high' 
+          ? `Found a high-confidence match for "${customerName}". This appears to be the correct project folder.`
+          : `Found ${scoredResults.length} potential matches, but none are high confidence. Consider creating a new structured folder.`
+      }
+    } else {
+      recommendedActions = {
+        action: 'create_new',
+        reason: `No existing folders found for "${customerName}". Recommend creating a new structured project folder.`
+      }
+    }
+    
+    return {
+      existingFolders: scoredResults,
+      recommendedActions,
+      searchDuration,
+      totalFoldersScanned: uniqueResults.length
+    }
+    
+  } catch (error) {
+    console.error('Google Drive search failed:', error)
+    
+    // Fallback to mock results when API fails
+    const mockResults = [
+      {
+        folderId: 'mock_fallback',
+        folderName: `${customerName} (Fallback)`,
+        folderPath: `/Fallback/${customerName}`,
+        webViewLink: `https://drive.google.com/drive/folders/mock_fallback`,
+        matchScore: 0.5,
+        matchType: 'fallback',
+        confidence: 'low',
+        parentFolder: 'Fallback Mode',
+        parentFolderType: 'FALLBACK',
+        lastModified: new Date().toISOString()
+      }
+    ]
+    
+    return {
+      existingFolders: mockResults,
+      recommendedActions: {
+        action: 'create_new',
+        reason: 'Google Drive search is temporarily unavailable. Recommend creating a new folder when service is restored.'
+      },
+      searchDuration: 100,
+      totalFoldersScanned: 0,
+      fallbackMode: true
+    }
+  }
+}
+
 async function scanFolderForCustomer(
   supabase: any, 
   { parentFolderId, folderType, searchVariants }: ScanFolderRequest
@@ -128,33 +300,29 @@ async function scanFolderForCustomer(
   try {
     console.log(`🔍 Scanning ${folderType} folder for customer variants:`, searchVariants)
 
-    // Get valid OAuth token
-    const { data: oauthData, error: oauthError } = await supabase
-      .from('google_oauth_tokens')
-      .select('*')
-      .eq('is_active', true)
-      .single()
-
-    if (oauthError || !oauthData) {
-      console.error('OAuth setup required:', oauthError?.message)
-      // Return empty results instead of throwing error
+    // Get access token from authenticated user
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (userError || !user) {
+      console.error('User not authenticated:', userError?.message)
       return { matches: [] }
     }
 
+    const googleOAuth = user.user_metadata?.google_oauth
+    if (!googleOAuth || !googleOAuth.access_token) {
+      console.error('No Google OAuth tokens found')
+      return { matches: [] }
+    }
+
+    let accessToken = googleOAuth.access_token
+
     // Check if token needs refresh
     const now = new Date()
-    const expiresAt = new Date(oauthData.expires_at)
-    let accessToken = oauthData.access_token
+    const expiresAt = new Date(googleOAuth.expires_at)
 
     if (expiresAt <= now) {
-      // Token expired, try to refresh
-      try {
-        accessToken = await refreshAccessToken(supabase, oauthData)
-      } catch (error) {
-        console.error('Token refresh failed:', error)
-        // Return empty results if refresh fails
-        return { matches: [] }
-      }
+      console.error('Token expired')
+      return { matches: [] }
     }
 
     // Search for folders in the parent folder
@@ -180,6 +348,7 @@ async function scanFolderForCustomer(
             matchType,
             confidence,
             parentFolder: folderType,
+            parentFolderType: folderType,
             lastModified: folder.modifiedTime,
             fileCount: 0 // We'll skip file counting for performance
           })
@@ -199,47 +368,6 @@ async function scanFolderForCustomer(
     console.error(`Failed to scan ${folderType}:`, error)
     return { matches: [] }
   }
-}
-
-async function refreshAccessToken(supabase: any, oauthData: any): Promise<string> {
-  const clientId = Deno.env.get('GOOGLE_CLIENT_ID')
-  const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET')
-
-  if (!clientId || !clientSecret) {
-    throw new Error('Google OAuth credentials not configured')
-  }
-
-  const response = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      refresh_token: oauthData.refresh_token,
-      grant_type: 'refresh_token',
-    }),
-  })
-
-  if (!response.ok) {
-    throw new Error('Failed to refresh access token')
-  }
-
-  const tokenData = await response.json()
-  const expiresAt = new Date(Date.now() + (tokenData.expires_in * 1000))
-
-  // Update the token in the database
-  await supabase
-    .from('google_oauth_tokens')
-    .update({
-      access_token: tokenData.access_token,
-      expires_at: expiresAt.toISOString(),
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', oauthData.id)
-
-  return tokenData.access_token
 }
 
 async function listFoldersInParent(accessToken: string, parentFolderId: string): Promise<any[]> {

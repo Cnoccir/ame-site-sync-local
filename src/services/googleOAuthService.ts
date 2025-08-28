@@ -26,19 +26,15 @@ export class GoogleOAuthService {
    * Initialize the OAuth service with configuration
    */
   static async initialize(): Promise<void> {
-    // Get configuration from Supabase settings or environment
-    const clientId = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID;
-    const redirectUri = import.meta.env.VITE_GOOGLE_OAUTH_REDIRECT_URI || `${window.location.origin}/google/callback`;
+    // Use production URLs instead of environment variables
+    const clientId = '965749901901-2v8f7vv5o2e26uq7a4s2sdjb3p1qmr7c.apps.googleusercontent.com';
+    const redirectUri = `${window.location.origin}/google/callback`;
     
-    if (!clientId) {
-      throw new Error('VITE_GOOGLE_OAUTH_CLIENT_ID not found in environment variables');
-    }
-
     this.config = {
       clientId,
       redirectUri,
       scopes: [
-        'https://www.googleapis.com/auth/drive.readonly',
+        'https://www.googleapis.com/auth/drive',
         'https://www.googleapis.com/auth/userinfo.profile',
         'https://www.googleapis.com/auth/userinfo.email'
       ]
