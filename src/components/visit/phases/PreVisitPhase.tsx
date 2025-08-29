@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ToolManagement } from '@/components/ToolManagement';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { generateToolRecommendations } from '@/services/toolLibraryService';
-// import { EnhancedSiteIntelligenceCard } from '@/components/phases/pre-visit/EnhancedSiteIntelligenceCard';
+import { EnhancedSiteIntelligenceCard } from '@/components/visit/EnhancedSiteIntelligenceCard';
 
 interface PreVisitPhaseProps {
   customer: Customer;
@@ -190,15 +190,16 @@ export const PreVisitPhase = ({ customer, onPhaseComplete, sessionData, updateAu
         </div>
       </div>
 
-      {/* Site Intelligence placeholder */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Site Intelligence</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Site intelligence functionality is being updated.</p>
-        </CardContent>
-      </Card>
+      {/* Enhanced Site Intelligence */}
+      <EnhancedSiteIntelligenceCard 
+        customer={customer} 
+        onUpdate={(updates) => {
+          // In a real implementation, this would update the customer data
+          // For now, we'll just log the updates
+          console.log('Customer updates:', updates);
+        }} 
+        isReadOnly={false}
+      />
       
       {/* Service Overview */}
       <Card>

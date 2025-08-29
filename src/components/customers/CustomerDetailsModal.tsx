@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Save, X, Edit3, Eye } from 'lucide-react';
+import { Save, X, Edit3, Eye, Key, Shield, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AMEService } from '@/services/ameService';
 import { Customer } from '@/types';
@@ -172,6 +172,34 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
               </DialogTitle>
               <Badge>{formData.service_tier}</Badge>
               <Badge variant="outline">{formData.contract_status}</Badge>
+              
+              {/* Credential Status Indicators */}
+              <div className="flex items-center space-x-2">
+                {(formData as any)?.has_bms_credentials && (
+                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                    <Key className="w-3 h-3 mr-1" />
+                    BMS
+                  </Badge>
+                )}
+                {(formData as any)?.has_windows_credentials && (
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
+                    <Shield className="w-3 h-3 mr-1" />
+                    Windows
+                  </Badge>
+                )}
+                {(formData as any)?.has_service_credentials && (
+                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-300">
+                    <Users className="w-3 h-3 mr-1" />
+                    Services
+                  </Badge>
+                )}
+                {(formData as any)?.has_remote_access_credentials && (
+                  <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300">
+                    <Eye className="w-3 h-3 mr-1" />
+                    Remote
+                  </Badge>
+                )}
+              </div>
             </div>
             <div className="flex items-center space-x-2">
               {mode === 'view' ? (
@@ -243,6 +271,13 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                   <InputField label="System Architecture" field="system_architecture" />
                 </div>
                 <InputField label="Site Address" field="site_address" type="textarea" />
+                
+                {/* Service Address Different Checkbox */}
+                <CheckboxField label="Service Address is Different from Site Address" field="service_address_different" />
+                {(formData as any)?.service_address_different && (
+                  <InputField label="Service Address" field="service_address" type="textarea" placeholder="Enter different service address..." />
+                )}
+                
                 <div className="grid grid-cols-3 gap-4">
                   <SelectField 
                     label="Service Tier" 
@@ -268,6 +303,58 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                 />
               </CardContent>
             </Card>
+            
+            {/* Mailing Address */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Mailing Address</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <InputField label="Mailing Address" field="mailing_address" type="textarea" placeholder="Mailing address if different from site address..." />
+                <div className="grid grid-cols-3 gap-4">
+                  <InputField label="Mailing City" field="mailing_city" />
+                  <InputField label="Mailing State" field="mailing_state" />
+                  <InputField label="Mailing ZIP" field="mailing_zip" />
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Equipment Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Equipment & Procedures</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label>Equipment Locations (JSON)</Label>
+                  <Textarea
+                    value={String((formData as any)?.equipment_locations ? JSON.stringify((formData as any).equipment_locations, null, 2) : '')}
+                    onChange={(e) => {
+                      try {
+                        const parsed = JSON.parse(e.target.value || '[]');
+                        updateFormData('equipment_locations' as keyof Customer, parsed);
+                      } catch {
+                        // Invalid JSON - store as string for now
+                        updateFormData('equipment_locations' as keyof Customer, e.target.value);
+                      }
+                    }}
+                    disabled={!isEditing}
+                    placeholder='[{"name": "Server Room", "location": "2nd Floor", "access": "Key card required"}]'
+                    rows={4}
+                  />
+                  <div className="text-xs text-muted-foreground mt-1">
+                    JSON array of equipment locations with details
+                  </div>
+                </div>
+                <InputField 
+                  label="Equipment Specific Procedures" 
+                  field="equipment_specific_procedures" 
+                  type="textarea" 
+                  placeholder="Special procedures for equipment access, maintenance, etc..."
+                  rows={3}
+                />
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="contacts" className="space-y-4">
@@ -287,12 +374,36 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
 
               <Card>
                 <CardHeader>
+                  <CardTitle>Secondary Contact</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <InputField label="Secondary Contact Name" field="secondary_contact_name" />
+                  <InputField label="Secondary Phone" field="secondary_contact_phone" />
+                  <InputField label="Secondary Email" field="secondary_contact_email" type="email" />
+                  <InputField label="Secondary Role" field="secondary_contact_role" />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
                   <CardTitle>Emergency Contact</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <InputField label="Emergency Contact" field="emergency_contact" />
                   <InputField label="Emergency Phone" field="emergency_phone" />
                   <InputField label="Emergency Email" field="emergency_email" type="email" />
+                  <InputField label="Emergency Contact Role" field="emergency_contact_role" />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Security Contact</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <InputField label="Security Contact Name" field="security_contact_name" />
+                  <InputField label="Security Phone" field="security_contact_phone" />
+                  <InputField label="Security Email" field="security_contact_email" type="email" />
                 </CardContent>
               </Card>
 
@@ -301,12 +412,17 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
                   <CardTitle>Technical Contact</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div>
-                    <Label>Technical Contact</Label>
+                  <InputField label="Technical Contact Name" field="technical_contact_name" />
+                  <InputField label="Technical Phone" field="technical_contact_phone" />
+                  <InputField label="Technical Email" field="technical_contact_email" type="email" />
+                  <InputField label="Technical Role" field="technical_contact_role" />
+                  <div className="mt-4 pt-3 border-t">
+                    <Label className="text-sm text-muted-foreground">Legacy Field</Label>
                     <Input
                       value={String(formData.technician_assigned || '')}
                       onChange={(e) => updateFormData('technician_assigned', e.target.value)}
                       disabled={!isEditing}
+                      placeholder="Legacy technician field"
                     />
                   </div>
                 </CardContent>
@@ -314,19 +430,13 @@ export const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Other Contacts</CardTitle>
+                  <CardTitle>Billing Contact</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <InputField label="Security Contact" field="security_contact" />
-                  <InputField label="Security Phone" field="security_phone" />
-                  <div>
-                    <Label>Escalation Contact</Label>
-                    <Input
-                      value={String(formData.escalation_contact || '')}
-                      onChange={(e) => updateFormData('escalation_contact', e.target.value)}
-                      disabled={!isEditing}
-                    />
-                  </div>
+                  <InputField label="Billing Contact Name" field="billing_contact_name" />
+                  <InputField label="Billing Phone" field="billing_contact_phone" />
+                  <InputField label="Billing Email" field="billing_contact_email" type="email" />
+                  <InputField label="Billing Role" field="billing_contact_role" />
                 </CardContent>
               </Card>
             </div>

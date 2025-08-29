@@ -51,12 +51,21 @@ export const CustomerDataViewer: React.FC<CustomerDataViewerProps> = ({ customer
     </Card>
   );
 
-  const InfoRow = ({ label, value }: { label: string; value: string | number | null | undefined }) => (
-    <div className="grid grid-cols-3 gap-4 py-2 border-b border-gray-100 last:border-b-0">
-      <dt className="font-medium text-gray-700">{label}:</dt>
-      <dd className="col-span-2 text-gray-900">{value || 'Not provided'}</dd>
-    </div>
-  );
+  const InfoRow = ({ label, value }: { label: string; value: string | number | null | undefined }) => {
+    // Format the display value more intelligently
+    const displayValue = value === null || value === undefined || value === '' 
+      ? 'Not provided' 
+      : String(value);
+      
+    return (
+      <div className="grid grid-cols-3 gap-4 py-2 border-b border-gray-100 last:border-b-0">
+        <dt className="font-medium text-gray-700">{label}:</dt>
+        <dd className={`col-span-2 ${displayValue === 'Not provided' ? 'text-gray-500 italic' : 'text-gray-900'}`}>
+          {displayValue}
+        </dd>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto">

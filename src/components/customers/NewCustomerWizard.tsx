@@ -265,19 +265,27 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
     }
   }, [isOpen]);
 
-  // Initialize form data ONCE based on mode
+  // Initialize form data based on mode - allow re-initialization for edit mode
   useEffect(() => {
-    if (!isOpen || initRef.current.formInitialized) return;
-    
-    initRef.current.formInitialized = true;
+    if (!isOpen) return;
     
     if (editMode?.isEdit && editMode.initialData) {
-      // Edit mode - load existing data
+      // Edit mode - always reload data (don't use formInitialized flag)
+      console.log('📝 Edit mode: Loading existing customer data', editMode.initialData.customer_id);
       const mappedData = mapDatabaseToFormData(editMode.initialData);
       setFormData({ ...initialFormData, ...mappedData });
       setCurrentStep(1);
+      
+      // Show secondary contact if data exists
+      if (mappedData.secondary_contact_name) {
+        setShowSecondaryContact(true);
+      }
     } else {
-      // New customer mode
+      // New customer mode - only initialize once
+      if (initRef.current.formInitialized) return;
+      initRef.current.formInitialized = true;
+      
+      console.log('🆕 New customer mode: Initializing form');
       // Try to restore saved form data
       const savedFormData = FormDataPersistence.restoreFormData(FORM_STORAGE_KEY);
       const savedStep = FormDataPersistence.restoreFormStep(STEP_STORAGE_KEY);
@@ -299,7 +307,7 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
         }
       }
     }
-  }, [isOpen, editMode?.isEdit]);
+  }, [isOpen, editMode?.isEdit, editMode?.initialData?.id]); // Add initialData.id to dependencies
 
   // Save form data ONLY on explicit step changes or after delay
   // NOT on every single change
@@ -412,6 +420,8 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
       workbench_password: databaseRecord.workbench_password || '',
       platform_username: databaseRecord.platform_username || '',
       platform_password: databaseRecord.platform_password || '',
+      pc_username: databaseRecord.pc_username || '',
+      pc_password: databaseRecord.pc_password || '',
       bms_supervisor_ip: databaseRecord.bms_supervisor_ip ? String(databaseRecord.bms_supervisor_ip) : '',
       remote_access: databaseRecord.remote_access ?? false,
       remote_access_type: databaseRecord.remote_access_type || '',
@@ -437,7 +447,80 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
       drive_folder_url: databaseRecord.drive_folder_url || ''
     };
     
-    console.log('✅ Mapped data result:', mappedData);
+    // CRITICAL: Load existing credentials for edit mode
+    // First try to load structured credentials if they exist
+    mappedData.access_credentials = databaseRecord.access_credentials || [];
+    mappedData.system_credentials = databaseRecord.system_credentials || null;
+    mappedData.windows_credentials = databaseRecord.windows_credentials || null;
+    mappedData.service_credentials = databaseRecord.service_credentials || null;
+    
+    // If no structured credentials exist, fall back to loading from legacy fields
+    if (!mappedData.access_credentials || mappedData.access_credentials.length === 0) {
+      if (databaseRecord.has_remote_access_credentials || databaseRecord.remote_access) {
+        // Create initial remote access credentials from legacy data if available
+        const remoteCredentials = [];
+        if (databaseRecord.remote_access_type || databaseRecord.vpn_required) {
+          remoteCredentials.push({
+            vendor: databaseRecord.remote_access_type || 'Remote Access',
+            connection_type: databaseRecord.vpn_required ? 'VPN' : 'Direct',
+            vpn_required: databaseRecord.vpn_required || false,
+            vpn_details: databaseRecord.vpn_details || '',
+            is_active: true
+          });
+        }
+        mappedData.access_credentials = remoteCredentials;
+      }
+    }
+    
+    // Load BMS credentials from legacy fields if not already loaded
+    if (!mappedData.system_credentials) {
+      if (databaseRecord.has_bms_credentials || databaseRecord.platform_username || databaseRecord.bms_supervisor_ip) {
+        mappedData.system_credentials = {
+          system_type: 'tridium_n4' as const,
+          platform_host: databaseRecord.bms_supervisor_ip || '',
+          platform_port: 4911,
+          platform_username: databaseRecord.platform_username || '',
+          platform_password: databaseRecord.platform_password || '',
+          station_username: databaseRecord.workbench_username || databaseRecord.platform_username || '',
+          station_password: databaseRecord.workbench_password || databaseRecord.platform_password || '',
+          same_credentials: (databaseRecord.workbench_username || '') === (databaseRecord.platform_username || '')
+        };
+      }
+    }
+    
+    // Load Windows credentials from legacy fields if not already loaded
+    if (!mappedData.windows_credentials) {
+      if (databaseRecord.has_windows_credentials || databaseRecord.pc_username) {
+        mappedData.windows_credentials = {
+          computer_name: databaseRecord.computer_name || '',
+          local_admin_username: databaseRecord.pc_username || '',
+          local_admin_password: databaseRecord.pc_password || ''
+        };
+      }
+    }
+    
+    // Load service credentials if not already loaded
+    if (!mappedData.service_credentials && databaseRecord.has_service_credentials) {
+      mappedData.service_credentials = {
+        custom_services: []
+      };
+    }
+    
+    console.log('✅ Mapped data result with enhanced fields and credentials:', {
+      ...mappedData,
+      hasCredentialFlags: {
+        has_bms_credentials: databaseRecord.has_bms_credentials,
+        has_windows_credentials: databaseRecord.has_windows_credentials,
+        has_service_credentials: databaseRecord.has_service_credentials,
+        has_remote_access_credentials: databaseRecord.has_remote_access_credentials
+      },
+      loadedCredentials: {
+        access: mappedData.access_credentials?.length || 0,
+        system: !!mappedData.system_credentials,
+        windows: !!mappedData.windows_credentials,
+        service: !!mappedData.service_credentials
+      }
+    });
     return mappedData;
   };
 
@@ -751,9 +834,9 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
     setShowCloseConfirmation(false);
   };
 
-  // Prepare form data for database - ensure ALL fields are included
+  // Prepare form data for database with enhanced credential system
   const prepareFormDataForDatabase = (formData: CustomerFormData) => {
-    console.log('🔄 Preparing form data for database with all fields:', formData);
+    console.log('🔄 Preparing enhanced form data for database with credentials:', formData);
     
     // Create a clean copy of form data - preserve ALL fields
     const cleanedData: any = {};
@@ -762,7 +845,12 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
     Object.keys(formData).forEach((key) => {
       const value = (formData as any)[key];
       
-      // Skip undefined/null values but preserve empty strings
+      // Skip credential fields - they will be handled separately
+      if (['system_credentials', 'windows_credentials', 'service_credentials', 'access_credentials'].includes(key)) {
+        return; // Skip - will be added to credentials object
+      }
+      
+      // Always include the field, even if empty string, but skip undefined/null
       if (value !== undefined && value !== null) {
         // Special handling for site_hazards array
         if (key === 'site_hazards' && Array.isArray(value)) {
@@ -770,6 +858,9 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
         } else {
           cleanedData[key] = value;
         }
+      } else if (value === '' || value === false || value === 0) {
+        // Preserve empty strings, false booleans, and zeros
+        cleanedData[key] = value;
       }
     });
     
@@ -799,10 +890,23 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
       }
     });
     
+    // Handle JSON fields properly
+    if (formData.equipment_locations && typeof formData.equipment_locations === 'string') {
+      try {
+        cleanedData.equipment_locations = JSON.parse(formData.equipment_locations);
+      } catch {
+        cleanedData.equipment_locations = [];
+      }
+    } else if (Array.isArray(formData.equipment_locations)) {
+      cleanedData.equipment_locations = formData.equipment_locations;
+    } else {
+      cleanedData.equipment_locations = [];
+    }
+    
     // Ensure boolean fields are properly set
     const booleanFields = [
       'ppe_required', 'badge_required', 'training_required',
-      'remote_access', 'vpn_required', 'different_platform_station_creds'
+      'remote_access', 'vpn_required', 'different_platform_station_creds', 'service_address_different'
     ];
     
     booleanFields.forEach(field => {
@@ -820,15 +924,32 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
       cleanedData.contract_status = 'Active';
     }
     
+    // Prepare enhanced credentials object
+    const credentials = {
+      system_credentials: formData.system_credentials || null,
+      windows_credentials: formData.windows_credentials || null,
+      service_credentials: formData.service_credentials || null,
+      access_credentials: formData.access_credentials || null
+    };
+    
+    // Only add credentials if they exist
+    if (Object.values(credentials).some(cred => cred && (Array.isArray(cred) ? cred.length > 0 : Object.keys(cred).length > 0))) {
+      cleanedData.system_credentials = credentials.system_credentials;
+      cleanedData.windows_credentials = credentials.windows_credentials;
+      cleanedData.service_credentials = credentials.service_credentials;
+      cleanedData.access_credentials = credentials.access_credentials;
+    }
+    
     // Remove any UI-only fields that don't exist in database
     delete cleanedData.id; // Will be generated by database
     
     // Set timestamp
     cleanedData.updated_at = new Date().toISOString();
     
-    console.log('✅ Prepared complete form data for database:', cleanedData);
-    console.log('📊 Field count:', Object.keys(cleanedData).length);
-    console.log('📝 Fields included:', Object.keys(cleanedData).sort());
+    console.log('✅ Prepared enhanced form data for database:');
+    console.log('   - Total fields:', Object.keys(cleanedData).length);
+    console.log('   - Has credentials:', Object.values(credentials).some(c => c != null));
+    console.log('   - Equipment locations:', cleanedData.equipment_locations);
     
     return cleanedData;
   };
@@ -864,17 +985,23 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
         }
         handleClose();
       } else {
-        // Create mode - create new customer with ALL fields
+        // Create mode - create new customer with enhanced credential system
+        console.log('📤 Submitting to enhanced AMEService.createCustomer with credentials');
+        
         const createdCustomer = await AMEService.createCustomer(cleanedFormData);
         
-        console.log('✅ Customer created successfully:', createdCustomer);
+        console.log('✅ Customer created successfully with enhanced schema:', {
+          customerId: createdCustomer.id,
+          companyName: createdCustomer.company_name,
+          hasCredentials: !!(createdCustomer.has_bms_credentials || createdCustomer.has_windows_credentials)
+        });
         
         // Clear persisted data on successful submission
         clearPersistedData();
         
         toast({
           title: "Success",
-          description: "Customer created successfully with all information saved",
+          description: "Customer created successfully with all information and credentials saved",
         });
         
         if (onCustomerCreated) {

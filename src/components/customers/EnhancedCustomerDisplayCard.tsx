@@ -167,7 +167,7 @@ export const EnhancedCustomerDisplayCard: React.FC<EnhancedCustomerDisplayCardPr
               <InfoItem 
                 icon={User} 
                 label="Contact" 
-                value={customer.primary_contact || 'N/A'} 
+                value={customer.primary_contact || 'Not provided'} 
               />
               <InfoItem 
                 icon={Phone} 

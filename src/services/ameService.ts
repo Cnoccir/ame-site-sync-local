@@ -37,14 +37,33 @@ export class AMEService {
 
   static async getCustomers(): Promise<Customer[]> {
     return errorHandler.withErrorHandling(async () => {
+      // Use comprehensive view that includes credential information
       const { data, error } = await supabase
-        .from('ame_customers')
+        .from('customer_management_view')
         .select('*')
         .order('company_name');
       
-      if (error) throw errorHandler.handleSupabaseError(error, 'getCustomers');
+      if (error) {
+        logger.warn('Failed to fetch from comprehensive view, falling back to basic table', error);
+        // Fallback to basic table
+        const { data: basicData, error: basicError } = await supabase
+          .from('ame_customers')
+          .select('*')
+          .order('company_name');
+        
+        if (basicError) throw errorHandler.handleSupabaseError(basicError, 'getCustomers');
+        
+        return (basicData || []).map(record => ({
+          ...record,
+          site_hazards: Array.isArray(record.site_hazards) 
+            ? record.site_hazards 
+            : record.site_hazards 
+              ? [record.site_hazards] 
+              : []
+        })) as Customer[];
+      }
       
-      // Transform database records to frontend Customer type with hazards array conversion
+      // Transform comprehensive view records to frontend Customer type
       const customers = (data || []).map(record => ({
         ...record,
         site_hazards: Array.isArray(record.site_hazards) 
@@ -54,23 +73,31 @@ export class AMEService {
             : []
       })) as Customer[];
       
-      // Populate technician names for customers with assigned technicians
+      // Populate technician names for customers with assigned technicians (if not already populated)
       const customersWithTechNames = await Promise.all(
         customers.map(async (customer) => {
-          if (customer.primary_technician_id || customer.secondary_technician_id) {
-            const techNames = await SiteIntelligenceService.getTechnicianNames(
-              customer.primary_technician_id,
-              customer.secondary_technician_id
-            );
-            return {
-              ...customer,
-              primary_technician_name: techNames.primary,
-              secondary_technician_name: techNames.secondary
-            };
+          // Check if technician names are already populated from the view
+          if (!customer.primary_technician_name && !customer.secondary_technician_name) {
+            if (customer.primary_technician_id || customer.secondary_technician_id) {
+              const techNames = await SiteIntelligenceService.getTechnicianNames(
+                customer.primary_technician_id,
+                customer.secondary_technician_id
+              );
+              return {
+                ...customer,
+                primary_technician_name: techNames.primary,
+                secondary_technician_name: techNames.secondary
+              };
+            }
           }
           return customer;
         })
       );
+      
+      logger.debug('Retrieved customers with enhanced data', {
+        customerCount: customersWithTechNames.length,
+        withCredentials: customersWithTechNames.filter(c => c.has_bms_credentials || c.has_windows_credentials).length
+      });
       
       return customersWithTechNames;
     }, 'getCustomers');
@@ -78,80 +105,168 @@ export class AMEService {
   
   static async getCustomer(id: string): Promise<Customer | null> {
     return errorHandler.withErrorHandling(async () => {
-      const { data, error } = await supabase
-        .from('ame_customers')
+      // Try to get customer from comprehensive view first (includes credentials)
+      const { data: customerData, error } = await supabase
+        .from('customer_management_view')
         .select('*')
         .eq('id', id)
         .single();
       
-      if (error) throw errorHandler.handleSupabaseError(error, 'getCustomer');
+      if (error) {
+        // Fallback to basic table if view fails
+        logger.warn('Failed to fetch from comprehensive view, using basic table', error);
+        const { data: basicData, error: basicError } = await supabase
+          .from('ame_customers')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (basicError) throw errorHandler.handleSupabaseError(basicError, 'getCustomer');
+        
+        return {
+          ...basicData,
+          site_hazards: Array.isArray(basicData.site_hazards) 
+            ? basicData.site_hazards 
+            : basicData.site_hazards 
+              ? [basicData.site_hazards] 
+              : []
+        } as Customer;
+      }
       
-      // Transform database record to frontend Customer type
+      // Transform comprehensive view data to frontend Customer type
       const customer = {
-        ...data,
-        site_hazards: Array.isArray(data.site_hazards) 
-          ? data.site_hazards 
-          : data.site_hazards 
-            ? [data.site_hazards] 
+        ...customerData,
+        site_hazards: Array.isArray(customerData.site_hazards) 
+          ? customerData.site_hazards 
+          : customerData.site_hazards 
+            ? [customerData.site_hazards] 
             : []
       } as Customer;
+      
+      logger.debug('Retrieved customer with enhanced data', {
+        customerId: id,
+        hasCredentials: customerData.has_bms_credentials || customerData.has_windows_credentials
+      });
+      
       return customer;
     }, 'getCustomer', { additionalData: { customerId: id } });
   }
   
-  static async createCustomer(customer: Omit<Customer, 'id' | 'created_at' | 'updated_at'>): Promise<Customer> {
+  static async createCustomer(customerData: any): Promise<Customer> {
     return errorHandler.withErrorHandling(async () => {
-      // Create the base customer row via RPC (server validates/minimal fields)
-      const { data: newId, error: rpcError } = await supabase
-        .rpc('create_customer_full', { form: customer as any });
-
-      if (rpcError) throw errorHandler.handleSupabaseError(rpcError, 'createCustomer');
-
-      // Fetch the newly created customer row
-      const { data: createdRow, error } = await supabase
-        .from('ame_customers')
-        .select('*')
-        .eq('id', newId)
-        .single();
-
-      if (error) throw errorHandler.handleSupabaseError(error, 'createCustomer');
-
-      const created = createdRow as any;
-
-      // Immediately perform a follow-up update with the full payload so all fields persist
-      // (RPC may ignore non-core fields). This is a lightweight AJAX-style update.
-      try {
-        await AMEService.updateCustomer(created.id, customer as any);
-      } catch (updateError) {
-        logger.warn('Post-create field hydration failed – proceeding with base row', updateError, {
-          customerId: created.id,
-          providedFields: Object.keys(customer || {})
+      logger.info('Creating customer with enhanced credential system', {
+        hasCredentials: !!(customerData.system_credentials || customerData.access_credentials),
+        fieldsProvided: Object.keys(customerData || {})
+      });
+      
+      // Extract credentials from customer data if present
+      const credentials = {
+        system_credentials: customerData.system_credentials,
+        windows_credentials: customerData.windows_credentials,
+        service_credentials: customerData.service_credentials,
+        access_credentials: customerData.access_credentials
+      };
+      
+      // Create customer data without credentials for main table insert
+      const customerDataClean = { ...customerData };
+      delete customerDataClean.system_credentials;
+      delete customerDataClean.windows_credentials;
+      delete customerDataClean.service_credentials;
+      delete customerDataClean.access_credentials;
+      
+      // Use the enhanced create function that handles both customer data and credentials
+      const { data: createdCustomerData, error: rpcError } = await supabase
+        .rpc('create_customer_full', { 
+          customer_data: customerDataClean
         });
+
+      if (rpcError) {
+        logger.error('Enhanced customer creation failed', rpcError, {
+          customerData: Object.keys(customerDataClean),
+          hasCredentials: Object.values(credentials).some(c => c != null)
+        });
+        throw errorHandler.handleSupabaseError(rpcError, 'createCustomer');
       }
 
-      // Do NOT auto-create Drive folders here – wizard flow handles this explicitly
-      logger.info('Customer created. Skipping auto Drive folder creation (handled by UI flow).', {
-        customerId: created.id,
-        companyName: created.company_name
-      });
+      const customerId = createdCustomerData[0]?.id;
+      if (!customerId) {
+        throw new Error('Failed to get customer ID from creation response');
+      }
+      
+      // Save credentials using the new enhanced credential system
+      if (Object.values(credentials).some(c => c != null && c !== undefined)) {
+        logger.info('Saving enhanced credentials for new customer', {
+          customerId,
+          credentialTypes: Object.keys(credentials).filter(k => credentials[k] != null)
+        });
+        
+        try {
+          const { error: credError } = await supabase
+            .rpc('save_customer_credentials', {
+              p_customer_id: customerId,
+              p_bms_credentials: credentials.system_credentials || null,
+              p_windows_credentials: credentials.windows_credentials || null,
+              p_service_credentials: credentials.service_credentials || null,
+              p_access_credentials: credentials.access_credentials || null
+            });
+          
+          if (credError) {
+            logger.error('Failed to save customer credentials', credError);
+            // Don't fail the entire operation, but log the issue
+          } else {
+            logger.info('Successfully saved enhanced credentials', { customerId });
+          }
+        } catch (credError) {
+          logger.error('Credential saving error', credError, { customerId });
+        }
+      }
 
-      // Return the most recent state from the table
-      const { data: finalRow } = await supabase
-        .from('ame_customers')
+      // Fetch the complete customer record using the comprehensive view
+      const { data: finalCustomer, error: fetchError } = await supabase
+        .from('customer_management_view')
         .select('*')
-        .eq('id', created.id)
+        .eq('id', customerId)
         .single();
 
-      return (finalRow || created) as Customer;
+      if (fetchError) {
+        logger.warn('Failed to fetch from comprehensive view, falling back to basic table', fetchError);
+        // Fallback to basic table
+        const { data: basicCustomer } = await supabase
+          .from('ame_customers')
+          .select('*')
+          .eq('id', customerId)
+          .single();
+        return basicCustomer as Customer;
+      }
+
+      logger.info('Customer created successfully with enhanced schema', {
+        customerId: finalCustomer.id,
+        companyName: finalCustomer.company_name,
+        hasCredentials: finalCustomer.has_bms_credentials || finalCustomer.has_windows_credentials || finalCustomer.has_service_credentials || finalCustomer.has_remote_access_credentials
+      });
+
+      return finalCustomer as Customer;
     }, 'createCustomer');
   }
   
-  static async updateCustomer(id: string, updates: Partial<Customer>): Promise<Customer> {
+  static async updateCustomer(id: string, updates: any): Promise<Customer> {
     return errorHandler.withErrorHandling(async () => {
-      // Remove metadata fields that shouldn't be manually updated
+      // Extract credentials from updates if present
+      const credentials = {
+        system_credentials: updates.system_credentials,
+        windows_credentials: updates.windows_credentials,
+        service_credentials: updates.service_credentials,
+        access_credentials: updates.access_credentials
+      };
+      
+      // Remove metadata fields and credentials that shouldn't be in the main table update
       const cleanUpdates = { ...updates };
       delete cleanUpdates.id;
       delete cleanUpdates.created_at;
+      delete cleanUpdates.system_credentials;
+      delete cleanUpdates.windows_credentials;
+      delete cleanUpdates.service_credentials;
+      delete cleanUpdates.access_credentials;
       
       // Transform frontend Customer type to database format
       if (cleanUpdates.site_hazards) {
@@ -163,12 +278,14 @@ export class AMEService {
       // Ensure updated_at is set
       cleanUpdates.updated_at = new Date().toISOString();
       
-      logger.info('Updating customer', {
+      logger.info('Updating customer with enhanced system', {
         customerId: id,
         fieldsToUpdate: Object.keys(cleanUpdates),
+        hasCredentials: Object.values(credentials).some(c => c != null),
         updateCount: Object.keys(cleanUpdates).length
       });
       
+      // Update main customer data
       const { data, error } = await supabase
         .from('ame_customers')
         .update(cleanUpdates as any)
@@ -185,11 +302,58 @@ export class AMEService {
         throw errorHandler.handleSupabaseError(error, 'updateCustomer');
       }
       
+      // Update credentials if provided
+      if (Object.values(credentials).some(c => c != null && c !== undefined)) {
+        logger.info('Updating enhanced credentials', {
+          customerId: id,
+          credentialTypes: Object.keys(credentials).filter(k => credentials[k] != null)
+        });
+        
+        try {
+          const { error: credError } = await supabase
+            .rpc('save_customer_credentials', {
+              p_customer_id: id,
+              p_bms_credentials: credentials.system_credentials || null,
+              p_windows_credentials: credentials.windows_credentials || null,
+              p_service_credentials: credentials.service_credentials || null,
+              p_access_credentials: credentials.access_credentials || null
+            });
+          
+          if (credError) {
+            logger.error('Failed to update customer credentials', credError);
+            // Don't fail the entire operation, but log the issue
+          } else {
+            logger.info('Successfully updated enhanced credentials', { customerId: id });
+          }
+        } catch (credError) {
+          logger.error('Credential update error', credError, { customerId: id });
+        }
+      }
+      
       logger.info('Customer update completed successfully', {
         customerId: id,
         updatedFields: Object.keys(cleanUpdates).length
       });
       
+      // Return the updated customer with enhanced data
+      const { data: updatedCustomer } = await supabase
+        .from('customer_management_view')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (updatedCustomer) {
+        return {
+          ...updatedCustomer,
+          site_hazards: Array.isArray(updatedCustomer.site_hazards) 
+            ? updatedCustomer.site_hazards 
+            : updatedCustomer.site_hazards 
+              ? [updatedCustomer.site_hazards] 
+              : []
+        } as Customer;
+      }
+      
+      // Fallback to basic data if comprehensive view fails
       return {
         ...data,
         site_hazards: Array.isArray(data.site_hazards) 

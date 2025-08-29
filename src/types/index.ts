@@ -158,6 +158,39 @@ export interface Customer {
   contract_start_date?: string;
   contract_end_date?: string;
   
+  // Enhanced Schema Fields from database migration
+  equipment_locations?: any; // JSONB field for equipment tracking
+  equipment_specific_procedures?: string;
+  
+  // Mailing Address Fields
+  mailing_address?: string;
+  mailing_city?: string;
+  mailing_state?: string;
+  mailing_zip?: string;
+  service_address?: string; // Different service address if needed
+  service_address_different?: boolean;
+  
+  // Enhanced Contact Fields (matching new schema)
+  emergency_contact_role?: string;
+  security_contact_name?: string;
+  security_contact_phone?: string;
+  security_contact_email?: string;
+  technical_contact_name?: string;
+  technical_contact_phone?: string;
+  technical_contact_email?: string;
+  technical_contact_role?: string;
+  billing_contact_name?: string;
+  billing_contact_phone?: string;
+  billing_contact_email?: string;
+  billing_contact_role?: string;
+  
+  // Credential Status Fields (from customer_management_view)
+  has_bms_credentials?: boolean;
+  has_windows_credentials?: boolean;
+  has_service_credentials?: boolean;
+  has_remote_access_credentials?: boolean;
+  total_credentials?: number;
+  
   // Metadata
   drive_folder_id?: string;
   drive_folder_url?: string;
