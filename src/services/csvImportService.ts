@@ -74,39 +74,30 @@ export class CSVImportService {
       
       for (const task of tasks) {
         try {
-          // First, get the category_id from the Category field
-          const { data: categoryData, error: categoryError } = await supabase
-            .from('task_categories')
-            .select('id')
-            .eq('category_name', task.Category)
-            .single();
+          // Mock category lookup since table doesn't exist
+          const categoryData = { id: crypto.randomUUID() };
 
-          if (categoryError && categoryError.code !== 'PGRST116') {
-            errors.push(`Task ${task.Task_ID}: Category lookup error - ${categoryError.message}`);
-            continue;
-          }
 
           // Insert the main task record
           const taskData = {
             task_id: task.Task_ID,
             task_name: task.Task_Name,
-            category_id: categoryData?.id || null,
+            category: task.Category || 'General',
             navigation_path: task.Navigation_Path,
             sop_steps: task.SOP_Steps,
-            sop_template_sheet: task.SOP_Template_Sheet,
             quality_checks: task.Quality_Checks,
             prerequisites: task.Prerequisites,
             skills_required: task.Skills_Required,
             safety_notes: task.Safety_Notes,
-            duration_minutes: parseInt(task.Duration) || 30,
-            phase: 1, // Default phase
-            task_order: 1, // Default order  
-            is_mandatory: true, // Default mandatory
+            duration: parseInt(task.Duration) || 30,
+            phase: 1,
+            task_order: 1,
+            is_mandatory: true,
             version: task.Version || '1.0'
           };
 
           const { data: insertedTask, error: taskError } = await supabase
-            .from('ame_tasks_normalized')
+            .from('ame_tasks')
             .upsert(taskData, { onConflict: 'task_id' })
             .select('id')
             .single();
@@ -116,80 +107,28 @@ export class CSVImportService {
             continue;
           }
 
-          // Handle Service_Tiers relationships
+          // Handle Service_Tiers (store as array in existing field)
           if (task.Service_Tiers && insertedTask) {
             const serviceTiers = task.Service_Tiers.split(',').map(tier => tier.trim());
             
-            for (const tierCode of serviceTiers) {
-              if (tierCode) {
-                const { data: tierData, error: tierError } = await supabase
-                  .from('service_tiers')
-                  .select('id')
-                  .eq('tier_code', tierCode)
-                  .single();
-
-                if (tierData) {
-                  await supabase
-                    .from('task_service_tiers')
-                    .upsert({
-                      task_id: insertedTask.id,
-                      service_tier_id: tierData.id,
-                      is_required: true
-                    }, { onConflict: 'task_id,service_tier_id' });
-                }
-              }
-            }
+            await supabase
+              .from('ame_tasks')
+              .update({
+                service_tiers: serviceTiers
+              })
+              .eq('id', insertedTask.id);
           }
 
-          // Handle Tools_Required relationships
+          // Handle Tools_Required (store as array in existing field)
           if (task.Tools_Required && insertedTask) {
             const tools = task.Tools_Required.split(',').map(tool => tool.trim());
             
-            for (const toolName of tools) {
-              if (toolName) {
-                // First check if tool exists in ame_tools_normalized
-                const { data: toolData, error: toolError } = await supabase
-                  .from('ame_tools_normalized')
-                  .select('id')
-                  .eq('tool_name', toolName)
-                  .single();
-
-                if (toolData) {
-                  await supabase
-                    .from('task_tools')
-                    .upsert({
-                      task_id: insertedTask.id,
-                      tool_id: toolData.id,
-                      is_required: true,
-                      quantity: 1
-                    }, { onConflict: 'task_id,tool_id' });
-                } else {
-                  // Create the tool if it doesn't exist
-                  const { data: newTool, error: newToolError } = await supabase
-                    .from('ame_tools_normalized')
-                    .upsert({
-                      tool_id: `TOOL_${toolName.replace(/[^A-Z0-9]/gi, '_').toUpperCase()}`,
-                      tool_name: toolName,
-                      description: `Tool imported from task ${task.Task_ID}`,
-                      safety_category: 'standard',
-                      status: 'active'
-                    }, { onConflict: 'tool_id' })
-                    .select('id')
-                    .single();
-
-                  if (newTool) {
-                    await supabase
-                      .from('task_tools')
-                      .upsert({
-                        task_id: insertedTask.id,
-                        tool_id: newTool.id,
-                        is_required: true,
-                        quantity: 1
-                      }, { onConflict: 'task_id,tool_id' });
-                  }
-                }
-              }
-            }
+            await supabase
+              .from('ame_tasks')
+              .update({
+                tools_required: tools
+              })
+              .eq('id', insertedTask.id);
           }
 
           success++;
@@ -245,7 +184,7 @@ export class CSVImportService {
           };
 
           const { error } = await supabase
-            .from('ame_tools_normalized')
+            .from('ame_tools')
             .upsert(toolData, { onConflict: 'tool_id' });
           
           if (error) {
@@ -397,21 +336,17 @@ export class CSVImportService {
           
           const sopData = {
             sop_id: sop.SOP_ID || sop.sop_id || sop.ID,
-            title: sop.SOP_Name || sop.Title || sop.title || sop.Name,
+            sop_name: sop.SOP_Name || sop.Title || sop.title || sop.Name,
             category: sop.Category || sop.category || 'General',
-            goal: sop.Goal || sop.goal || sop.Description || sop.description,
-            rich_content: stepsHtml, // Store original HTML
-            original_steps_html: stepsHtml,
-            steps: this.parseRichSteps(stepsHtml), // Parse into structured format
-            best_practices: sop.Best_Practices || sop.best_practices || sop.Tips,
-            tools_required: this.parseToolIds(toolsText), // Parse tool IDs
-            hyperlinks: this.parseNumberedHyperlinks(hyperlinksText), // Parse numbered references
+            description: sop.Goal || sop.goal || sop.Description || sop.description,
+            procedure_steps: this.parseRichSteps(stepsHtml),
+            tools_required: this.parseToolIds(toolsText),
             version: sop.Version || sop.version || '1.0',
-            estimated_duration_minutes: parseInt(sop.Duration || sop.estimated_duration_minutes || sop.Time || '30') || 30
+            estimated_duration: parseInt(sop.Duration || sop.estimated_duration_minutes || sop.Time || '30') || 30
           };
 
           const { error } = await supabase
-            .from('ame_sops_normalized')
+            .from('ame_sops')
             .upsert(sopData, { onConflict: 'sop_id' });
           
           if (error) {
@@ -465,22 +400,18 @@ export class CSVImportService {
 
           const sopData = {
             sop_id: String(record.SOP_ID || record.sop_id || ''),
-            title: String(record.Title || record.title || ''),
+            sop_name: String(record.Title || record.title || ''),
             category: String(record.Category || record.category || 'General'),
-            goal: String(record.Goal || record.goal || ''),
-            rich_content: String(record.Steps || record.steps || ''),
-            original_steps_html: String(record.Steps || record.steps || ''),
-            steps: richSteps,
-            best_practices: String(record.Best_Practices || record.best_practices || ''),
-            tools_required: toolsRequired,
-            hyperlinks: numberedHyperlinks,
-            estimated_duration_minutes: parseInt(record.EstimatedDuration || record.estimated_duration || '30'),
+            description: String(record.Goal || record.goal || ''),
+            procedure_steps: richSteps,
+            tools_required: this.parseToolIds(record.Tools || record.tools || ''),
             version: '1.0',
+            estimated_duration: parseInt(record.EstimatedDuration || record.estimated_duration || '30') || 30,
             last_updated: new Date().toISOString()
           };
 
           const { error } = await supabase
-            .from('ame_sops_normalized')
+            .from('ame_sops')
             .upsert(sopData, { 
               onConflict: 'sop_id',
               ignoreDuplicates: false 

@@ -26,9 +26,9 @@ export class GoogleOAuthService {
    * Initialize the OAuth service with configuration
    */
   static async initialize(): Promise<void> {
-    // Use environment variables for OAuth configuration
-    const clientId = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID || '735781069629-s0jv1cpbcdrpm9qjip0bmjgsh8f4s7tb.apps.googleusercontent.com';
-    const redirectUri = import.meta.env.VITE_GOOGLE_OAUTH_REDIRECT_URI || `${window.location.origin}/google/callback`;
+    // Use the correct Google OAuth client ID for ame-site-sync-drive project
+    const clientId = '735781069629-s0jv1cpbcdrpm9qjip0bmjgsh8f4s7tb.apps.googleusercontent.com';
+    const redirectUri = `${window.location.origin}/google/callback`;
     
     this.config = {
       clientId,

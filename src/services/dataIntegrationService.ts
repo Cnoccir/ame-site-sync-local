@@ -1,5 +1,5 @@
 import Papa from 'papaparse';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 // Clean data interfaces
 interface CleanCustomerData {
@@ -124,20 +124,18 @@ export class DataIntegrationService {
       for (const customer of enhancedData) {
         // Insert customer
         const { data: customerRecord, error: customerError } = await supabase
-          .from('customers')
+          .from('ame_customers')
           .insert({
-            legacy_customer_id: customer.customer_id,
+            customer_id: `AME-${customer.customer_id.toString().padStart(6, '0')}`,
             company_name: customer.company_name,
             site_nickname: customer.site_nickname,
-            site_number: customer.site_number,
-            mailing_address: customer.mailing_address,
-            mailing_city: customer.mailing_city,
-            mailing_state: customer.mailing_state,
-            mailing_zip: customer.mailing_zip,
-            primary_contact_email: customer.primary_contact_email,
+            site_name: customer.company_name,
+            site_address: customer.mailing_address,
+            primary_contact: 'Main Contact',
+            contact_phone: '000-000-0000',
+            contact_email: customer.primary_contact_email,
             service_tier: customer.service_tier,
-            has_active_contracts: customer.has_active_contracts,
-            total_contract_value: customer.total_contract_value
+            system_type: 'BAS'
           })
           .select()
           .single();
@@ -147,25 +145,15 @@ export class DataIntegrationService {
           continue;
         }
         
-        // Insert contracts
+        // Log contracts (no contract table available)
         for (const contract of customer.contracts) {
-          const { error: contractError } = await supabase
-            .from('customer_contracts')
-            .insert({
-              customer_id: customerRecord.id,
-              contract_name: contract.contract_name,
-              contract_number: contract.contract_number,
-              contract_value: contract.value_numeric,
-              contract_status: contract.status,
-              start_date: contract.start_date,
-              end_date: contract.end_date,
-              contract_email: contract.email,
-              contract_notes: contract.notes
-            });
-            
-          if (contractError) {
-            console.error('Error inserting contract:', contract.contract_name, contractError);
-          }
+          console.log('Contract data:', {
+            customer_id: customerRecord.id,
+            contract_name: contract.contract_name,
+            contract_number: contract.contract_number,
+            contract_value: contract.value_numeric,
+            contract_status: contract.status
+          });
         }
       }
       

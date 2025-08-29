@@ -116,7 +116,7 @@ export class AMEService {
 
       if (error) throw errorHandler.handleSupabaseError(error, 'createCustomer');
 
-      const created = createdRow as Customer;
+      const created = createdRow as any;
 
       // Immediately perform a follow-up update with the full payload so all fields persist
       // (RPC may ignore non-core fields). This is a lightweight AJAX-style update.
@@ -156,8 +156,8 @@ export class AMEService {
       // Transform frontend Customer type to database format
       if (cleanUpdates.site_hazards) {
         cleanUpdates.site_hazards = Array.isArray(cleanUpdates.site_hazards) 
-          ? cleanUpdates.site_hazards.join(', ') 
-          : cleanUpdates.site_hazards;
+          ? cleanUpdates.site_hazards 
+          : [cleanUpdates.site_hazards];
       }
       
       // Ensure updated_at is set
