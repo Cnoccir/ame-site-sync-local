@@ -14,6 +14,27 @@ import { SiteIntelligenceService } from './siteIntelligenceService';
 export class AMEService {
   
   // Customer operations
+  static async getAllCustomers(): Promise<Customer[]> {
+    return errorHandler.withErrorHandling(async () => {
+      const { data, error } = await supabase
+        .from('ame_customers')
+        .select('*')
+        .order('company_name');
+      
+      if (error) throw errorHandler.handleSupabaseError(error, 'getAllCustomers');
+      
+      // Transform database records to frontend Customer type
+      return (data || []).map(record => ({
+        ...record,
+        site_hazards: Array.isArray(record.site_hazards) 
+          ? record.site_hazards 
+          : record.site_hazards 
+            ? [record.site_hazards] 
+            : []
+      })) as Customer[];
+    }, 'getAllCustomers');
+  }
+
   static async getCustomers(): Promise<Customer[]> {
     return errorHandler.withErrorHandling(async () => {
       const { data, error } = await supabase
@@ -23,7 +44,15 @@ export class AMEService {
       
       if (error) throw errorHandler.handleSupabaseError(error, 'getCustomers');
       
-      const customers = (data || []) as Customer[];
+      // Transform database records to frontend Customer type with hazards array conversion
+      const customers = (data || []).map(record => ({
+        ...record,
+        site_hazards: Array.isArray(record.site_hazards) 
+          ? record.site_hazards 
+          : record.site_hazards 
+            ? [record.site_hazards] 
+            : []
+      })) as Customer[];
       
       // Populate technician names for customers with assigned technicians
       const customersWithTechNames = await Promise.all(
@@ -56,12 +85,17 @@ export class AMEService {
         .single();
       
       if (error) throw errorHandler.handleSupabaseError(error, 'getCustomer');
-      return {
+      
+      // Transform database record to frontend Customer type
+      const customer = {
         ...data,
-        site_hazards: typeof data.site_hazards === 'string' ? 
-          (data.site_hazards ? data.site_hazards.split(',').map(s => s.trim()) : []) : 
-          (data.site_hazards || [])
+        site_hazards: Array.isArray(data.site_hazards) 
+          ? data.site_hazards 
+          : data.site_hazards 
+            ? [data.site_hazards] 
+            : []
       } as Customer;
+      return customer;
     }, 'getCustomer', { additionalData: { customerId: id } });
   }
   
@@ -119,6 +153,13 @@ export class AMEService {
       delete cleanUpdates.id;
       delete cleanUpdates.created_at;
       
+      // Transform frontend Customer type to database format
+      if (cleanUpdates.site_hazards) {
+        cleanUpdates.site_hazards = Array.isArray(cleanUpdates.site_hazards) 
+          ? cleanUpdates.site_hazards.join(', ') 
+          : cleanUpdates.site_hazards;
+      }
+      
       // Ensure updated_at is set
       cleanUpdates.updated_at = new Date().toISOString();
       
@@ -130,7 +171,7 @@ export class AMEService {
       
       const { data, error } = await supabase
         .from('ame_customers')
-        .update(cleanUpdates)
+        .update(cleanUpdates as any)
         .eq('id', id)
         .select()
         .single();

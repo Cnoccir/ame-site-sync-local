@@ -14,7 +14,7 @@ import {
   Calendar,
   Phone
 } from 'lucide-react';
-import { AccessIntelligenceService, type AccessRecommendations } from '../../services/accessIntelligenceService';
+import { AccessIntelligenceService, type AccessRecommendation } from '../../services/accessIntelligenceService';
 import { ContactVerificationService } from '../../services/contactVerificationService';
 
 interface AccessIntelligenceCardProps {
@@ -23,7 +23,7 @@ interface AccessIntelligenceCardProps {
 }
 
 export function AccessIntelligenceCard({ customerId, onAccessUpdate }: AccessIntelligenceCardProps) {
-  const [recommendations, setRecommendations] = useState<AccessRecommendations | null>(null);
+  const [recommendations, setRecommendations] = useState<AccessRecommendation | null>(null);
   const [contactRecommendations, setContactRecommendations] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 

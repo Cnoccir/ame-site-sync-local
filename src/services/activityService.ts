@@ -23,15 +23,15 @@ export class ActivityService {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Use ame_audit_logs instead of non-existent table
       const { error } = await supabase
-        .from('ame_activity_logs')
+        .from('ame_audit_logs')
         .insert({
           user_id: user.id,
-          activity_type: activityType,
-          description,
-          entity_id: entityId,
+          action: activityType,
           entity_type: entityType,
-          metadata: metadata || {}
+          entity_id: entityId,
+          changes: metadata || {}
         });
 
       if (error) {
@@ -47,10 +47,10 @@ export class ActivityService {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
 
+      // Use ame_audit_logs instead of non-existent table
       const { data, error } = await supabase
-        .from('ame_activity_logs')
+        .from('ame_audit_logs')
         .select('*')
-        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -59,7 +59,17 @@ export class ActivityService {
         return [];
       }
 
-      return data || [];
+      // Transform audit logs to activity logs format
+      return (data || []).map(log => ({
+        id: log.id,
+        user_id: log.user_id || 'system',
+        activity_type: log.action,
+        description: `${log.action} on ${log.entity_type || 'unknown'}`,
+        created_at: log.created_at,
+        entity_id: log.entity_id,
+        entity_type: log.entity_type,
+        metadata: log.changes
+      }));
     } catch (error) {
       console.error('Activity fetch error:', error);
       return [];

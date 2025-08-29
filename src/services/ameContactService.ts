@@ -124,11 +124,10 @@ export class AMEContactService {
 
       console.log('ame_employees table not found or empty, falling back to profiles');
       
-      // Fallback to profiles table
+      // Fallback to profiles table without role column
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, full_name, role, email')
-        .in('role', ['admin', 'manager'])
+        .select('id, full_name, email')
         .order('full_name', { ascending: true });
 
       if (profilesError) {
@@ -139,7 +138,7 @@ export class AMEContactService {
       return (profilesData || []).map(profile => ({
         id: profile.id,
         name: profile.full_name || 'Unknown',
-        role: profile.role === 'admin' ? 'Administrator' : 'Manager',
+        role: 'Staff', // Default role since profiles doesn't have role
         phone: '',
         email: profile.email
       }));
