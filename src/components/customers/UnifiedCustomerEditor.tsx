@@ -174,7 +174,7 @@ export const UnifiedCustomerEditor: React.FC<UnifiedCustomerEditorProps> = ({
       
       changes.forEach(change => {
         const fieldKey = change.field as keyof Customer;
-        changedFields[fieldKey] = modifiedCustomer[fieldKey];
+        (changedFields as any)[fieldKey] = modifiedCustomer[fieldKey];
       });
       
       // Always include updated_at

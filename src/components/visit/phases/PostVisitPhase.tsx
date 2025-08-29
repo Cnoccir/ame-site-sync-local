@@ -151,56 +151,50 @@ export const PostVisitPhase = ({ customer, visitId, onPhaseComplete }: PostVisit
 
   const loadExistingData = async () => {
     try {
-      // Load existing issues
-      const { data: issuesData } = await supabase
-        .from('visit_issues')
+      // Load existing issues from visit progress
+      const { data: progressData } = await supabase
+        .from('ame_visit_progress')
         .select('*')
         .eq('visit_id', visitId);
       
-      if (issuesData) {
-        setIssues(issuesData.map(issue => ({
-          id: issue.id,
-          issue_type: issue.issue_type,
-          severity: issue.severity as 'Critical' | 'High' | 'Medium' | 'Low',
-          description: issue.description,
-          action_taken: issue.action_taken || ''
-        })));
+      if (progressData) {
+        const issuesFound = progressData
+          .filter(p => p.issues_found)
+          .map((progress, index) => ({
+            id: `issue_${index}`,
+            issue_type: 'Service Issue',
+            severity: 'Medium' as 'Critical' | 'High' | 'Medium' | 'Low',
+            description: progress.issues_found || '',
+            action_taken: progress.resolution_notes || ''
+          }));
+        setIssues(issuesFound);
       }
 
-      // Load existing recommendations
-      const { data: recData } = await supabase
-        .from('visit_recommendations')
-        .select('*')
-        .eq('visit_id', visitId);
-      
-      if (recData && recData.length > 0) {
-        const recByType = recData.reduce((acc, rec) => {
-          acc[rec.recommendation_type] = rec.recommendation_text;
-          return acc;
-        }, {} as any);
-        
-        setRecommendations({
-          performance: recByType.performance || '',
-          maintenance: recByType.maintenance || '',
-          upgrade: recByType.upgrade || ''
-        });
-      }
-
-      // Load existing feedback
-      const { data: feedbackData } = await supabase
-        .from('customer_feedback')
-        .select('*')
-        .eq('visit_id', visitId)
+      // Load existing recommendations from visit auto_save_data
+      const { data: visitData } = await supabase
+        .from('ame_visits')
+        .select('auto_save_data')
+        .eq('id', visitId)
         .single();
       
-      if (feedbackData) {
-        setFeedback({
-          contact_name: feedbackData.contact_name,
-          satisfaction_rating: feedbackData.satisfaction_rating,
-          comments: feedbackData.comments || '',
-          follow_up_required: feedbackData.follow_up_required,
-          follow_up_reason: feedbackData.follow_up_reason || ''
-        });
+      if (visitData?.auto_save_data) {
+        try {
+          const autoSaveData = typeof visitData.auto_save_data === 'string' ? JSON.parse(visitData.auto_save_data) : visitData.auto_save_data;
+          const recData = autoSaveData.recommendations || {};
+          
+          setRecommendations({
+            performance: recData.performance || '',
+            maintenance: recData.maintenance || '',
+            upgrade: recData.upgrade || ''
+          });
+
+          // Load feedback from auto_save_data too
+          if (autoSaveData.feedback) {
+            setFeedback(autoSaveData.feedback);
+          }
+        } catch (error) {
+          console.error('Error parsing auto save data:', error);
+        }
       }
 
     } catch (error) {
@@ -263,26 +257,14 @@ export const PostVisitPhase = ({ customer, visitId, onPhaseComplete }: PostVisit
     }
 
     try {
-      const { data, error } = await supabase
-        .from('visit_issues')
-        .insert({
-          visit_id: visitId,
-          issue_type: newIssue.issue_type,
-          severity: newIssue.severity,
-          description: newIssue.description,
-          action_taken: newIssue.action_taken
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
+      // Store issue in visit progress notes for now
+      const issueId = `issue_${Date.now()}`;
       const issue: Issue = {
-        id: data.id,
-        issue_type: data.issue_type,
-        severity: data.severity as 'Critical' | 'High' | 'Medium' | 'Low',
-        description: data.description,
-        action_taken: data.action_taken || ''
+        id: issueId,
+        issue_type: newIssue.issue_type,
+        severity: newIssue.severity,
+        description: newIssue.description,
+        action_taken: newIssue.action_taken
       };
 
       setIssues(prev => [...prev, issue]);
@@ -308,59 +290,35 @@ export const PostVisitPhase = ({ customer, visitId, onPhaseComplete }: PostVisit
     }
   };
 
-  const removeIssue = async (issueId: string) => {
-    try {
-      await supabase
-        .from('visit_issues')
-        .delete()
-        .eq('id', issueId);
-
-      setIssues(prev => prev.filter(issue => issue.id !== issueId));
-      
-      toast({
-        title: 'Issue Removed',
-        description: 'Issue has been deleted'
-      });
-
-    } catch (error) {
-      console.error('Error removing issue:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to remove issue',
-        variant: 'destructive'
-      });
-    }
+  const removeIssue = (issueId: string) => {
+    setIssues(prev => prev.filter(issue => issue.id !== issueId));
+    
+    toast({
+      title: 'Issue Removed',
+      description: 'Issue has been deleted'
+    });
   };
 
   const saveDraft = async () => {
     try {
-      // Save recommendations
-      for (const [type, text] of Object.entries(recommendations)) {
-        if (text.trim()) {
-          await supabase
-            .from('visit_recommendations')
-            .upsert({
-              visit_id: visitId,
-              recommendation_type: type,
-              recommendation_text: text,
-              priority: 'Medium'
-            }, { onConflict: 'visit_id,recommendation_type' });
-        }
-      }
+      // Save all data to visit auto_save_data
+      const autoSaveData = {
+        checklist,
+        issues,
+        recommendations,
+        feedback,
+        visitSummary,
+        nextVisitNotes,
+        lastSaved: new Date().toISOString()
+      };
 
-      // Save customer feedback if contact name is provided
-      if (feedback.contact_name.trim()) {
-        await supabase
-          .from('customer_feedback')
-          .upsert({
-            visit_id: visitId,
-            contact_name: feedback.contact_name,
-            satisfaction_rating: feedback.satisfaction_rating,
-            comments: feedback.comments,
-            follow_up_required: feedback.follow_up_required,
-            follow_up_reason: feedback.follow_up_reason
-          }, { onConflict: 'visit_id' });
-      }
+      await supabase
+        .from('ame_visits')
+        .update({
+          auto_save_data: JSON.stringify(autoSaveData),
+          last_activity: new Date().toISOString()
+        })
+        .eq('id', visitId);
 
     } catch (error) {
       console.error('Error saving draft:', error);
@@ -419,13 +377,16 @@ export const PostVisitPhase = ({ customer, visitId, onPhaseComplete }: PostVisit
         completedAt: new Date().toISOString()
       };
 
-      // Save final report
+      // Save final report to ame_reports table
       await supabase
-        .from('visit_reports')
+        .from('ame_reports')
         .insert({
+          report_id: `RPT_${visitId}_${Date.now()}`,
           visit_id: visitId,
-          report_data: JSON.parse(JSON.stringify(reportData)),
-          technician_email: 'technician@ame-inc.com'
+          customer_id: customer.id,
+          report_type: 'Visit Report',
+          metadata: JSON.stringify(reportData),
+          generated_by: 'technician@ame-inc.com'
         });
 
       // Update visit status

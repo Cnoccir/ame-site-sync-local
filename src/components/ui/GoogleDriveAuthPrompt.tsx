@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from './button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './card';
-import { GoogleDriveIcon, ShieldCheck, Lock, Zap } from 'lucide-react';
+import { FolderOpen, ShieldCheck, Lock, Zap } from 'lucide-react';
 import { EnhancedGoogleDriveService } from '@/services/enhancedGoogleDriveService';
 
 interface GoogleDriveAuthPromptProps {
@@ -36,7 +36,7 @@ export const GoogleDriveAuthPrompt: React.FC<GoogleDriveAuthPromptProps> = ({
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="text-center">
         <div className="mx-auto mb-4 p-3 bg-blue-50 rounded-full w-16 h-16 flex items-center justify-center">
-          <GoogleDriveIcon className="w-8 h-8 text-blue-600" />
+          <FolderOpen className="w-8 h-8 text-blue-600" />
         </div>
         
         <CardTitle className="text-xl font-semibold text-gray-900">
@@ -77,7 +77,7 @@ export const GoogleDriveAuthPrompt: React.FC<GoogleDriveAuthPromptProps> = ({
             onClick={handleAuthenticate}
             className="flex-1"
           >
-            <GoogleDriveIcon className="w-4 h-4 mr-2" />
+            <FolderOpen className="w-4 h-4 mr-2" />
             Authenticate with Google Drive
           </Button>
           

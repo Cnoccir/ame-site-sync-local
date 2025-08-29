@@ -18,8 +18,10 @@ export interface Customer {
   primary_bas_platform?: string;
   
   // Enhanced Contact Information
-  contact_name?: string;
-  contact_role?: string;
+  primary_technician_phone?: string;
+  primary_technician_email?: string;
+  secondary_technician_phone?: string;
+  secondary_technician_email?: string;
   
   // Enhanced Access Information
   access_method?: string;

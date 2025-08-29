@@ -531,9 +531,8 @@ export const EnhancedCustomerDetail: React.FC<EnhancedCustomerDetailProps> = ({
 
             <TabsContent value="credentials" className="mt-4">
               <SimpleAccessCredentials 
-                credentials={formData.access_credentials || []}
+                initialData={formData.access_credentials || {}}
                 onChange={(creds) => updateFormData('access_credentials', creds)}
-                disabled={!isEditing}
               />
             </TabsContent>
 
@@ -576,8 +575,8 @@ export const EnhancedCustomerDetail: React.FC<EnhancedCustomerDetailProps> = ({
                             site_address: customer.site_address,
                             customer_id: customer.id,
                             service_tier: customer.service_tier,
-                            contact_name: customer.contact_name,
-                            phone: customer.phone
+                             contact_name: customer.primary_contact,
+                             phone: customer.contact_phone
                           }}
                           onFolderSelected={(folderId, folderUrl) => {
                             updateFormData('drive_folder_id', folderId);
@@ -600,8 +599,8 @@ export const EnhancedCustomerDetail: React.FC<EnhancedCustomerDetailProps> = ({
                             site_address: customer.site_address,
                             customer_id: customer.id,
                             service_tier: customer.service_tier,
-                            contact_name: customer.contact_name,
-                            phone: customer.phone
+                             contact_name: customer.primary_contact,
+                             phone: customer.contact_phone
                           }}
                           onFolderSelected={(folderId, folderUrl) => {
                             updateFormData('drive_folder_id', folderId);

@@ -582,17 +582,19 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
         currentTask: 2 
       }));
 
-      // Store analysis results in network_inventory table
+      // Store analysis results in visit notes for now
       const { error } = await supabase
-        .from('network_inventory')
-        .upsert({
-          visit_id: visitId,
-          analysis_data: analysisResults,
-          total_stations: analysisResults.totalStations,
-          file_names: step5Data.uploadedFiles.map(f => f.name),
-          protocols_found: analysisResults.protocolsFound,
-          analysis_completed_at: new Date().toISOString()
-        });
+        .from('ame_visits')
+        .update({
+          notes: JSON.stringify({
+            analysis_data: analysisResults,
+            total_stations: analysisResults.totalStations,
+            file_names: step5Data.uploadedFiles.map(f => f.name),
+            protocols_found: analysisResults.protocolsFound,
+            analysis_completed_at: new Date().toISOString()
+          })
+        })
+        .eq('id', visitId);
 
       if (error) {
         console.error('Database save error:', error);

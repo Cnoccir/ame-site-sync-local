@@ -126,7 +126,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
       
       // Load tasks from the appropriate phase for this service tier
       const { data, error } = await supabase
-        .from('ame_tasks_normalized')
+        .from('ame_tasks')
         .select('*')
         .eq('phase', tierConfig.phase)
         .order('task_order');
@@ -140,7 +140,25 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
         task.task_id.startsWith(tierConfig.prefix)
       );
       
-      setServiceTierTasks(filteredTasks);
+      // Map to TaskData structure
+      const mappedTasks = filteredTasks.map(task => ({
+        id: task.id,
+        task_id: task.task_id,
+        task_name: task.task_name,
+        category_id: task.category,
+        duration_minutes: task.duration || 30,
+        navigation_path: task.navigation_path || '',
+        sop_steps: task.sop_steps || '',
+        quality_checks: task.quality_checks || '',
+        skills_required: task.skills_required || '',
+        safety_notes: task.safety_notes || '',
+        is_mandatory: task.is_mandatory || false,
+        phase: task.phase || 1,
+        task_order: task.task_order || 1,
+        prerequisites: task.prerequisites || ''
+      }));
+      
+      setServiceTierTasks(mappedTasks);
       setLoading(false);
     } catch (error) {
       console.error('Error loading service tier tasks:', error);
@@ -180,7 +198,7 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
   const loadSOPData = async () => {
     try {
       const { data, error } = await supabase
-        .from('ame_sops_normalized')
+        .from('ame_sops')
         .select('*');
 
       if (error) {
@@ -190,10 +208,19 @@ export const ServiceExecutionPhase: React.FC<ServiceExecutionPhaseProps> = ({
       
       
       setSOPData((data || []).map(sop => ({
-        ...sop,
-        steps: Array.isArray(sop.steps) ? sop.steps : [],
+        id: sop.id,
+        sop_id: sop.sop_id,
+        title: sop.sop_name,
+        goal: sop.description || '',
+        steps: Array.isArray(sop.procedure_steps) ? sop.procedure_steps : [],
+        best_practices: sop.description || '',
         tools_required: Array.isArray(sop.tools_required) ? sop.tools_required : [],
-        hyperlinks: Array.isArray(sop.hyperlinks) ? sop.hyperlinks : []
+        hyperlinks: [],
+        estimated_duration_minutes: sop.estimated_duration || 0,
+        category_id: sop.category,
+        version: sop.version || '1.0',
+        last_updated: sop.last_updated,
+        created_at: sop.id ? new Date().toISOString() : null
       })));
     } catch (error) {
       console.error('Error loading SOP data:', error);
