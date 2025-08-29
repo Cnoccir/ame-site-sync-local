@@ -56,7 +56,12 @@ export class AMEService {
         .single();
       
       if (error) throw errorHandler.handleSupabaseError(error, 'getCustomer');
-      return data as Customer;
+      return {
+        ...data,
+        site_hazards: typeof data.site_hazards === 'string' ? 
+          (data.site_hazards ? data.site_hazards.split(',').map(s => s.trim()) : []) : 
+          (data.site_hazards || [])
+      } as Customer;
     }, 'getCustomer', { additionalData: { customerId: id } });
   }
   
@@ -144,7 +149,12 @@ export class AMEService {
         updatedFields: Object.keys(cleanUpdates).length
       });
       
-      return data as Customer;
+      return {
+        ...data,
+        site_hazards: typeof data.site_hazards === 'string' ? 
+          (data.site_hazards ? data.site_hazards.split(',').map(s => s.trim()) : []) : 
+          (data.site_hazards || [])
+      } as Customer;
     }, 'updateCustomer', { additionalData: { customerId: id, updateFields: Object.keys(updates) } });
   }
   

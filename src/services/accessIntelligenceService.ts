@@ -1,512 +1,300 @@
 import { supabase } from '@/integrations/supabase/client';
 
-interface AccessOutcome {
-  arrivalTime: Date;
-  successful: boolean;
-  issues?: string;
-  contactMet?: string;
-  accessMethod?: string;
-  timeToAccess?: number; // minutes from arrival to gaining access
+export interface AccessRecommendation {
+  type: 'timing' | 'contact' | 'approach' | 'general';
+  title: string;
+  description: string;
+  priority: 'high' | 'medium' | 'low';
+  confidence: number; // 0-100
 }
 
-interface AccessRecommendations {
-  recommendedArrivalTime: string;
-  successRate: number;
+export interface AccessPattern {
+  preferredTimes: string[];
+  contactPreferences: string[];
   commonIssues: string[];
-  backupContacts: string[];
-  tips: string[];
-  bestAccessMethod?: string;
-}
-
-interface AccessPattern {
-  timeOfDay: {
-    early: { count: number; successful: number }; // 6-9 AM
-    morning: { count: number; successful: number }; // 9-12 PM
-    afternoon: { count: number; successful: number }; // 12-3 PM
-    late: { count: number; successful: number }; // 3-6 PM
-  };
-  dayOfWeek: Record<string, { count: number; successful: number }>;
-  contactMethods: Record<string, { count: number; successful: number }>;
-  issues: Record<string, number>;
+  successFactors: string[];
+  averageAccessTime: number;
+  successRate: number;
 }
 
 export class AccessIntelligenceService {
-  // Learn from visit outcomes
-  static async recordAccessOutcome(
+  static async logAccessAttempt(
     customerId: string,
     arrivalTime: Date,
-    successful: boolean,
-    issues?: string,
-    contactMet?: string,
-    accessMethod?: string
+    successful: boolean = true,
+    issues: string[] = [],
+    contactMet: string = '',
+    contactName: string = '',
+    preferredTimes: string[] = []
   ): Promise<void> {
     try {
-      // Calculate time to access (for successful attempts)
       const timeToAccess = successful ? Math.floor(Math.random() * 15) + 5 : 0; // Mock: 5-20 minutes
       
-      // Log the access attempt
-      const { error: logError } = await supabase
-        .from('access_outcome_log')
-        .insert({
-          customer_id: customerId,
-          arrival_time: arrivalTime.toISOString(),
-          successful,
-          issues,
-          contact_met: contactMet,
-          access_method: accessMethod,
-          time_to_access: timeToAccess,
-          created_at: new Date().toISOString()
-        });
+      // Store the access attempt in visit auto_save_data
+      const { data: activeVisit } = await supabase
+        .from('ame_visits')
+        .select('id, auto_save_data')
+        .eq('customer_id', customerId)
+        .eq('is_active', true)
+        .maybeSingle();
 
-      if (logError) {
-        console.error('Error logging access outcome:', logError);
-        // Continue with pattern update even if logging fails
+      if (activeVisit) {
+        const existingData = activeVisit.auto_save_data ? 
+          (typeof activeVisit.auto_save_data === 'string' ? 
+            JSON.parse(activeVisit.auto_save_data) : activeVisit.auto_save_data) : {};
+
+        const updatedData = {
+          ...existingData,
+          access_log: {
+            customer_id: customerId,
+            arrival_time: arrivalTime.toISOString(),
+            successful,
+            issues,
+            contact_met: contactMet,
+            time_to_access: timeToAccess,
+            contact_name: contactName,
+            preferred_times: preferredTimes,
+            timestamp: new Date().toISOString()
+          }
+        };
+
+        await supabase
+          .from('ame_visits')
+          .update({
+            auto_save_data: JSON.stringify(updatedData),
+            last_activity: new Date().toISOString()
+          })
+          .eq('id', activeVisit.id);
       }
 
-      // Update access patterns
-      await this.updateAccessPatterns(customerId, {
-        arrivalTime,
-        successful,
-        issues,
-        contactMet,
-        accessMethod,
-        timeToAccess
-      });
-
     } catch (error) {
-      console.error('Error recording access outcome:', error);
-      throw error;
+      console.error('Error logging access attempt:', error);
     }
   }
 
-  // Get access recommendations for site
-  static async getAccessRecommendations(customerId: string): Promise<AccessRecommendations> {
+  static async getAccessRecommendations(customerId: string): Promise<AccessRecommendation[]> {
+    return this.generateAccessRecommendations(customerId);
+  }
+
+  static async generateAccessRecommendations(customerId: string): Promise<AccessRecommendation[]> {
     try {
-      // Get historical access data
-      const { data: accessHistory, error: historyError } = await supabase
-        .from('access_outcome_log')
-        .select('*')
+      // Get customer basic access info
+      const { data: customer } = await supabase
+        .from('ame_customers')
+        .select('access_procedure, access_hours, building_access_details, primary_contact, contact_phone')
+        .eq('id', customerId)
+        .maybeSingle();
+
+      // Get visit history for patterns
+      const { data: visitData } = await supabase
+        .from('ame_visits')
+        .select('auto_save_data, created_at')
         .eq('customer_id', customerId)
-        .order('arrival_time', { ascending: false })
-        .limit(20); // Last 20 attempts
+        .order('created_at', { ascending: false })
+        .limit(5);
 
-      if (historyError) {
-        console.error('Error fetching access history:', historyError);
-        return this.getDefaultRecommendations();
-      }
-
-      if (!accessHistory || accessHistory.length === 0) {
-        return this.getDefaultRecommendations();
-      }
-
-      // Analyze patterns
-      const patterns = this.analyzeAccessPatterns(accessHistory);
+      const accessHistory = [];
       
-      // Calculate overall success rate
-      const successfulAttempts = accessHistory.filter(h => h.successful).length;
-      const successRate = Math.round((successfulAttempts / accessHistory.length) * 100);
+      if (visitData) {
+        for (const visit of visitData) {
+          try {
+            const autoSaveData = typeof visit.auto_save_data === 'string' ? 
+              JSON.parse(visit.auto_save_data) : visit.auto_save_data;
+            if (autoSaveData?.access_log) {
+              accessHistory.push({
+                successful: autoSaveData.access_log.successful || true,
+                time_to_access: autoSaveData.access_log.time_to_access || 10,
+                contact_met: autoSaveData.access_log.contact_met || '',
+                preferred_times: autoSaveData.access_log.preferred_times || []
+              });
+            }
+          } catch (error) {
+            // Ignore parse errors
+          }
+        }
+      }
 
-      // Find best arrival time
-      const recommendedTime = this.findBestArrivalTime(patterns);
+      if (accessHistory.length === 0) {
+        return this.getDefaultRecommendations();
+      }
 
-      // Extract common issues
-      const commonIssues = this.extractCommonIssues(accessHistory);
+      // Calculate success rate and average access time
+      const successfulAttempts = accessHistory.filter(attempt => attempt.successful).length;
+      const successRate = successfulAttempts / accessHistory.length;
+      const avgAccessTime = accessHistory
+        .filter(attempt => attempt.successful)
+        .reduce((sum, attempt) => sum + (attempt.time_to_access || 10), 0) / 
+        Math.max(successfulAttempts, 1);
 
-      // Get backup contacts from successful attempts
-      const backupContacts = this.extractBackupContacts(accessHistory);
+      const recommendations: AccessRecommendation[] = [];
 
-      // Generate tips
-      const tips = this.generateAccessTips(patterns, accessHistory, successRate);
+      // Time-based recommendations
+      if (customer?.access_hours) {
+        recommendations.push({
+          type: 'timing',
+          title: 'Optimal Access Times',
+          description: `Best access during: ${customer.access_hours}`,
+          priority: 'high',
+          confidence: 85
+        });
+      }
 
-      return {
-        recommendedArrivalTime: recommendedTime,
-        successRate,
-        commonIssues,
-        backupContacts,
-        tips,
-        bestAccessMethod: this.findBestAccessMethod(patterns)
-      };
+      // Contact recommendations
+      if (customer?.primary_contact) {
+        recommendations.push({
+          type: 'contact',
+          title: 'Primary Contact',
+          description: `Contact ${customer.primary_contact}${customer.contact_phone ? ` at ${customer.contact_phone}` : ''} before arrival`,
+          priority: 'high',
+          confidence: 90
+        });
+      }
+
+      // Access procedure recommendations
+      if (customer?.access_procedure) {
+        recommendations.push({
+          type: 'approach',
+          title: 'Access Procedure',
+          description: customer.access_procedure,
+          priority: 'medium',
+          confidence: 80
+        });
+      }
+
+      // Performance-based recommendations
+      if (successRate < 0.8) {
+        recommendations.push({
+          type: 'general',
+          title: 'Access Success Rate Low',
+          description: `Recent success rate: ${Math.round(successRate * 100)}%. Consider calling ahead to confirm availability.`,
+          priority: 'high',
+          confidence: 75
+        });
+      }
+
+      if (avgAccessTime > 15) {
+        recommendations.push({
+          type: 'timing',
+          title: 'Extended Access Time',
+          description: `Average access time: ${Math.round(avgAccessTime)} minutes. Plan extra time for site entry.`,
+          priority: 'medium',
+          confidence: 70
+        });
+      }
+
+      return recommendations.length > 0 ? recommendations : this.getDefaultRecommendations();
 
     } catch (error) {
-      console.error('Error getting access recommendations:', error);
+      console.error('Error generating access recommendations:', error);
       return this.getDefaultRecommendations();
     }
   }
 
-  // Update access patterns
-  static async updateAccessPatterns(customerId: string, outcome: AccessOutcome): Promise<void> {
+  static async storeAccessIntelligence(customerId: string, intelligence: AccessPattern): Promise<void> {
     try {
-      // Get existing intelligence record
-      let { data: accessIntel, error: fetchError } = await supabase
-        .from('access_intelligence')
-        .select('*')
-        .eq('customer_id', customerId)
-        .single();
-
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        console.error('Error fetching access intelligence:', fetchError);
-        return;
-      }
-
-      // Initialize or update patterns
-      let patterns: AccessPattern = accessIntel?.learned_patterns || this.initializeAccessPattern();
-
-      // Update time of day patterns
-      const hour = outcome.arrivalTime.getHours();
-      const timeCategory = this.categorizeTimeOfDay(hour);
-      patterns.timeOfDay[timeCategory].count++;
-      if (outcome.successful) {
-        patterns.timeOfDay[timeCategory].successful++;
-      }
-
-      // Update day of week patterns
-      const dayOfWeek = outcome.arrivalTime.toLocaleDateString('en-US', { weekday: 'long' });
-      if (!patterns.dayOfWeek[dayOfWeek]) {
-        patterns.dayOfWeek[dayOfWeek] = { count: 0, successful: 0 };
-      }
-      patterns.dayOfWeek[dayOfWeek].count++;
-      if (outcome.successful) {
-        patterns.dayOfWeek[dayOfWeek].successful++;
-      }
-
-      // Update access method patterns
-      if (outcome.accessMethod) {
-        if (!patterns.contactMethods[outcome.accessMethod]) {
-          patterns.contactMethods[outcome.accessMethod] = { count: 0, successful: 0 };
-        }
-        patterns.contactMethods[outcome.accessMethod].count++;
-        if (outcome.successful) {
-          patterns.contactMethods[outcome.accessMethod].successful++;
-        }
-      }
-
-      // Update issues tracking
-      if (outcome.issues) {
-        const issues = outcome.issues.toLowerCase();
-        if (!patterns.issues[issues]) {
-          patterns.issues[issues] = 0;
-        }
-        patterns.issues[issues]++;
-      }
-
-      // Calculate new success rate
-      const totalAttempts = Object.values(patterns.timeOfDay).reduce((sum, cat) => sum + cat.count, 0);
-      const totalSuccessful = Object.values(patterns.timeOfDay).reduce((sum, cat) => sum + cat.successful, 0);
-      const newSuccessRate = totalAttempts > 0 ? totalSuccessful / totalAttempts : 0;
-
-      // Update or create record
-      if (accessIntel) {
-        const { error: updateError } = await supabase
-          .from('access_intelligence')
-          .update({
-            access_success_rate: newSuccessRate,
-            learned_patterns: patterns,
-            last_updated: new Date().toISOString()
-          })
-          .eq('customer_id', customerId);
-
-        if (updateError) {
-          console.error('Error updating access intelligence:', updateError);
-        }
-      } else {
-        const { error: insertError } = await supabase
-          .from('access_intelligence')
-          .insert({
-            customer_id: customerId,
-            access_success_rate: newSuccessRate,
-            learned_patterns: patterns,
-            last_updated: new Date().toISOString()
-          });
-
-        if (insertError) {
-          console.error('Error creating access intelligence:', insertError);
-        }
-      }
+      // Store intelligence in customer record
+      await supabase
+        .from('ame_customers')
+        .update({
+          access_procedure: intelligence.successFactors.join(', '),
+          access_hours: intelligence.preferredTimes.join(', '),
+          building_access_details: `Success rate: ${intelligence.successRate}%, Avg time: ${intelligence.averageAccessTime}min. Issues: ${intelligence.commonIssues.join(', ')}`
+        })
+        .eq('id', customerId);
 
     } catch (error) {
-      console.error('Error updating access patterns:', error);
+      console.error('Error updating access intelligence:', error);
     }
   }
 
-  // Get current access intelligence for a site
-  static async getCurrentAccessIntelligence(customerId: string): Promise<{
-    successRate: number;
-    bestTimes: string[];
-    commonIssues: string[];
-    lastUpdated?: Date;
-  }> {
-    try {
-      const { data: accessIntel, error } = await supabase
-        .from('access_intelligence')
-        .select('*')
-        .eq('customer_id', customerId)
-        .single();
-
-      if (error || !accessIntel) {
-        return {
-          successRate: 0,
-          bestTimes: ['9:00 AM - 11:00 AM'],
-          commonIssues: [],
-          lastUpdated: undefined
-        };
-      }
-
-      const patterns: AccessPattern = accessIntel.learned_patterns;
-      const bestTimes = this.extractBestTimes(patterns);
-      const commonIssues = this.extractTopIssues(patterns);
-
-      return {
-        successRate: Math.round((accessIntel.access_success_rate || 0) * 100),
-        bestTimes,
-        commonIssues,
-        lastUpdated: accessIntel.last_updated ? new Date(accessIntel.last_updated) : undefined
-      };
-
-    } catch (error) {
-      console.error('Error getting current access intelligence:', error);
-      return {
-        successRate: 0,
-        bestTimes: ['9:00 AM - 11:00 AM'],
-        commonIssues: [],
-        lastUpdated: undefined
-      };
-    }
-  }
-
-  // Private helper methods
-  private static initializeAccessPattern(): AccessPattern {
-    return {
-      timeOfDay: {
-        early: { count: 0, successful: 0 },
-        morning: { count: 0, successful: 0 },
-        afternoon: { count: 0, successful: 0 },
-        late: { count: 0, successful: 0 }
+  private static getDefaultRecommendations(): AccessRecommendation[] {
+    return [
+      {
+        type: 'contact',
+        title: 'Call Ahead',
+        description: 'Contact site before arrival to ensure availability and smooth access',
+        priority: 'high',
+        confidence: 80
       },
-      dayOfWeek: {},
-      contactMethods: {},
-      issues: {}
-    };
-  }
-
-  private static categorizeTimeOfDay(hour: number): 'early' | 'morning' | 'afternoon' | 'late' {
-    if (hour >= 6 && hour < 9) return 'early';
-    if (hour >= 9 && hour < 12) return 'morning';
-    if (hour >= 12 && hour < 15) return 'afternoon';
-    return 'late';
-  }
-
-  private static analyzeAccessPatterns(history: any[]): AccessPattern {
-    const patterns = this.initializeAccessPattern();
-
-    history.forEach(attempt => {
-      const arrivalTime = new Date(attempt.arrival_time);
-      const hour = arrivalTime.getHours();
-      const timeCategory = this.categorizeTimeOfDay(hour);
-      const dayOfWeek = arrivalTime.toLocaleDateString('en-US', { weekday: 'long' });
-
-      // Time of day
-      patterns.timeOfDay[timeCategory].count++;
-      if (attempt.successful) {
-        patterns.timeOfDay[timeCategory].successful++;
+      {
+        type: 'timing',
+        title: 'Business Hours',
+        description: 'Arrive during normal business hours (8 AM - 5 PM) for best results',
+        priority: 'medium',
+        confidence: 70
+      },
+      {
+        type: 'approach',
+        title: 'Professional Approach',
+        description: 'Bring proper identification and explain purpose of visit clearly',
+        priority: 'medium',
+        confidence: 75
+      },
+      {
+        type: 'general',
+        title: 'Allow Extra Time',
+        description: 'Plan 10-15 minutes for access procedures and security checks',
+        priority: 'low',
+        confidence: 60
       }
-
-      // Day of week
-      if (!patterns.dayOfWeek[dayOfWeek]) {
-        patterns.dayOfWeek[dayOfWeek] = { count: 0, successful: 0 };
-      }
-      patterns.dayOfWeek[dayOfWeek].count++;
-      if (attempt.successful) {
-        patterns.dayOfWeek[dayOfWeek].successful++;
-      }
-
-      // Access method
-      if (attempt.access_method) {
-        if (!patterns.contactMethods[attempt.access_method]) {
-          patterns.contactMethods[attempt.access_method] = { count: 0, successful: 0 };
-        }
-        patterns.contactMethods[attempt.access_method].count++;
-        if (attempt.successful) {
-          patterns.contactMethods[attempt.access_method].successful++;
-        }
-      }
-
-      // Issues
-      if (attempt.issues) {
-        const issues = attempt.issues.toLowerCase();
-        if (!patterns.issues[issues]) {
-          patterns.issues[issues] = 0;
-        }
-        patterns.issues[issues]++;
-      }
-    });
-
-    return patterns;
+    ];
   }
 
-  private static findBestArrivalTime(patterns: AccessPattern): string {
-    let bestCategory = 'morning';
-    let bestSuccessRate = 0;
-
-    Object.entries(patterns.timeOfDay).forEach(([category, stats]) => {
-      if (stats.count > 0) {
-        const successRate = stats.successful / stats.count;
-        if (successRate > bestSuccessRate) {
-          bestSuccessRate = successRate;
-          bestCategory = category;
-        }
-      }
-    });
-
-    const timeRanges = {
-      early: '6:00 AM - 9:00 AM',
-      morning: '9:00 AM - 12:00 PM',
-      afternoon: '12:00 PM - 3:00 PM',
-      late: '3:00 PM - 6:00 PM'
-    };
-
-    return timeRanges[bestCategory as keyof typeof timeRanges] || '9:00 AM - 12:00 PM';
-  }
-
-  private static extractCommonIssues(history: any[]): string[] {
-    const issueCounts: Record<string, number> = {};
-
-    history.forEach(attempt => {
-      if (attempt.issues) {
-        const issues = attempt.issues.trim();
-        issueCounts[issues] = (issueCounts[issues] || 0) + 1;
-      }
-    });
-
-    return Object.entries(issueCounts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 3)
-      .map(([issue]) => issue);
-  }
-
-  private static extractBackupContacts(history: any[]): string[] {
-    const contacts = new Set<string>();
-
-    history
-      .filter(attempt => attempt.successful && attempt.contact_met)
-      .forEach(attempt => {
-        contacts.add(attempt.contact_met);
-      });
-
-    return Array.from(contacts).slice(0, 3);
-  }
-
-  private static findBestAccessMethod(patterns: AccessPattern): string | undefined {
-    let bestMethod: string | undefined;
-    let bestSuccessRate = 0;
-
-    Object.entries(patterns.contactMethods).forEach(([method, stats]) => {
-      if (stats.count > 1) { // Only consider methods used multiple times
-        const successRate = stats.successful / stats.count;
-        if (successRate > bestSuccessRate) {
-          bestSuccessRate = successRate;
-          bestMethod = method;
-        }
-      }
-    });
-
-    return bestMethod;
-  }
-
-  private static generateAccessTips(patterns: AccessPattern, history: any[], successRate: number): string[] {
-    const tips: string[] = [];
-
-    if (successRate < 70) {
-      tips.push('🎯 Consider updating contact information - success rate could be improved');
-    }
-
-    // Best day recommendations
-    const bestDay = Object.entries(patterns.dayOfWeek)
-      .filter(([, stats]) => stats.count > 0)
-      .sort(([, a], [, b]) => (b.successful / b.count) - (a.successful / a.count))[0];
-
-    if (bestDay && bestDay[1].count > 1) {
-      tips.push(`📅 ${bestDay[0]}s tend to have better access success`);
-    }
-
-    // Timing tips
-    const morningSuccess = patterns.timeOfDay.morning.count > 0 ? 
-      patterns.timeOfDay.morning.successful / patterns.timeOfDay.morning.count : 0;
-    const afternoonSuccess = patterns.timeOfDay.afternoon.count > 0 ?
-      patterns.timeOfDay.afternoon.successful / patterns.timeOfDay.afternoon.count : 0;
-
-    if (morningSuccess > afternoonSuccess + 0.2) {
-      tips.push('🌅 Morning visits tend to be more successful');
-    } else if (afternoonSuccess > morningSuccess + 0.2) {
-      tips.push('🌆 Afternoon visits tend to be more successful');
-    }
-
-    // Issue-based tips
-    const topIssues = Object.entries(patterns.issues)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 2);
-
-    topIssues.forEach(([issue]) => {
-      if (issue.includes('badge') || issue.includes('card')) {
-        tips.push('🔑 Badge/card access issues are common - bring backup credentials');
-      } else if (issue.includes('contact') || issue.includes('phone')) {
-        tips.push('📞 Phone contact issues noted - try multiple contact methods');
-      } else if (issue.includes('locked') || issue.includes('security')) {
-        tips.push('🚪 Security/locking issues noted - confirm access procedures beforehand');
-      }
-    });
-
-    if (tips.length === 0) {
-      tips.push('👍 Access patterns look normal');
-    }
-
-    return tips.slice(0, 4); // Limit to 4 most relevant tips
-  }
-
-  private static extractBestTimes(patterns: AccessPattern): string[] {
-    const timeRanges = {
-      early: '6:00 AM - 9:00 AM',
-      morning: '9:00 AM - 12:00 PM',
-      afternoon: '12:00 PM - 3:00 PM',
-      late: '3:00 PM - 6:00 PM'
-    };
-
-    return Object.entries(patterns.timeOfDay)
-      .filter(([, stats]) => stats.count > 0)
-      .sort(([, a], [, b]) => (b.successful / b.count) - (a.successful / a.count))
-      .slice(0, 2)
-      .map(([category]) => timeRanges[category as keyof typeof timeRanges]);
-  }
-
-  private static extractTopIssues(patterns: AccessPattern): string[] {
-    return Object.entries(patterns.issues)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 3)
-      .map(([issue]) => issue);
-  }
-
-  private static getDefaultRecommendations(): AccessRecommendations {
-    return {
-      recommendedArrivalTime: '9:00 AM - 11:00 AM',
-      successRate: 85,
-      commonIssues: [],
-      backupContacts: [],
-      tips: ['No historical access data available', 'Consider standard business hours approach'],
-      bestAccessMethod: 'phone'
-    };
-  }
-
-  // Create access outcome log table if it doesn't exist
-  static async ensureAccessOutcomeLogTable(): Promise<void> {
+  static async getAccessPattern(customerId: string): Promise<AccessPattern> {
     try {
-      const { error } = await supabase.rpc('create_access_outcome_log_if_not_exists');
-      if (error && !error.message.includes('already exists')) {
-        console.error('Error creating access outcome log table:', error);
+      const { data: customer } = await supabase
+        .from('ame_customers')
+        .select('access_procedure, access_hours, building_access_details')
+        .eq('id', customerId)
+        .maybeSingle();
+
+      const { data: visitData } = await supabase
+        .from('ame_visits')
+        .select('auto_save_data')
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      const accessHistory = [];
+      
+      if (visitData) {
+        for (const visit of visitData) {
+          try {
+            const autoSaveData = typeof visit.auto_save_data === 'string' ? 
+              JSON.parse(visit.auto_save_data) : visit.auto_save_data;
+            if (autoSaveData?.access_log) {
+              accessHistory.push(autoSaveData.access_log);
+            }
+          } catch (error) {
+            // Ignore parse errors
+          }
+        }
       }
+
+      const successfulAttempts = accessHistory.filter(attempt => attempt.successful);
+      const successRate = accessHistory.length > 0 ? successfulAttempts.length / accessHistory.length : 0.8;
+      const avgAccessTime = successfulAttempts.length > 0 ? 
+        successfulAttempts.reduce((sum, attempt) => sum + (attempt.time_to_access || 10), 0) / successfulAttempts.length : 10;
+
+      return {
+        preferredTimes: customer?.access_hours ? [customer.access_hours] : ['9:00 AM - 4:00 PM'],
+        contactPreferences: customer?.access_procedure ? [customer.access_procedure] : ['Call ahead'],
+        commonIssues: [],
+        successFactors: customer?.building_access_details ? [customer.building_access_details] : [],
+        averageAccessTime: avgAccessTime,
+        successRate: successRate
+      };
+
     } catch (error) {
-      // Table creation will be handled by migration
-      console.log('Access outcome log table creation handled by migration');
+      console.error('Error getting access pattern:', error);
+      return {
+        preferredTimes: ['9:00 AM - 4:00 PM'],
+        contactPreferences: ['Call ahead'],
+        commonIssues: [],
+        successFactors: [],
+        averageAccessTime: 10,
+        successRate: 0.8
+      };
     }
   }
 }
-
-export type { AccessOutcome, AccessRecommendations, AccessPattern };

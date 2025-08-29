@@ -27,6 +27,8 @@ export type TridiumDataCategory =
   | 'systemMetrics'      // Resource and platform metrics
   | 'networkTopology'    // Niagara network connections
   | 'platformInfo'       // Platform details and specifications
+  | 'bacnetDevices'      // BACnet specific devices
+  | 'resourceMetrics'    // Resource usage metrics
   | 'unknown';
 
 export interface TridiumDataTypes {
