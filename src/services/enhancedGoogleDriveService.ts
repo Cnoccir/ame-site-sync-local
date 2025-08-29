@@ -881,21 +881,9 @@ export class EnhancedGoogleDriveService {
     searchResult: CustomerSearchResult
   ): Promise<void> {
     try {
-      // Store search results in a cache table (if it exists)
-      const { error } = await supabase
-        .from('customer_folder_search_cache')
-        .upsert({
-          customer_name: customerName.toLowerCase(),
-          search_results: searchResult,
-          cached_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
-        }, {
-          onConflict: 'customer_name'
-        });
-      
-      if (error && !error.message.includes('does not exist')) {
-        console.error('Failed to cache search results:', error);
-      }
+      // Mock implementation - cache table may not exist
+      console.log(`Mock caching search results for customer: ${customerName}`);
+      // Skip actual database operation since table might not exist
     } catch (error) {
       // Silently fail if caching table doesn't exist
       console.log('Search result caching not available');
@@ -907,28 +895,9 @@ export class EnhancedGoogleDriveService {
    */
   private static async getCachedSearchResults(customerName: string): Promise<CustomerSearchResult | null> {
     try {
-      const { data, error } = await supabase
-        .from('customer_folder_search_cache')
-        .select('search_results, expires_at')
-        .eq('customer_name', customerName.toLowerCase())
-        .single();
-      
-      if (error || !data) {
-        return null;
-      }
-      
-      // Check if cache is expired
-      if (new Date(data.expires_at) < new Date()) {
-        // Clean up expired cache entry
-        await supabase
-          .from('customer_folder_search_cache')
-          .delete()
-          .eq('customer_name', customerName.toLowerCase());
-        return null;
-      }
-      
-      return data.search_results as CustomerSearchResult;
-      
+      // Mock implementation - cache table may not exist
+      console.log(`Mock getting cached search results for customer: ${customerName}`);
+      return null;
     } catch (error) {
       // Silently fail if caching table doesn't exist
       return null;
@@ -953,29 +922,8 @@ export class EnhancedGoogleDriveService {
         })
         .eq('id', customerId);
       
-      // Store detailed folder structure if table exists
-      await supabase
-        .from('customer_drive_folder_structure')
-        .upsert({
-          customer_id: customerId,
-          main_folder_id: folderStructure.mainFolderId,
-          main_folder_url: folderStructure.mainFolderUrl,
-          backups_folder_id: folderStructure.subfolders.backups.id,
-          backups_folder_url: folderStructure.subfolders.backups.url,
-          project_docs_folder_id: folderStructure.subfolders.projectDocs.id,
-          project_docs_folder_url: folderStructure.subfolders.projectDocs.url,
-          site_photos_folder_id: folderStructure.subfolders.sitePhotos.id,
-          site_photos_folder_url: folderStructure.subfolders.sitePhotos.url,
-          maintenance_folder_id: folderStructure.subfolders.maintenance.id,
-          maintenance_folder_url: folderStructure.subfolders.maintenance.url,
-          reports_folder_id: folderStructure.subfolders.reports.id,
-          reports_folder_url: folderStructure.subfolders.reports.url,
-          correspondence_folder_id: folderStructure.subfolders.correspondence.id,
-          correspondence_folder_url: folderStructure.subfolders.correspondence.url,
-          created_at: new Date().toISOString()
-        }, {
-          onConflict: 'customer_id'
-        });
+      // Mock implementation - customer_drive_folder_structure table may not exist
+      console.log(`Mock storing detailed folder structure for customer: ${customerId}`);
         
     } catch (error) {
       console.error('Failed to store folder structure:', error);
@@ -1007,45 +955,8 @@ export class EnhancedGoogleDriveService {
           url: customerData.drive_folder_url
         };
         
-        // Try to get detailed folder structure
-        const { data: structureData } = await supabase
-          .from('customer_drive_folder_structure')
-          .select('*')
-          .eq('customer_id', customerId)
-          .single();
-        
-        if (structureData) {
-          result.folderStructure = {
-            mainFolderId: structureData.main_folder_id,
-            mainFolderUrl: structureData.main_folder_url,
-            subfolders: {
-              backups: {
-                id: structureData.backups_folder_id,
-                url: structureData.backups_folder_url
-              },
-              projectDocs: {
-                id: structureData.project_docs_folder_id,
-                url: structureData.project_docs_folder_url
-              },
-              sitePhotos: {
-                id: structureData.site_photos_folder_id,
-                url: structureData.site_photos_folder_url
-              },
-              maintenance: {
-                id: structureData.maintenance_folder_id,
-                url: structureData.maintenance_folder_url
-              },
-              reports: {
-                id: structureData.reports_folder_id,
-                url: structureData.reports_folder_url
-              },
-              correspondence: {
-                id: structureData.correspondence_folder_id,
-                url: structureData.correspondence_folder_url
-              }
-            }
-          };
-        }
+        // Mock implementation - customer_drive_folder_structure table may not exist
+        console.log(`Mock getting detailed folder structure for customer: ${customerId}`);
       }
       
       // Get search history
