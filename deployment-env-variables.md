@@ -26,9 +26,9 @@ VITE_SUPABASE_PROJECT_ID=ncqwrabuujjgquakxrkw
 VITE_SUPABASE_URL=https://ncqwrabuujjgquakxrkw.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jcXdyYWJ1dWpqZ3F1YWt4cmt3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI5NDk3NDYsImV4cCI6MjA1ODUyNTc0Nn0.Emtb8PCT8jW_efAa7ZBukDXbHdjSDsndNHwhiijZhHU
 
-# Google OAuth for production (update redirect URI for your production domain)
+# Google OAuth for production
 VITE_GOOGLE_OAUTH_CLIENT_ID=735781069629-s0jv1cpbcdrpm9qjip0bmjgsh8f4s7tb.apps.googleusercontent.com
-VITE_GOOGLE_OAUTH_REDIRECT_URI=https://your-production-domain.com/google/callback
+VITE_GOOGLE_OAUTH_REDIRECT_URI=https://pm.ame-techassist.com/google/callback
 ```
 
 ## Project Details
