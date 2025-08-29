@@ -199,37 +199,34 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
                         <label htmlFor={tool.id} className="text-sm font-medium cursor-pointer">
                           {tool.tool_name}
                         </label>
-                        {tool.description && (
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                <Info className="h-3 w-3" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>{tool.tool_name}</DialogTitle>
-                              </DialogHeader>
-                              <div className="space-y-2">
-                                <p className="text-sm text-muted-foreground">{tool.description}</p>
-                                <div className="flex items-center space-x-2">
-                                  <Badge variant="outline">Tool ID: {tool.tool_id}</Badge>
-                                  <Badge variant={
-                                    tool.safety_category === 'site_required' || tool.safety_category === 'required' 
-                                      ? 'destructive' : 
-                                    tool.safety_category === 'recommended' 
-                                      ? 'default' : 'outline'
-                                  }>
-                                    {tool.safety_category === 'site_required' || tool.safety_category === 'required' 
-                                      ? 'REQUIRED' : 
-                                     tool.safety_category === 'recommended' 
-                                      ? 'RECOMMENDED' : 'OPTIONAL'}
-                                  </Badge>
-                                </div>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                              <Info className="h-3 w-3" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>{tool.tool_name}</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-2">
+                              <div className="flex items-center space-x-2">
+                                <Badge variant="outline">Tool ID: {tool.tool_id}</Badge>
+                                <Badge variant={
+                                  tool.safety_category === 'site_required' || tool.safety_category === 'required' 
+                                    ? 'destructive' : 
+                                  tool.safety_category === 'recommended' 
+                                    ? 'default' : 'outline'
+                                }>
+                                  {tool.safety_category === 'site_required' || tool.safety_category === 'required' 
+                                    ? 'REQUIRED' : 
+                                   tool.safety_category === 'recommended' 
+                                    ? 'RECOMMENDED' : 'OPTIONAL'}
+                                </Badge>
                               </div>
-                            </DialogContent>
-                          </Dialog>
-                        )}
+                            </div>
+                          </DialogContent>
+                        </Dialog>
                       </div>
                     </div>
                   </div>
@@ -252,27 +249,24 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
                         <label htmlFor={tool.id} className="text-sm font-medium cursor-pointer">
                           {tool.tool_name}
                         </label>
-                        {tool.description && (
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                <Info className="h-3 w-3" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>{tool.tool_name}</DialogTitle>
-                              </DialogHeader>
-                              <div className="space-y-2">
-                                <p className="text-sm text-muted-foreground">{tool.description}</p>
-                                <div className="flex items-center space-x-2">
-                                  <Badge variant="outline">Tool ID: {tool.tool_id}</Badge>
-                                  <Badge variant="default">RECOMMENDED</Badge>
-                                </div>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                              <Info className="h-3 w-3" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>{tool.tool_name}</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-2">
+                              <div className="flex items-center space-x-2">
+                                <Badge variant="outline">Tool ID: {tool.tool_id}</Badge>
+                                <Badge variant="default">RECOMMENDED</Badge>
                               </div>
-                            </DialogContent>
-                          </Dialog>
-                        )}
+                            </div>
+                          </DialogContent>
+                        </Dialog>
                       </div>
                     </div>
                   </div>
@@ -295,27 +289,24 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
                         <label htmlFor={tool.id} className="text-sm font-medium cursor-pointer">
                           {tool.tool_name}
                         </label>
-                        {tool.description && (
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                <Info className="h-3 w-3" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>{tool.tool_name}</DialogTitle>
-                              </DialogHeader>
-                              <div className="space-y-2">
-                                <p className="text-sm text-muted-foreground">{tool.description}</p>
-                                <div className="flex items-center space-x-2">
-                                  <Badge variant="outline">Tool ID: {tool.tool_id}</Badge>
-                                  <Badge variant="outline">OPTIONAL</Badge>
-                                </div>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                              <Info className="h-3 w-3" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>{tool.tool_name}</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-2">
+                              <div className="flex items-center space-x-2">
+                                <Badge variant="outline">Tool ID: {tool.tool_id}</Badge>
+                                <Badge variant="outline">OPTIONAL</Badge>
                               </div>
-                            </DialogContent>
-                          </Dialog>
-                        )}
+                            </div>
+                          </DialogContent>
+                        </Dialog>
                       </div>
                     </div>
                   </div>
@@ -398,37 +389,34 @@ export const ToolManagement = ({ onToolSelectionChange }: ToolManagementProps) =
                                   <label htmlFor={`full-${tool.id}`} className="text-sm font-medium cursor-pointer">
                                     {tool.tool_name}
                                   </label>
-                                  {tool.description && (
-                                    <Dialog>
-                                      <DialogTrigger asChild>
-                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                          <Info className="h-3 w-3" />
-                                        </Button>
-                                      </DialogTrigger>
-                                      <DialogContent>
-                                        <DialogHeader>
-                                          <DialogTitle>{tool.tool_name}</DialogTitle>
-                                        </DialogHeader>
-                                        <div className="space-y-2">
-                                          <p className="text-sm text-muted-foreground">{tool.description}</p>
-                                          <div className="flex items-center space-x-2">
-                                            <Badge variant="outline">Tool ID: {tool.tool_id}</Badge>
-                                            <Badge variant={
-                                              tool.safety_category === 'site_required' || tool.safety_category === 'required' 
-                                                ? 'destructive' : 
-                                              tool.safety_category === 'recommended' 
-                                                ? 'default' : 'outline'
-                                            }>
-                                              {tool.safety_category === 'site_required' || tool.safety_category === 'required' 
-                                                ? 'REQUIRED' : 
-                                               tool.safety_category === 'recommended' 
-                                                ? 'RECOMMENDED' : 'OPTIONAL'}
-                                            </Badge>
-                                          </div>
+                                  <Dialog>
+                                    <DialogTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                        <Info className="h-3 w-3" />
+                                      </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                      <DialogHeader>
+                                        <DialogTitle>{tool.tool_name}</DialogTitle>
+                                      </DialogHeader>
+                                      <div className="space-y-2">
+                                        <div className="flex items-center space-x-2">
+                                          <Badge variant="outline">Tool ID: {tool.tool_id}</Badge>
+                                          <Badge variant={
+                                            tool.safety_category === 'site_required' || tool.safety_category === 'required' 
+                                              ? 'destructive' : 
+                                            tool.safety_category === 'recommended' 
+                                              ? 'default' : 'outline'
+                                          }>
+                                            {tool.safety_category === 'site_required' || tool.safety_category === 'required' 
+                                              ? 'REQUIRED' : 
+                                             tool.safety_category === 'recommended' 
+                                              ? 'RECOMMENDED' : 'OPTIONAL'}
+                                          </Badge>
                                         </div>
-                                      </DialogContent>
-                                    </Dialog>
-                                  )}
+                                      </div>
+                                    </DialogContent>
+                                  </Dialog>
                                 </div>
                               </div>
                             </div>

@@ -58,26 +58,35 @@ export const ConnectionTester = ({ value, onChange, visitId, showRequired = fals
     if (!visitId) return;
     
     try {
-      const { data, error } = await supabase
-        .from('system_access_tests')
-        .select('*')
-        .eq('visit_id', visitId)
-        .maybeSingle();
+      // Load customer data for this visit instead of non-existent table
+      const { data: visit, error } = await supabase
+        .from('ame_visits')
+        .select(`
+          *,
+          ame_customers (
+            bms_supervisor_ip,
+            platform_username,
+            workbench_username,
+            web_supervisor_url
+          )
+        `)
+        .eq('id', visitId)
+        .single();
 
       if (error) {
-        console.error('Error loading credentials:', error);
+        console.error('Error loading visit data:', error);
         return;
       }
 
-      if (data) {
-        setSavedCredentials(data);
+      if (visit?.ame_customers) {
+        const customer = visit.ame_customers;
+        setSavedCredentials(customer);
         // Pre-fill form with saved data
-        if (data.supervisor_ip) updateField('supervisorIp', data.supervisor_ip);
-        if (data.supervisor_username) updateField('supervisorUsername', data.supervisor_username);
-        if (data.workbench_username) updateField('workbenchUsername', data.workbench_username);
-        if (data.platform_username) setPlatformUsername(data.platform_username);
-        if (data.system_version) updateField('systemVersion', data.system_version);
-        if (data.connection_notes) updateField('connectionNotes', data.connection_notes);
+        if (customer.bms_supervisor_ip) updateField('supervisorIp', customer.bms_supervisor_ip.toString());
+        if (customer.platform_username) updateField('supervisorUsername', customer.platform_username);
+        if (customer.workbench_username) updateField('workbenchUsername', customer.workbench_username);
+        if (customer.platform_username) setPlatformUsername(customer.platform_username);
+        if (customer.web_supervisor_url) updateField('webSupervisorUrl', customer.web_supervisor_url);
       }
     } catch (error) {
       console.error('Error loading credentials:', error);
@@ -88,42 +97,19 @@ export const ConnectionTester = ({ value, onChange, visitId, showRequired = fals
     if (!visitId) return;
 
     try {
+      // Save test results to visit notes for now since system_access_tests table doesn't exist
       const testData = {
-        visit_id: visitId,
-        supervisor_ip: value.supervisorIp,
-        supervisor_username: value.supervisorUsername,
-        workbench_username: value.workbenchUsername,
-        platform_username: platformUsername,
-        system_version: value.systemVersion,
-        connection_notes: value.connectionNotes,
-        [`${testType}_test_result`]: result,
+        test_type: testType,
+        result: result,
+        timestamp: new Date().toISOString()
       };
 
-      // Hash passwords if they've changed
-      if (testType === 'supervisor' && value.supervisorPassword) {
-        const { data: hashData } = await supabase.rpc('hash_password', { 
-          password_text: value.supervisorPassword 
-        });
-        testData.supervisor_password_hash = hashData;
-      }
-      
-      if (testType === 'workbench' && value.workbenchPassword) {
-        const { data: hashData } = await supabase.rpc('hash_password', { 
-          password_text: value.workbenchPassword 
-        });
-        testData.workbench_password_hash = hashData;
-      }
-
-      if (testType === 'platform' && platformPassword) {
-        const { data: hashData } = await supabase.rpc('hash_password', { 
-          password_text: platformPassword 
-        });
-        testData.platform_password_hash = hashData;
-      }
-
       const { error } = await supabase
-        .from('system_access_tests')
-        .upsert(testData, { onConflict: 'visit_id' });
+        .from('ame_visits')
+        .update({ 
+          notes: `${testType} test: ${JSON.stringify(testData)}`
+        })
+        .eq('id', visitId);
 
       if (error) {
         console.error('Error saving test results:', error);
@@ -252,31 +238,13 @@ export const ConnectionTester = ({ value, onChange, visitId, showRequired = fals
     updateField('workbenchStatus', 'testing');
     
     try {
-      // Check if credentials have changed
-      const credentialsChanged = savedCredentials && (
-        savedCredentials.workbench_username !== value.workbenchUsername ||
-        !value.workbenchPassword
-      );
-
-      if (credentialsChanged) {
-        const shouldUpdate = confirm(
-          "Workbench credentials appear to have changed. Would you like to update the stored credentials?"
-        );
-        
-        if (!shouldUpdate) {
-          updateField('workbenchStatus', 'not_tested');
-          return;
-        }
-      }
-
       // Simulate credential validation (in production, this would call actual API)
       const validationResult = {
         timestamp: new Date().toISOString(),
         success: true, // For demo, assume success if username is provided
         message: `Workbench login test completed for user: ${value.workbenchUsername}`,
         method: 'credential_validation',
-        username: value.workbenchUsername,
-        credentials_updated: credentialsChanged || !savedCredentials
+        username: value.workbenchUsername
       };
 
       // Add random failure chance for demo
@@ -531,7 +499,7 @@ export const ConnectionTester = ({ value, onChange, visitId, showRequired = fals
             <Alert variant="destructive">
               <XCircle className="h-4 w-4" />
               <AlertDescription>
-                Login failed. Verify username and password credentials.
+                Login failed. Check username and password.
               </AlertDescription>
             </Alert>
           )}
@@ -540,105 +508,22 @@ export const ConnectionTester = ({ value, onChange, visitId, showRequired = fals
             <Alert>
               <CheckCircle2 className="h-4 w-4" />
               <AlertDescription>
-                Login successful! Workbench access confirmed.
+                Login successful! Workbench credentials are valid.
               </AlertDescription>
             </Alert>
           )}
         </div>
       </Card>
 
-      {/* Platform Login Test */}
+      {/* Additional Notes */}
       <Card className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h5 className="font-medium">Platform Login Test</h5>
-          <div className="flex items-center gap-2">
-            {getStatusIcon(platformStatus)}
-            {getStatusBadge(platformStatus)}
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="platform-username">Platform Username</Label>
-              <Input
-                id="platform-username"
-                placeholder="platform_user"
-                value={platformUsername}
-                onChange={(e) => setPlatformUsername(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="platform-password">Platform Password</Label>
-              <Input
-                id="platform-password"
-                type="password"
-                placeholder="********"
-                value={platformPassword}
-                onChange={(e) => setPlatformPassword(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <Button 
-            onClick={testPlatformLogin}
-            disabled={platformStatus === 'testing' || !platformUsername}
-            className="w-full md:w-auto"
-          >
-            {platformStatus === 'testing' ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Testing Platform Login...
-              </>
-            ) : (
-              'Test Platform Login'
-            )}
-          </Button>
-
-          {platformStatus === 'failed' && (
-            <Alert variant="destructive">
-              <XCircle className="h-4 w-4" />
-              <AlertDescription>
-                Platform login failed. Check username and password credentials.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {platformStatus === 'success' && (
-            <Alert>
-              <CheckCircle2 className="h-4 w-4" />
-              <AlertDescription>
-                Platform login successful! Access confirmed.
-              </AlertDescription>
-            </Alert>
-          )}
-        </div>
-      </Card>
-
-      {/* System Version and Notes */}
-      <Card className="p-4">
-        <div className="space-y-3">
-          <div>
-            <Label htmlFor="system-version">System Version</Label>
-            <Input
-              id="system-version"
-              placeholder="e.g., Niagara 4.8, Johnson Metasys 12.0"
-              value={value.systemVersion}
-              onChange={(e) => updateField('systemVersion', e.target.value)}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="connection-notes">Connection Notes</Label>
-            <Textarea
-              id="connection-notes"
-              placeholder="Additional notes about system access, performance, or issues..."
-              value={value.connectionNotes}
-              onChange={(e) => updateField('connectionNotes', e.target.value)}
-              rows={3}
-            />
-          </div>
-        </div>
+        <h5 className="font-medium mb-3">Connection Notes</h5>
+        <Textarea
+          placeholder="Add any additional notes about system access..."
+          value={value.connectionNotes}
+          onChange={(e) => updateField('connectionNotes', e.target.value)}
+          rows={3}
+        />
       </Card>
     </div>
   );
