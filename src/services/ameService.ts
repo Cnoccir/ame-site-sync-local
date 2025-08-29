@@ -192,9 +192,11 @@ export class AMEService {
       
       return {
         ...data,
-        site_hazards: typeof data.site_hazards === 'string' ? 
-          (data.site_hazards ? data.site_hazards.split(',').map(s => s.trim()) : []) : 
-          (data.site_hazards || [])
+        site_hazards: Array.isArray(data.site_hazards) 
+          ? data.site_hazards 
+          : data.site_hazards 
+            ? [data.site_hazards] 
+            : []
       } as Customer;
     }, 'updateCustomer', { additionalData: { customerId: id, updateFields: Object.keys(updates) } });
   }
@@ -511,27 +513,27 @@ export class AMEService {
     
     if (error) throw error;
 
-    // Clear visit tasks
+    // Clear visit tasks from ame_visit_tasks table
     const { error: tasksError } = await supabase
-      .from('visit_tasks')
+      .from('ame_visit_tasks')
       .delete()
       .eq('visit_id', visitId);
     
     if (tasksError) throw tasksError;
 
-    // Reset assessment steps
-    const { error: assessmentError } = await supabase
-      .from('assessment_steps')
+    // Clear visit progress records
+    const { error: progressError } = await supabase
+      .from('ame_visit_progress')
       .delete()
       .eq('visit_id', visitId);
     
-    if (assessmentError) throw assessmentError;
+    if (progressError) throw progressError;
   }
   
   // Task operations
   static async getTasks(): Promise<any[]> {
     const { data, error } = await supabase
-      .from('ame_tasks_normalized')
+      .from('ame_tasks')
       .select('*')
       .order('task_id');
     
@@ -542,7 +544,7 @@ export class AMEService {
   static async getTasksByServiceTier(serviceTier: string): Promise<any[]> {
     // Get all tasks first
     const { data, error } = await supabase
-      .from('ame_tasks_normalized')
+      .from('ame_tasks')
       .select('*')
       .order('task_id', { ascending: true });
     
@@ -553,7 +555,7 @@ export class AMEService {
     
     // Filter tasks based on task_id prefixes (C = CORE, A = ASSURE, G = GUARDIAN)
     const filteredTasks = (data || []).filter(task => {
-      const taskId = task.task_id || '';
+      const taskId = (task as any).task_id || '';
       let includeTask = false;
       
       if (taskId.startsWith('C') && inheritedTiers.includes('CORE')) {
@@ -589,10 +591,9 @@ export class AMEService {
     const inheritedTiers = this.getInheritedTiers(serviceTier);
     
     const { data, error } = await supabase
-      .from('ame_tools_normalized')
+      .from('ame_tools')
       .select('*')
-      .or(inheritedTiers.map(tier => `service_tiers.cs.["${tier}"]`).join(','))
-      .eq('status', 'active')
+      .eq('tool_status', 'active')
       .order('tool_name');
     
     if (error) throw error;
@@ -602,9 +603,9 @@ export class AMEService {
   static async getSOPsByServiceTier(serviceTier: string): Promise<any[]> {
     // For now, return all SOPs until we have proper tier data
     const { data, error } = await supabase
-      .from('ame_sops_normalized')
+      .from('ame_sops')
       .select('*')
-      .order('title');
+      .order('sop_name');
     
     if (error) throw error;
     return data || [];
@@ -612,7 +613,7 @@ export class AMEService {
   
   static async createTask(task: any): Promise<any> {
     const { data, error } = await supabase
-      .from('ame_tasks_normalized')
+      .from('ame_tasks')
       .insert(task)
       .select()
       .single();
@@ -648,7 +649,7 @@ export class AMEService {
   // Tool operations
   static async getTools(): Promise<any[]> {
     const { data, error } = await supabase
-      .from('ame_tools_normalized')
+      .from('ame_tools')
       .select('*')
       .order('tool_name');
     
@@ -658,7 +659,7 @@ export class AMEService {
   
   static async createTool(tool: any): Promise<any> {
     const { data, error } = await supabase
-      .from('ame_tools_normalized')
+      .from('ame_tools')
       .insert(tool)
       .select()
       .single();
@@ -670,9 +671,9 @@ export class AMEService {
   // SOP operations
   static async getSOPs(): Promise<any[]> {
     const { data, error } = await supabase
-      .from('ame_sops_normalized')
+      .from('ame_sops')
       .select('*')
-      .order('title');
+      .order('sop_name');
     
     if (error) throw error;
     return data || [];
@@ -680,7 +681,7 @@ export class AMEService {
   
   static async createSOP(sop: any): Promise<any> {
     const { data, error } = await supabase
-      .from('ame_sops_normalized')
+      .from('ame_sops')
       .insert(sop)
       .select()
       .single();
