@@ -480,7 +480,6 @@ export class AMEService {
         .update({
           current_phase: progressData.currentPhase,
           auto_save_data: progressData.autoSaveData,
-          skipped_steps: progressData.skippedSteps || [],
           last_activity: timestamp
         })
         .eq('id', visitId);
@@ -504,17 +503,29 @@ export class AMEService {
 
   static async saveSkippedSteps(visitId: string, skippedSteps: number[]): Promise<void> {
     return errorHandler.withErrorHandling(async () => {
+      // Merge skippedSteps into visit auto_save_data to avoid requiring a schema change
+      const { data: visitData, error: fetchError } = await supabase
+        .from('ame_visits')
+        .select('auto_save_data')
+        .eq('id', visitId)
+        .single();
+
+      if (fetchError) throw errorHandler.handleSupabaseError(fetchError, 'saveSkippedStepsFetch');
+
+      const currentAuto = (visitData?.auto_save_data as any) || {};
+      const newAuto = { ...currentAuto, skippedSteps };
+
       const { error } = await supabase
         .from('ame_visits')
         .update({
-          skipped_steps: skippedSteps,
+          auto_save_data: newAuto,
           last_activity: getCurrentISODate()
         })
         .eq('id', visitId);
-      
-      if (error) throw errorHandler.handleSupabaseError(error, 'saveSkippedSteps');
-      
-      logger.debug('Skipped steps saved', { visitId, skippedSteps });
+
+      if (error) throw errorHandler.handleSupabaseError(error, 'saveSkippedStepsUpdate');
+
+      logger.debug('Skipped steps saved into auto_save_data', { visitId, skippedSteps });
     }, 'saveSkippedSteps', { additionalData: { visitId, skippedSteps } });
   }
 

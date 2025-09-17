@@ -1,4 +1,4 @@
-import { Bell, RefreshCw, User, LogOut } from 'lucide-react';
+import { Bell, RefreshCw, User, LogOut, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu,
@@ -10,12 +10,14 @@ import {
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/services/userRoleService';
 import { useState } from 'react';
 
 export const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, userRole, signOut } = useAuth();
+  const { user, signOut } = useAuth();
+  const { role, isTech } = useUserRole();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -38,11 +40,13 @@ export const Header = () => {
   };
 
   const getRoleLabel = () => {
-    switch (userRole) {
+    switch (role) {
       case 'admin':
         return 'Administrator';
-      case 'technician':
-        return 'Technician';
+      case 'tech':
+        return 'Service Technician';
+      case 'manager':
+        return 'Manager';
       default:
         return 'User';
     }
@@ -62,15 +66,20 @@ export const Header = () => {
         return 'Project Selector';
       case '/customers':
         return 'Customer Management';
+      case '/preventive-tasks':
+        return isTech ? 'Service Tasks' : 'Preventive Task List';
       case '/admin':
         return 'Administration';
       case '/reports':
-        return 'Reports';
+        return 'Generated Reports';
       case '/help':
         return 'Help & Demo';
       default:
         if (location.pathname.includes('/visit/')) {
           return 'Maintenance Visit';
+        }
+        if (location.pathname.includes('/pm-guidance/')) {
+          return 'Service Value Builder';
         }
         return 'Dashboard';
     }
@@ -106,16 +115,23 @@ export const Header = () => {
               {getUserDisplayName()}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-56">
             <div className="px-2 py-1.5 text-sm">
               <div className="font-medium">{getUserDisplayName()}</div>
-              <div className="text-xs text-muted-foreground">{getRoleLabel()}</div>
+              <div className="text-xs text-muted-foreground">{user?.email}</div>
+            </div>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-1.5">
+              <div className="flex items-center gap-2 text-xs">
+                <Shield className="h-3 w-3" />
+                <span className="font-medium text-primary">{getRoleLabel()}</span>
+              </div>
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem>Profile Settings</DropdownMenuItem>
             <DropdownMenuItem>Preferences</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut} className="text-danger">
+            <DropdownMenuItem onClick={handleSignOut} className="text-red-600 focus:text-red-600">
               <LogOut className="w-4 h-4 mr-2" />
               Logout
             </DropdownMenuItem>

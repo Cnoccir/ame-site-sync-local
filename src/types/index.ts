@@ -191,6 +191,14 @@ export interface Customer {
   has_remote_access_credentials?: boolean;
   total_credentials?: number;
   
+  // New fields added for PreVisit workflow
+  escort_required?: boolean;
+  has_submittals?: boolean;
+  has_floor_plans?: boolean;
+  has_as_built?: boolean;
+  has_sequence?: boolean;
+  has_network_diagram?: boolean;
+  
   // Metadata
   drive_folder_id?: string;
   drive_folder_url?: string;
@@ -459,6 +467,161 @@ export interface TechnicianInfo {
   email: string;
   role: string;
   experience?: string;
+}
+
+// PreVisit workflow interfaces
+export interface PreVisitFormData {
+  // Site Intelligence
+  siteIntelligence: {
+    nickname: string;
+    siteNumber: string;
+    systemPlatform: string;
+    primaryTechnicianId: string;
+    secondaryTechnicianId: string;
+    siteExperience: 'first_time' | 'familiar' | 'expert';
+    lastVisitInfo: {
+      date: string;
+      by: string;
+      notes: string;
+    };
+    knownIssues: string[];
+  };
+  
+  // Contact Information
+  contactInfo: {
+    primary: {
+      name: string;
+      phone: string;
+      email: string;
+    };
+    secondary?: {
+      name: string;
+      phone: string;
+      email: string;
+    };
+    poc: {
+      name: string;
+      phone: string;
+      availableHours: string;
+    };
+    address: string;
+    accessApproach: string;
+    parkingInstructions: string;
+  };
+  
+  // Access Requirements
+  accessRequirements: {
+    badgeRequired: boolean;
+    escortRequired: boolean;
+    ppeRequired: boolean;
+    safetyRequirements: string;
+  };
+  
+  // Documentation
+  documentation: {
+    folderUrl: string;
+    availability: {
+      submittals: boolean;
+      floorPlans: boolean;
+      asBuilt: boolean;
+      sequence: boolean;
+      networkDiagram: boolean;
+    };
+    completenessScore: number;
+    originalTeam: {
+      contact: string;
+      role: string;
+      whenToContact: string;
+    };
+  };
+  
+  // Tools
+  tools: {
+    selectedTools: string[];
+    systemSpecificTools: string[];
+    spareParts: string[];
+    additionalNotes: string;
+  };
+  
+  // Checklist
+  checklist: {
+    contactConfirmed: boolean;
+    accessPlanReviewed: boolean;
+    credentialsVerified: boolean;
+    toolsLoaded: boolean;
+    notesReviewed: boolean;
+    safetyReviewed: boolean;
+  };
+}
+
+export interface PrevisitPreparation {
+  id: string;
+  customer_id: string;
+  visit_id?: string;
+  
+  // Section completion flags
+  site_intelligence_complete: boolean;
+  contact_verification_complete: boolean;
+  documentation_review_complete: boolean;
+  tools_preparation_complete: boolean;
+  checklist_complete: boolean;
+  
+  // Documentation status
+  has_submittals: boolean;
+  has_floor_plans: boolean;
+  has_as_built: boolean;
+  has_sequence: boolean;
+  has_network_diagram: boolean;
+  documentation_score: number;
+  
+  // Tool selections (JSON)
+  selected_tools: string;
+  system_specific_tools: string;
+  spare_parts_selected: string;
+  additional_tools_notes?: string;
+  
+  // Checklist progress
+  contact_confirmed: boolean;
+  access_plan_reviewed_flag: boolean;
+  credentials_verified: boolean;
+  tools_loaded: boolean;
+  notes_reviewed: boolean;
+  safety_reviewed: boolean;
+  
+  // Progress tracking
+  overall_progress: number;
+  sections_completed: number;
+  preparation_status: 'pending' | 'in_progress' | 'completed';
+  
+  // Session data
+  auto_save_data?: any;
+  last_activity: string;
+  session_token?: string;
+  
+  // Metadata
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ToolCatalogItem {
+  id: string;
+  tool_id: string;
+  tool_name: string;
+  category: 'standard' | 'niagara' | 'johnson' | 'honeywell' | 'spareparts';
+  subcategory?: string;
+  icon_name?: string;
+  is_required: boolean;
+  system_platforms: string[];
+  description?: string;
+  display_order: number;
+  is_active: boolean;
+}
+
+export interface PreVisitData {
+  customer: Customer;
+  preparation?: PrevisitPreparation;
+  tools: ToolCatalogItem[];
+  formData: PreVisitFormData;
 }
 
 // Service tier types are now centralized in serviceTiers.ts

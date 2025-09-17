@@ -3,14 +3,15 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WorkflowPhaseTracker } from './WorkflowPhaseTracker';
 import { CustomerInfoCard } from './CustomerInfoCard';
-import { PreVisitPhase } from './phases/PreVisitPhase';
+import { PreVisitWorkflowEnhanced } from './phases/PreVisitWorkflowEnhanced';
 import { AssessmentPhase } from './phases/AssessmentPhase';
 import { ServiceExecutionPhase } from './phases/ServiceExecutionPhase';
 import { PostVisitPhase } from './phases/PostVisitPhase';
 import { useVisitSession } from '@/hooks/useVisitSession';
 import { Customer } from '@/types';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Loader2, X, RefreshCw } from 'lucide-react';
+import { Clock, Loader2, X, RefreshCw, Edit, MapPin, Phone, Mail, User, Shield } from 'lucide-react';
+import { CustomerDetailsModalEnhanced } from '@/components/customers/CustomerDetailsModalEnhanced';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -34,7 +35,7 @@ interface WorkflowDashboardProps {
   customer: Customer;
 }
 
-export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
+export const WorkflowDashboard = ({ customer: initialCustomer }: WorkflowDashboardProps) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const visitId = searchParams.get('visitId');
@@ -55,6 +56,11 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
   const [noActiveVisit, setNoActiveVisit] = useState(false);
   const [activeVisits, setActiveVisits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Customer state that can be updated
+  const [customer, setCustomer] = useState<Customer>(initialCustomer);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [customerModalMode, setCustomerModalMode] = useState<'view' | 'edit'>('view');
 
   // Get technician ID from authenticated user
   const technicianId = user?.id;
@@ -183,6 +189,30 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
     if (sessionData) {
       updateAutoSaveData({ [`phase_${currentPhase}`]: phaseData });
     }
+  };
+  
+  // Handle customer update from modal
+  const handleCustomerUpdated = async () => {
+    // Refresh customer data from database
+    try {
+      const { data } = await supabase
+        .from('ame_customers')
+        .select('*')
+        .eq('id', customer.id)
+        .single();
+        
+      if (data) {
+        setCustomer(data);
+      }
+    } catch (error) {
+      console.error('Error refreshing customer data:', error);
+    }
+  };
+  
+  // Open customer edit modal
+  const handleEditCustomer = () => {
+    setCustomerModalMode('edit');
+    setShowCustomerModal(true);
   };
 
   if (!isAuthenticated) {
@@ -313,55 +343,100 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Customer Header with Site Intelligence */}
-      <div className="bg-card border-b px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div>
-              <h1 className="text-2xl font-bold">
-                {customer.site_nickname || customer.company_name}
-              </h1>
-              <div className="flex items-center gap-3 mt-1">
-                <p className="text-muted-foreground">{customer.site_name}</p>
+      {/* Enhanced Customer Header with Site Intelligence */}
+      <div className="bg-card border-b">
+        {/* Main Header */}
+        <div className="px-6 py-4">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold">
+                  {customer.site_nickname || customer.company_name}
+                </h1>
                 {customer.site_number && (
-                  <Badge variant="outline" className="text-xs font-mono">
+                  <Badge variant="outline" className="font-mono">
                     {customer.site_number}
                   </Badge>
                 )}
+                <ServiceTierBadge tier={customer.service_tier} size="md" />
                 {customer.system_platform && (
-                  <Badge variant="secondary" className="text-xs">
-                    {customer.system_platform}
-                  </Badge>
+                  <Badge variant="secondary">{customer.system_platform}</Badge>
                 )}
               </div>
-              {customer.site_nickname && customer.site_nickname !== customer.company_name && (
-                <p className="text-xs text-muted-foreground mt-1">{customer.company_name}</p>
-              )}
-            </div>
-            <ServiceTierBadge tier={customer.service_tier} size="md" />
-          </div>
-          
-          {/* Site Intelligence Summary */}
-          <div className="text-right">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-              {customer.primary_technician_name && (
-                <div className="flex items-center gap-1">
-                  <span>Primary Tech:</span>
-                  <span className="font-medium text-foreground">{customer.primary_technician_name}</span>
+              
+              {/* Quick Info Grid */}
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2 mt-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Address:</span>
+                  <span className="font-medium">{customer.address || 'Not set'}</span>
                 </div>
-              )}
-              {customer.secondary_technician_name && (
-                <div className="flex items-center gap-1">
-                  <span>• Secondary:</span>
-                  <span className="font-medium text-foreground">{customer.secondary_technician_name}</span>
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Primary Contact:</span>
+                  <span className="font-medium">{customer.primary_contact || 'Not set'}</span>
                 </div>
-              )}
-            </div>
-            {customer.last_job_numbers && customer.last_job_numbers.length > 0 && (
-              <div className="text-xs text-muted-foreground">
-                Recent Job: {customer.last_job_numbers[customer.last_job_numbers.length - 1]}
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Phone:</span>
+                  <span className="font-medium">{customer.contact_phone || 'Not set'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Email:</span>
+                  <span className="font-medium">{customer.contact_email || 'Not set'}</span>
+                </div>
               </div>
-            )}
+
+              {/* Access Requirements Alert */}
+              {(customer.badge_required || customer.ppe_required || customer.escort_required) && (
+                <div className="flex items-center gap-3 mt-3 p-2 bg-orange-50 border border-orange-200 rounded-lg">
+                  <Shield className="w-4 h-4 text-orange-600" />
+                  <span className="text-sm font-medium text-orange-900">Access Requirements:</span>
+                  <div className="flex gap-2">
+                    {customer.badge_required && (
+                      <Badge variant="outline" className="text-xs border-orange-300">Badge Required</Badge>
+                    )}
+                    {customer.ppe_required && (
+                      <Badge variant="outline" className="text-xs border-orange-300">PPE Required</Badge>
+                    )}
+                    {customer.escort_required && (
+                      <Badge variant="outline" className="text-xs border-orange-300">Escort Required</Badge>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Actions */}
+            <div className="flex flex-col gap-2 ml-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEditCustomer}
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Edit Customer
+              </Button>
+              
+              {/* Technician Assignment Display */}
+              {(customer.primary_technician_name || customer.secondary_technician_name) && (
+                <div className="text-right text-xs space-y-1 mt-2">
+                  {customer.primary_technician_name && (
+                    <div>
+                      <span className="text-muted-foreground">Primary: </span>
+                      <span className="font-medium">{customer.primary_technician_name}</span>
+                    </div>
+                  )}
+                  {customer.secondary_technician_name && (
+                    <div>
+                      <span className="text-muted-foreground">Secondary: </span>
+                      <span className="font-medium">{customer.secondary_technician_name}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -478,12 +553,15 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
               <TabsTrigger value="phase-4">Phase 4</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="phase-1" className="space-y-6">
-                    <PreVisitPhase 
+            <TabsContent value="phase-1" className="h-full">
+                    <PreVisitWorkflowEnhanced 
                       customer={customer} 
                       onPhaseComplete={() => handlePhaseComplete(1)}
-                      sessionData={sessionData}
-                      updateAutoSaveData={updateAutoSaveData}
+                      updateCustomerData={(updates) => {
+                        // Update customer data and auto-save
+                        updateAutoSaveData({ customerUpdates: updates });
+                      }}
+                      autoSaveEnabled={true}
                     />
             </TabsContent>
             
@@ -513,6 +591,15 @@ export const WorkflowDashboard = ({ customer }: WorkflowDashboardProps) => {
           </Tabs>
         </div>
       </div>
+      
+      {/* Customer Details Modal */}
+      <CustomerDetailsModalEnhanced
+        isOpen={showCustomerModal}
+        onClose={() => setShowCustomerModal(false)}
+        customer={customer}
+        onCustomerUpdated={handleCustomerUpdated}
+        mode={customerModalMode}
+      />
     </div>
   );
 };

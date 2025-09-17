@@ -5,7 +5,10 @@ import {
   Building2,
   FileText,
   Settings, 
-  HelpCircle
+  HelpCircle,
+  CheckSquare,
+  Target,
+  BarChart3
 } from 'lucide-react';
 import {
   Sidebar,
@@ -20,34 +23,101 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
+import { useUserRole, USER_PERMISSIONS } from '@/services/userRoleService';
 
-const navigationItems = [
-  {
-    title: 'MAIN',
-    items: [
-      { name: 'Dashboard', href: '/', icon: LayoutDashboard }
-    ]
-  },
-  {
-    title: 'OPERATIONS',
-    items: [
-      { name: 'Project Selector', href: '/projects', icon: Building2 },
-      { name: 'Customer Management', href: '/customers', icon: Users },
-    ]
-  },
-  {
-    title: 'SYSTEM',
-    items: [
-      { name: 'Reports', href: '/reports', icon: FileText },
-      { name: 'Administration', href: '/admin', icon: Settings },
-      { name: 'Help & Demo', href: '/help', icon: HelpCircle }
-    ]
+// Navigation items with role-based visibility
+const getNavigationItems = (hasPermission: (permission: string) => boolean, isTech: boolean) => {
+  const items = [];
+
+  // Main section - only for admins and managers
+  if (hasPermission(USER_PERMISSIONS.VIEW_DASHBOARD)) {
+    items.push({
+      title: 'MAIN',
+      items: [
+        { name: 'Dashboard', href: '/', icon: LayoutDashboard }
+      ]
+    });
   }
-];
+
+  // Operations section - role-based items
+  const operationsItems = [];
+  
+  if (hasPermission(USER_PERMISSIONS.MANAGE_PROJECTS)) {
+    operationsItems.push({ name: 'Project Selector', href: '/projects', icon: Building2 });
+  }
+  
+  if (hasPermission(USER_PERMISSIONS.MANAGE_CUSTOMERS)) {
+    operationsItems.push({ name: 'Customer Management', href: '/customers', icon: Users });
+  }
+  
+  // Always show PM Tasks for techs and others with permission
+  if (hasPermission(USER_PERMISSIONS.PERFORM_PM_TASKS)) {
+    if (isTech) {
+      // For techs: provide both standalone and pre-filled options
+      operationsItems.push({ 
+        name: 'Start PM Workflow', 
+        href: '/pm-workflow', 
+        icon: Target 
+      });
+      operationsItems.push({ 
+        name: 'Quick Start (Pre-filled)', 
+        href: '/preventive-tasks', 
+        icon: CheckSquare 
+      });
+    } else {
+      operationsItems.push({ 
+        name: 'PM Service Tasks', 
+        href: '/preventive-tasks', 
+        icon: CheckSquare 
+      });
+    }
+  }
+
+  if (operationsItems.length > 0) {
+    items.push({
+      title: isTech ? 'SERVICE TOOLS' : 'OPERATIONS',
+      items: operationsItems
+    });
+  }
+
+  // Reports section - for everyone who can view reports  
+  if (hasPermission(USER_PERMISSIONS.VIEW_REPORTS)) {
+    items.push({
+      title: 'REPORTS',
+      items: [
+        { name: 'Generated Reports', href: '/reports', icon: BarChart3 }
+      ]
+    });
+  }
+
+  // System section - admin only
+  const systemItems = [];
+  
+  if (hasPermission(USER_PERMISSIONS.SYSTEM_ADMIN)) {
+    systemItems.push({ name: 'Administration', href: '/admin', icon: Settings });
+  }
+  
+  if (hasPermission(USER_PERMISSIONS.HELP_ACCESS)) {
+    systemItems.push({ name: 'Help & Demo', href: '/help', icon: HelpCircle });
+  }
+
+  if (systemItems.length > 0) {
+    items.push({
+      title: 'SYSTEM',
+      items: systemItems
+    });
+  }
+
+  return items;
+};
 
 export function AppSidebar() {
   const location = useLocation();
   const { state, isMobile } = useSidebar();
+  const { role, hasPermission, isTech } = useUserRole();
+  
+  // Get navigation items based on user role
+  const navigationItems = getNavigationItems(hasPermission, isTech);
 
   return (
     <Sidebar 
@@ -61,7 +131,13 @@ export function AppSidebar() {
           {state === 'expanded' && !isMobile && (
             <>
               <div className="ame-tagline">A PART OF NORDAMATIC GROUP</div>
-              <div className="ame-system-title">Maintenance Management</div>
+              <div className="ame-system-title">
+                {isTech ? 'PM Workflow Guide' : 'Maintenance Management'}
+              </div>
+              {/* User Role Indicator */}
+              <div className="mt-2 px-2 py-1 bg-primary/10 rounded text-xs text-primary font-medium uppercase tracking-wide">
+                {role} User
+              </div>
             </>
           )}
         </div>

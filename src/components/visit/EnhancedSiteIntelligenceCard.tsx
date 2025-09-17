@@ -70,6 +70,20 @@ export const EnhancedSiteIntelligenceCard = ({
     });
   };
 
+  const saveArrayField = (field: string) => {
+    const value = tempValues[field];
+    // Convert comma-separated string to array
+    const arrayValue = typeof value === 'string' 
+      ? value.split(',').map(item => item.trim()).filter(item => item.length > 0)
+      : value;
+    onUpdate({ [field]: arrayValue });
+    setEditingFields(prev => ({ ...prev, [field]: false }));
+    setTempValues(prev => {
+      const { [field]: removed, ...rest } = prev;
+      return rest;
+    });
+  };
+
   const getSystemPlatformColor = (platform?: string) => {
     if (!platform) return 'bg-gray-100 text-gray-800';
     const platformLower = platform.toLowerCase();
@@ -172,20 +186,17 @@ export const EnhancedSiteIntelligenceCard = ({
   };
 
   return (
-    <Card className="border-l-4 border-l-blue-500">
-      <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Building className="w-5 h-5 text-blue-600" />
-          Site Overview
-        </CardTitle>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Site Intelligence</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-3">
         
         {/* Site Identity Section */}
-        <div className="space-y-4">
+        <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-base flex items-center gap-2">
-              <Hash className="w-4 h-4 text-blue-600" />
+            <h3 className="font-medium text-sm flex items-center gap-2">
+              <Hash className="w-3 h-3 text-muted-foreground" />
               Site Details
             </h3>
             <Button
@@ -293,10 +304,10 @@ export const EnhancedSiteIntelligenceCard = ({
         </div>
 
         {/* Team Assignment Section */}
-        <div className="space-y-4 border-t pt-6">
+        <div className="space-y-2 border-t pt-3">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-base flex items-center gap-2">
-              <Users className="w-4 h-4 text-green-600" />
+            <h3 className="font-medium text-sm flex items-center gap-2">
+              <Users className="w-3 h-3 text-muted-foreground" />
               Team Info
             </h3>
             <Button

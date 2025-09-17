@@ -2,8 +2,10 @@ import React from 'react';
 import { 
   Building2, MapPin, Phone, Mail, Shield, Server, FolderOpen, 
   Calendar, Clock, User, Users, AlertCircle, CheckCircle, ExternalLink,
-  Edit3, Eye, Settings, FileText, Archive, Camera, Wrench, BarChart3, Trash2
+  Edit3, Eye, Settings, FileText, Archive, Camera, Wrench, BarChart3, Trash2,
+  ClipboardCheck
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +30,8 @@ export const EnhancedCustomerDisplayCard: React.FC<EnhancedCustomerDisplayCardPr
   isExpanded = false,
   onExpandToggle
 }) => {
+  const navigate = useNavigate();
+  
   const getServiceTierBadge = (tier: Customer['service_tier']) => {
     const variants = {
       CORE: 'bg-blue-100 text-blue-800 border-blue-300',
@@ -246,6 +250,16 @@ export const EnhancedCustomerDisplayCard: React.FC<EnhancedCustomerDisplayCardPr
               <Button 
                 variant="ghost" 
                 size="sm"
+                onClick={() => navigate(`/pm-guidance/${customer.customer_id}`)}
+                className="h-8 w-8 p-0 hover:bg-green-50 hover:text-green-600"
+                title="PM Guidance"
+              >
+                <ClipboardCheck className="w-4 h-4" />
+              </Button>
+              
+              <Button 
+                variant="ghost" 
+                size="sm"
                 onClick={onEdit}
                 className="h-8 w-8 p-0"
                 title="Edit Customer"
@@ -416,6 +430,15 @@ export const EnhancedCustomerDisplayCard: React.FC<EnhancedCustomerDisplayCardPr
           {/* Quick Actions */}
           <Separator className="my-4" />
           <div className="flex justify-end gap-3">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => navigate(`/pm-guidance/${customer.customer_id}`)}
+              className="bg-green-50 hover:bg-green-100 text-green-700 hover:text-green-800 border-green-300"
+            >
+              <ClipboardCheck className="w-4 h-4 mr-2" />
+              PM Guidance
+            </Button>
             <Button variant="outline" size="sm" onClick={onViewDetails}>
               <Eye className="w-4 h-4 mr-2" />
               View Full Details

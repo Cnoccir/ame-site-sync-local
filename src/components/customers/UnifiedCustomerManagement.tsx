@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, RefreshCw, Filter } from 'lucide-react';
+import { Search, Plus, RefreshCw, Filter, ClipboardCheck, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AMEService } from '@/services/ameService';
 import { Customer } from '@/types';
 import { useToast } from '@/hooks/use-toast';
@@ -195,6 +196,16 @@ export const UnifiedCustomerManagement: React.FC = () => {
         </div>
       </div>
 
+      {/* PM Guidance Info */}
+      <Alert className="bg-green-50 border-green-200">
+        <ClipboardCheck className="h-4 w-4 text-green-600" />
+        <AlertTitle className="text-green-800">PM Guidance Tool Available</AlertTitle>
+        <AlertDescription className="text-green-700">
+          Access systematic PM task guidance with integrated SOPs, Tridium data import, and professional report generation. 
+          Click the <span className="inline-flex items-center mx-1"><ClipboardCheck className="h-3 w-3" /></span> 
+          button on any customer card to start a PM session.
+        </AlertDescription>
+      </Alert>
 
       {/* Filters */}
       <Card>

@@ -1,0 +1,88 @@
+HVAC Controls Service - Data Collection Wireframe
+Objective: This document is a collaborative starting point to define the essential data we need to collect for new service contracts, including project handoffs and bulk system data. The goal is to use team feedback to build a foundational data set that will eventually become our standard process.
+Section 1: Core Job & Site Information
+This section covers the absolute basics needed to identify and track the job.
+Customer Name:
+Site Name / Identifier: (e.g., "Main Campus," "Downtown Office")
+Site Address:
+Job / Contract Number:
+Assigned Technician(s):
+Date of Initial Visit:
+Contract: (e.g., CORE, ASSURE, GUARDIAN) *Based on the Infographic I provided, obviously not mandatory but there needs to be a mechanism for a basic or advanced client due to the service they're expecting. 
+Team Feedback & Discussion (Section 1):
+Is "Job / Contract Number" the best identifier, or should we use something else?
+My thought is that we should have a nick name, kinda already do for alot of places, they are quick to refer to
+Problem with job numbers is that i think the way the system is now they keep changing
+Contract number as well?
+I almost want a unique Site Number; something that stays with the site, and the contracts can come and go, at times we have sites that doesn’t have a contract and they only call for T&M, but then sometimes we convince them to get a contract
+What other high-level information is consistently missing when you start a new job?
+Need to know what main system is on site, N4, FX, a mix of ALC, EBI Honeywell, etc. 
+Section 2: Project-to-Service Handoff Documentation
+For sites previously installed by our operations team. This is the essential package the service team should receive.
+Link to Project Folder: (e.g., SharePoint, Network Drive)
+Original Project Manager & Lead Technician(s):
+As-Built Drawings: (Mechanical and Controls)
+Floor Plans: (Showing equipment and panel locations)
+Sequence of Operations (SOO):
+Submittals: (For all major equipment and controllers)
+Network Architecture Diagram:
+Team Feedback & Discussion (Section 2):
+What is the #1 document you wish you had from the project team on day one?
+Submittal with Floor plan, submittal first
+How should we handle cases where this documentation is incomplete or missing?
+To have a foreword from the PM would be a game changer, just like, site was never commissioned, or PM left before they finish commission, etc. useful things like that
+I believe we have to correct it, thats what i try to do on my backburner, to me, sites that can be taken over by any tech at any time is a liability ; in order for this to happen, the site needs to be very well documented, submittals are the bible, if that has the core info kept to date, its a game changer for anyone who goes to troubleshoot and etc
+Should the original programmer be a required contact?
+I don’t think its necessary, but for unique sites it can be very helpful, for instance there was a site Rich wanted me to go to, that even he does not dive into the software, and he suggested the same to me, we always defer to the original programmer for that site, cases like that, yes, template/small/typical, no
+Section 3: 🚨 CRITICAL - On-Site Contact & Access
+This is the information we MUST have before arriving to avoid delays and appear professional.
+Primary Site Contact Name:
+Contact's Direct Phone Number:
+Contact's Email:
+Contact's Role / Title: (e.g., "Facilities Manager," "Lead Engineer")
+Access Procedures: (e.g., "Check in at front desk," "Keycard required," "Call contact for escort")
+Known Site Hazards & PPE Requirements: (e.g., "Arc flash gear needed for main panel," "Asbestos awareness," "Fall protection required on roof")
+Parking & Staging Logistics: (e.g., "Park in designated contractor spots," "Use loading dock B")
+Team Feedback & Discussion (Section 3):
+What is the most common access issue you run into? What data point could prevent it?
+Timing, POC isn’t on site at time of job start, proper scheduling; lack of knowledge for locations of equipment, section 2
+Should we have a secondary contact field?
+We should know who scheduling coordinated with, and who scheduling expected us to meet
+Section 4: BMS / BAS System Overview
+High-level technical information about the Building Management System.
+Primary BMS Manufacturer/Platform: (e.g., Tridium, Johnson Controls, Honeywell)
+BMS Software Name & Version: (e.g., "Niagara 4.11," "Facility Explorer 14.2")
+Supervisor Location (Physical): (e.g., "Main IT Closet, 2nd Floor," "Server Rack in FM Office")
+Supervisor IP Address / Hostname:
+Network Access Method: (e.g., "Customer LAN," "," "Cellular Modem")
+System Credentials (Location/Storage): (Note: Do not write passwords here. Note where they are stored, e.g., "In company password manager under Site Name.")
+Team Feedback & Discussion (Section 4):
+How can we better document the overall network architecture for sites without a project diagram?
+What's the most critical piece of network information you need?
+Section 5: System & Device Inventory (Bulk Data Capture)
+This section is for capturing a complete inventory of the BMS network, ideally from an automated source like a Workbench export or a custom scanning tool.
+JACE / Supervisor Inventory:
+Data Source: (e.g., "Manual Entry," "Supervisor CSV Export," "API Scan Tool")
+Data Fields to Capture: Host Name, Device ID, IP Address, MAC Address, Model, Version, License Expiration.
+Field Controller Inventory:
+Data Source: (e.g., "Workbench Device Export," "")
+Data Fields to Capture: Device Name, Network Number, MAC Address/Instance #, Device Model, Firmware Version, Parent JACE.
+Automated Point Inventory:
+Data Source: (e.g., "Custom Program Object Scan")
+Summary to Capture: Total point count, count of points in alarm/override, list of non-standard point names.
+Team Feedback & Discussion (Section 5):
+If we could reliably get a CSV export from every site, what columns would be most valuable?
+How useful would an automated point inventory be for initial site assessment?
+What is the best way to keep this inventory data up-to-date over time?
+Section 6: On-Site Findings & Customer Priorities
+This section is for capturing the state of the system and the customer's perspective during the initial visit.
+Current Customer Complaints / Stated Priorities: (e.g., "3rd floor is always too hot," "High energy bills," "System seems slow")
+Technician's Initial Findings / System Status: (e.g., "Multiple critical alarms for AHU-1," "JACE CPU is high," "No communication to VAVs on 2nd floor")
+Immediate Recommendations / Action Plan: (e.g., "Quote to replace failing actuator," "Propose programming changes for efficiency," "Schedule follow-up to troubleshoot VAVs")
+Potential Opportunities for Improvement/Upgrades: (e.g., "System is on an old version of Niagara," "No analytics," "Old controllers are obsolete")
+Team Feedback & Discussion (Section 6):
+How can we best capture customer priorities to ensure we are aligned?
+What data points would make handoffs between service technicians smoother?
+** Final Thoughts:
+I would say 1,2,3 and part of 4 for now. I’m almost hesitant to remove a few items from 2 and 3 just to keep it a bit less for everyone to chew; like make a version 0 from this list. Get some things implemented… then move to version 1 and so forth. 
+There are some simple things that we don’t have consistently at this moment, that i think needs to change first before tackling more

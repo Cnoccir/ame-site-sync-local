@@ -23,6 +23,12 @@ const navigationItems = [
     ]
   },
   {
+    title: 'SERVICE TOOLS',
+    items: [
+      { name: 'PM Workflow Guide', href: '/pm-workflow', icon: ClipboardList },
+    ]
+  },
+  {
     title: 'OPERATIONS',
     items: [
       { name: 'Project Selector', href: '/projects', icon: Building2 },

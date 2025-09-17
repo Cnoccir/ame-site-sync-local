@@ -12,6 +12,7 @@ import { AMEService } from '@/services/ameService';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { RequiredField } from '@/components/ui/required-field';
 import { IntelligentAutoPopulationService } from '@/services/intelligentAutoPopulationService';
+import { AssessmentService } from '@/services/assessmentService';
 
 // Import assessment components
 
@@ -170,10 +171,18 @@ export const AssessmentPhase: React.FC<AssessmentPhaseProps> = ({ onPhaseComplet
   // Auto-save with debouncing
   const { debouncedSave, setLoading } = useAutoSave({
     delay: 2000,
-    onSave: (data) => {
+    onSave: async (data) => {
       if (updateAutoSaveData) {
         setIsSaving(true);
         updateAutoSaveData(data);
+      }
+      try {
+        if (visitId && customer?.id) {
+          await AssessmentService.autoSave(customer.id, visitId, { assessmentPhase: data });
+        }
+      } catch (e) {
+        console.error('Assessment autosave failed:', e);
+      } finally {
         setTimeout(() => setIsSaving(false), 500);
       }
     },

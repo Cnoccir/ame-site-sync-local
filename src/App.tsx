@@ -15,6 +15,8 @@ import { SimpleCallback } from "./pages/SimpleCallback";
 import { TestCallback } from "./pages/TestCallback";
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { PreventiveTasks } from "./pages/PreventiveTasks";
+import { PMGuidance } from "./pages/PMGuidance";
 
 const queryClient = new QueryClient();
 
@@ -23,7 +25,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           {/* Public routes */}
           <Route path="/auth" element={<Auth />} />
@@ -36,6 +38,9 @@ const App = () => (
             <Route path="customers" element={<Customers />} />
             <Route path="projects" element={<Projects />} />
             <Route path="visit/:customerId" element={<Visit />} />
+            <Route path="pm-workflow" element={<PMGuidance />} />
+            <Route path="pm-workflow/:sessionId" element={<PMGuidance />} />
+            <Route path="preventive-tasks" element={<PreventiveTasks />} />
             <Route path="reports" element={<div className="p-8 text-center text-muted-foreground">Reports page coming soon...</div>} />
             <Route path="admin" element={<Admin />} />
             <Route path="help" element={<div className="p-8 text-center text-muted-foreground">Help & Demo page coming soon...</div>} />

@@ -1,0 +1,239 @@
+{
+  "projectName": "PM Guidance Tool Refactor",
+  "sessionId": "pm_refactor_session_001",
+  "startDate": "2025-01-21",
+  "currentPhase": "Development Session 1",
+  "overallProgress": 45,
+  "status": "session_2_in_progress",
+  
+  "masterPlan": {
+    "totalSessions": 5,
+    "currentSession": 2,
+    "architecture": "4-phase systematic workflow",
+    "keyObjectives": [
+      "Replace customer-centric approach with systematic checklist",
+      "Generate professional PDF reports automatically", 
+      "Process Tridium export files",
+      "Service tier adaptation (CORE/ASSURE/GUARDIAN)",
+      "Professional visual design and branding"
+    ],
+    "completedObjectives": [
+      "✅ Systematic 4-phase workflow implemented",
+      "✅ Professional visual design with AME Controls branding",
+      "✅ Customer data integration and auto-population",
+      "✅ File upload system for Tridium exports",
+      "🟡 Service tier adaptation (architecture ready)",
+      "⏳ PDF report generation (Phase 4)",
+      "🟡 Real Tridium CSV processing (mock implemented)"
+    ]
+  },
+
+  "developmentPhases": {
+    "session1": {
+      "name": "Core Framework Setup",
+      "status": "completed",
+      "progress": 100,
+      "deliverables": {
+        "PMWorkflowGuide_tsx": "completed",
+        "phase_navigation": "completed", 
+        "basic_data_flow": "completed",
+        "progress_tracking": "completed"
+      },
+      "completed": {
+        "types_definition": "completed",
+        "project_structure": "completed",
+        "session_tracking": "completed",
+        "main_component": "completed",
+        "shared_components": "completed",
+        "phase1_full": "completed",
+        "route_integration": "completed"
+      }
+    },
+    "session2": {
+      "name": "Phase 1 & 2 Implementation",
+      "status": "in_progress",
+      "progress": 75,
+      "deliverables": {
+        "Phase1SiteIntelligence_tsx": "completed",
+        "Phase2SystemDiscovery_tsx": "completed",
+        "customer_search_integration": "completed",
+        "tridium_export_upload": "completed"
+      },
+      "completed": {
+        "phase1_complete_functionality": "completed",
+        "contact_management": "completed",
+        "access_procedures": "completed", 
+        "safety_requirements": "completed",
+        "phase2_basic_structure": "completed",
+        "bms_overview": "completed",
+        "file_upload_system": "completed",
+        "mock_data_processing": "completed"
+      },
+      "remaining": {
+        "phase2_csv_parsing": "pending",
+        "phase2_chart_integration": "pending"
+      }
+    },
+    "session3": {
+      "name": "Phase 3 Service Activities",
+      "status": "pending", 
+      "progress": 0,
+      "deliverables": {
+        "Phase3ServiceActivities_tsx": "pending",
+        "sop_integration": "pending",
+        "task_completion_tracking": "pending",
+        "issues_recommendations": "pending"
+      }
+    },
+    "session4": {
+      "name": "PDF Report Engine", 
+      "status": "pending",
+      "progress": 0,
+      "deliverables": {
+        "PDFGenerator_tsx": "pending",
+        "professional_templates": "pending",
+        "charts_tables": "pending",
+        "8_5x11_formatting": "pending"
+      }
+    },
+    "session5": {
+      "name": "Integration & Polish",
+      "status": "pending",
+      "progress": 0,
+      "deliverables": {
+        "database_integration": "pending",
+        "performance_optimization": "pending",
+        "error_handling": "pending",
+        "final_polish": "pending"
+      }
+    }
+  },
+
+  "currentSession": {
+    "sessionNumber": 2,
+    "startTime": "2025-01-21T10:30:00Z",
+    "lastUpdate": "2025-01-21T11:00:00Z",
+    "progress": 75,
+    "tasksCompleted": [
+      "Completed Phase 1 with full contact management, access procedures, and safety systems",
+      "Built comprehensive Phase2SystemDiscovery component",
+      "Implemented BMS overview form with platform selection",
+      "Created Tridium export file upload system with drag-and-drop",
+      "Added mock data processing and visualization",
+      "Integrated manual inventory system as fallback",
+      "Updated PMWorkflowGuide to use both Phase 1 and 2",
+      "Enhanced session tracking system"
+    ],
+    "tasksInProgress": [],
+    "tasksRemaining": [
+      "Real CSV parsing for Tridium exports",
+      "Chart integration with Recharts",
+      "Begin Phase 3 Service Activities"
+    ],
+    "blockers": [],
+    "notes": [
+      "Types structure created successfully",
+      "Existing PMGuidance.tsx needs complete refactor",
+      "Customer integration already exists and working"
+    ]
+  },
+
+  "fileStructure": {
+    "created": [
+      "src/types/pmWorkflow/index.ts",
+      "src/components/pm-workflow/PMWorkflowGuide.tsx",
+      "src/components/pm-workflow/shared/index.ts",
+      "src/components/pm-workflow/phases/Phase1SiteIntelligence.tsx",
+      "src/components/pm-workflow/phases/Phase2SystemDiscovery.tsx",
+      "PM_REFACTOR_SESSION_TRACKING.json",
+      "SESSION_1_COMPLETION_SUMMARY.md"
+    ],
+    "modified": [
+      "src/pages/PMGuidance.tsx"
+    ],
+    "toCreate": [
+      "src/components/pm-workflow/phases/Phase3ServiceActivities.tsx", 
+      "src/components/pm-workflow/phases/Phase4Documentation.tsx",
+      "src/services/pmWorkflowService.ts",
+      "src/services/tridiumExportService.ts",
+      "src/services/reportGenerationService.ts"
+    ]
+  },
+
+  "technicalDecisions": {
+    "approach": "Refactor existing PMGuidance.tsx to use new 4-phase architecture",
+    "dataFlow": "Centralized PMWorkflowData state with phase-specific updates",
+    "navigation": "Tab-based phase navigation with progress tracking",
+    "autoSave": "5-second auto-save with session recovery",
+    "validation": "Phase-based validation before advancement"
+  },
+
+  "integrationPoints": {
+    "existingServices": {
+      "AMEService": "Customer data retrieval - keep existing",
+      "sopService": "SOP integration - enhance for PM workflow",
+      "ameService": "Visit tracking - extend for PM sessions"
+    },
+    "database": {
+      "newTables": ["pm_workflow_sessions", "pm_workflow_data"],
+      "existingTables": ["ame_customers", "ame_visits"]
+    }
+  },
+
+  "nextSessionInstructions": {
+    "priority": "Begin Session 3 - Phase 3 Service Activities",
+    "startWith": "Test the complete Phase 1 and 2 workflow by navigating to /pm-guidance/:customerId",
+    "focus": "Create Phase3ServiceActivities.tsx with service tier task mapping and SOP integration",
+    "testWith": "Complete customer data through Phase 1 and 2 validation",
+    "handoffNotes": [
+      "Phase 1 is fully functional with complete contact management, access procedures, and safety systems",
+      "Phase 2 has working BMS overview and file upload system with mock data processing",
+      "Both phases have proper validation and completion workflows",
+      "4-phase navigation system is fully operational",
+      "Ready to build Phase 3 Service Activities with SOP integration",
+      "Need to integrate with existing SOP_Library_v22.csv data",
+      "Should implement service tier task mapping (CORE/ASSURE/GUARDIAN)",
+      "Phase 4 PDF generation should be next priority after Phase 3"
+    ]
+  },
+
+  "contextForNextLLM": {
+    "projectLocation": "C:\\Users\\tech\\Projects\\ame-site-sync-local",
+    "devServerCommand": "npm run dev (runs on port 8083)",
+    "testRoute": "/pm-guidance/:customerId (use existing customer ID from database)",
+    "keyFiles": [
+      "src/pages/PMGuidance.tsx - Updated entry point",
+      "src/components/pm-workflow/PMWorkflowGuide.tsx - Main orchestrator component", 
+      "src/components/pm-workflow/shared/index.ts - Shared UI components",
+      "src/components/pm-workflow/phases/Phase1SiteIntelligence.tsx - COMPLETE",
+      "src/components/pm-workflow/phases/Phase2SystemDiscovery.tsx - COMPLETE",
+      "src/types/pmWorkflow/index.ts - Complete type definitions",
+      "docs/SOP_Library_v22.csv - SOP data for Phase 3 integration",
+      "docs/Task_Library_v22.csv - Task definitions for Phase 3",
+      "PM_REFACTOR_SESSION_TRACKING.json - This tracking file"
+    ],
+    "workingFeatures": [
+      "4-phase navigation with progress tracking",
+      "Phase 1: Complete contact management, access procedures, safety systems",
+      "Phase 2: BMS overview, file upload, manual inventory",
+      "Customer data auto-population",
+      "Form validation and phase advancement logic",
+      "Professional UI with AME Controls branding",
+      "TypeScript type safety throughout"
+    ],
+    "readyForImplementation": [
+      "Phase 3: Service Activities with SOP integration",
+      "Service tier task mapping (CORE/ASSURE/GUARDIAN)",
+      "Task completion tracking",
+      "Issues and recommendations capture",
+      "Real CSV parsing for Tridium exports"
+    ],
+    "architectureNotes": [
+      "PMWorkflowData centralized state management",
+      "Phase-specific data sections with validation",
+      "Shared component library for consistency",
+      "Auto-save architecture ready (needs backend)",
+      "Progress calculation based on section completion"
+    ]
+  }
+}
