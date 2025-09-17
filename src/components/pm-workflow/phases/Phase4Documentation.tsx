@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,70 +9,34 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Progress } from '@/components/ui/progress';
 import { 
   FileText, 
+  Download, 
+  Mail, 
+  Printer, 
   CheckCircle2, 
   AlertTriangle,
-  ArrowRight,
-  Download,
-  Mail,
-  Printer,
   Eye,
+  Send,
   Settings,
   BarChart3,
-  PieChart,
-  TrendingUp,
+  Image,
+  Table,
+  ArrowRight,
   Clock,
-  Target,
-  Wrench,
-  Lightbulb,
-  Camera,
-  Save,
-  Share2,
-  Edit3
+  Users,
+  Shield
 } from 'lucide-react';
-import { Customer } from '@/types';
 import { PhaseHeader, SectionCard } from '../shared';
-
-// Import chart components
-import { 
-  BarChart, 
-  Bar, 
-  PieChart as RechartsPieChart, 
-  Pie,
-  Cell, 
-  ResponsiveContainer, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend,
-  LineChart,
-  Line,
-  RadialBarChart,
-  RadialBar
-} from 'recharts';
+import { logger } from '@/utils/logger';
+import { PMReportGenerator } from '@/services/pdf';
 
 // Import types
-import type { 
-  ServiceSummaryData,
-  ReportConfigData,
-  DeliveryInfo,
-  GeneratedReportData,
-  PMWorkflowData
-} from '@/types/pmWorkflow';
-
-interface DocumentationData {
-  summary: ServiceSummaryData;
-  reportConfig: ReportConfigData;
-  deliveryInfo: DeliveryInfo;
-  generatedReports: GeneratedReportData[];
-}
+import type { DocumentationData, PMWorkflowData } from '@/types/pmWorkflow';
 
 interface Phase4DocumentationProps {
   data: DocumentationData;
-  workflowData: PMWorkflowData; // Full workflow data for report generation
+  workflowData: PMWorkflowData;
   onDataUpdate: (data: Partial<DocumentationData>) => void;
   onPhaseComplete: () => void;
 }
@@ -85,8 +49,20 @@ export const Phase4Documentation: React.FC<Phase4DocumentationProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState('summary');
   const [generatingReport, setGeneratingReport] = useState(false);
-  const [reportPreview, setReportPreview] = useState<string | null>(null);
-  const printRef = useRef<HTMLDivElement>(null);
+  const [reportGenerated, setReportGenerated] = useState(false);
+  const [sendingReport, setSendingReport] = useState(false);
+  const [reportBlob, setReportBlob] = useState<Blob | null>(null);
+  const [reportUrl, setReportUrl] = useState<string | null>(null);
+  const [reportError, setReportError] = useState<string | null>(null);
+
+  // Cleanup blob URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (reportUrl) {
+        PMReportGenerator.cleanup(reportUrl);
+      }
+    };
+  }, [reportUrl]);
 
   const calculateProgress = (): number => {
     const sections = ['summary', 'config', 'delivery'];
@@ -97,349 +73,248 @@ export const Phase4Documentation: React.FC<Phase4DocumentationProps> = ({
   const validateSection = (section: string): boolean => {
     switch (section) {
       case 'summary':
-        return !!(data.summary.executiveSummary && data.summary.keyFindings.length > 0);
+        return !!(data.serviceSummary.executiveSummary && data.serviceSummary.keyFindings.length > 0);
       case 'config':
-        return !!(data.reportConfig.template && data.reportConfig.includeSections.some(s => s.include));
+        return !!(data.reportConfig.template);
       case 'delivery':
-        return !!(data.deliveryInfo.method && data.deliveryInfo.recipients.length > 0);
+        return !!(data.deliveryInfo.primaryRecipient && data.deliveryInfo.method);
       default:
         return false;
     }
   };
 
-  const updateSummary = (field: keyof ServiceSummaryData, value: any) => {
+  // Auto-generate summary data from previous phases
+  const generateAutoSummary = () => {
+    const phase1 = workflowData.phase1;
+    const phase2 = workflowData.phase2;
+    const phase3 = workflowData.phase3;
+
+    const autoSummary = {
+      executiveSummary: `Completed ${workflowData.session.serviceTier} tier preventive maintenance service for ${phase1.customer.companyName} - ${phase1.customer.siteName}. System health assessment performed on ${phase2.bmsSystem.platform || 'BMS'} platform with ${phase3.tasks.filter(t => t.status === 'Completed').length} maintenance tasks completed.`,
+      
+      keyFindings: [
+        `BMS Platform: ${phase2.bmsSystem.platform || 'Not specified'}`,
+        `Service Tier: ${workflowData.session.serviceTier}`,
+        `Tasks Completed: ${phase3.tasks.filter(t => t.status === 'Completed').length}/${phase3.tasks.length}`,
+        `Issues Found: ${phase3.issues.length}`,
+        `Recommendations: ${phase3.recommendations.length}`
+      ].filter(finding => !finding.includes('Not specified')),
+      
+      valueDelivered: [
+        'System performance verification completed',
+        'Critical alarms addressed',
+        'Documentation updated',
+        'Preventive maintenance tasks performed',
+        phase3.issues.length > 0 && 'System issues identified and addressed',
+        phase3.recommendations.length > 0 && 'Improvement recommendations provided'
+      ].filter(Boolean) as string[],
+      
+      systemImprovements: phase3.recommendations.map(rec => rec.title),
+      
+      nextSteps: [
+        'Continue regular preventive maintenance schedule',
+        phase3.issues.filter(i => i.status === 'Deferred').length > 0 && 'Address deferred maintenance items',
+        phase3.recommendations.filter(r => r.type === 'Immediate').length > 0 && 'Implement immediate recommendations'
+      ].filter(Boolean) as string[],
+      
+      followupRequired: phase3.issues.some(i => i.status === 'Deferred') || phase3.recommendations.some(r => r.type === 'Immediate'),
+      
+      followupActions: [
+        ...phase3.issues.filter(i => i.status === 'Deferred').map(i => `Resolve: ${i.title}`),
+        ...phase3.recommendations.filter(r => r.type === 'Immediate').map(r => `Implement: ${r.title}`)
+      ]
+    };
+
+    updateServiceSummary(autoSummary);
+    logger.info('Auto-generated service summary from workflow data');
+  };
+
+  const updateServiceSummary = (updates: any) => {
     onDataUpdate({
-      summary: { ...data.summary, [field]: value }
+      serviceSummary: { ...data.serviceSummary, ...updates }
     });
   };
 
-  const updateReportConfig = (field: keyof ReportConfigData, value: any) => {
-    onDataUpdate({
-      reportConfig: { ...data.reportConfig, [field]: value }
-    });
+  const updateReportConfig = (field: string, value: any) => {
+    if (field.includes('.')) {
+      const [parent, child] = field.split('.');
+      onDataUpdate({
+        reportConfig: { 
+          ...data.reportConfig, 
+          [parent]: { ...data.reportConfig[parent as keyof typeof data.reportConfig], [child]: value }
+        }
+      });
+    } else {
+      onDataUpdate({
+        reportConfig: { ...data.reportConfig, [field]: value }
+      });
+    }
   };
 
-  const updateDeliveryInfo = (field: keyof DeliveryInfo, value: any) => {
+  const updateDeliveryInfo = (field: string, value: any) => {
     onDataUpdate({
       deliveryInfo: { ...data.deliveryInfo, [field]: value }
     });
   };
 
-  const generateExecutiveSummary = () => {
-    const completedTasks = workflowData.serviceActivities.tasks.filter(t => t.status === 'Completed');
-    const criticalIssues = workflowData.serviceActivities.issues.filter(i => i.severity === 'Critical');
-    const highPriorityRecs = workflowData.serviceActivities.recommendations.filter(r => r.priority === 'High');
-    const healthScore = workflowData.serviceActivities.serviceMetrics.systemHealthScore;
-    
-    const autoSummary = `PM service completed for ${customer.company_name} on ${new Date().toLocaleDateString()}. 
-    
-System Health Score: ${healthScore}/100
-Tasks Completed: ${completedTasks.length}/${workflowData.serviceActivities.tasks.length}
-Issues Identified: ${workflowData.serviceActivities.issues.length} (${criticalIssues.length} Critical)
-Recommendations Provided: ${workflowData.serviceActivities.recommendations.length} (${highPriorityRecs.length} High Priority)
-
-${healthScore >= 90 ? 'System is operating optimally with minor opportunities for improvement.' :
-  healthScore >= 70 ? 'System is functioning well with some areas requiring attention.' :
-  healthScore >= 50 ? 'System requires attention to address several operational issues.' :
-  'System requires immediate attention to address critical operational concerns.'}`;
-
-    updateSummary('executiveSummary', autoSummary);
-  };
-
-  const generateKeyFindings = () => {
-    const findings: string[] = [];
-    
-    // Task-based findings
-    const completedTasks = workflowData.serviceActivities.tasks.filter(t => t.status === 'Completed');
-    completedTasks.forEach(task => {
-      if (task.findings.trim()) {
-        findings.push(`${task.name}: ${task.findings}`);
-      }
-    });
-
-    // Issue-based findings
-    workflowData.serviceActivities.issues.forEach(issue => {
-      findings.push(`${issue.severity} Issue - ${issue.title}: ${issue.description}`);
-    });
-
-    updateSummary('keyFindings', findings.slice(0, 10)); // Limit to top 10
-  };
-
-  const generateReportData = () => {
-    const tasks = workflowData.serviceActivities.tasks;
-    const issues = workflowData.serviceActivities.issues;
-    const recommendations = workflowData.serviceActivities.recommendations;
-    
-    return {
-      taskCompletion: [
-        { name: 'Completed', value: tasks.filter(t => t.status === 'Completed').length, color: '#22c55e' },
-        { name: 'Pending', value: tasks.filter(t => t.status === 'Pending').length, color: '#64748b' },
-        { name: 'Skipped', value: tasks.filter(t => t.status === 'Skipped').length, color: '#f59e0b' }
-      ],
-      issueSeverity: [
-        { name: 'Critical', value: issues.filter(i => i.severity === 'Critical').length, color: '#ef4444' },
-        { name: 'High', value: issues.filter(i => i.severity === 'High').length, color: '#f97316' },
-        { name: 'Medium', value: issues.filter(i => i.severity === 'Medium').length, color: '#eab308' },
-        { name: 'Low', value: issues.filter(i => i.severity === 'Low').length, color: '#22c55e' }
-      ],
-      recommendationTypes: [
-        { name: 'Immediate', value: recommendations.filter(r => r.type === 'Immediate').length, color: '#ef4444' },
-        { name: 'Short Term', value: recommendations.filter(r => r.type === 'Short Term').length, color: '#f97316' },
-        { name: 'Long Term', value: recommendations.filter(r => r.type === 'Long Term').length, color: '#3b82f6' },
-        { name: 'Upgrade', value: recommendations.filter(r => r.type === 'Upgrade').length, color: '#8b5cf6' }
-      ],
-      systemHealth: [
-        { 
-          name: 'System Health', 
-          value: workflowData.serviceActivities.serviceMetrics.systemHealthScore,
-          color: workflowData.serviceActivities.serviceMetrics.systemHealthScore >= 90 ? '#22c55e' :
-                 workflowData.serviceActivities.serviceMetrics.systemHealthScore >= 70 ? '#eab308' : '#ef4444'
-        }
-      ]
-    };
-  };
-
-  const generatePDFReport = async () => {
+  const generateReport = async () => {
     setGeneratingReport(true);
+    setReportError(null);
     
     try {
-      // Auto-generate content if not already provided
-      if (!data.summary.executiveSummary) {
-        generateExecutiveSummary();
+      // Validate workflow data before generation
+      const validation = PMReportGenerator.validateWorkflowData(workflowData);
+      
+      if (!validation.isValid) {
+        throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
       }
-      if (data.summary.keyFindings.length === 0) {
-        generateKeyFindings();
+
+      // Log warnings if any
+      if (validation.warnings.length > 0) {
+        logger.warn('PDF generation warnings:', validation.warnings);
       }
-      
-      // For now, we'll create a print-friendly HTML version
-      // In a production environment, you'd use a library like jsPDF or Puppeteer
-      const reportHTML = generateReportHTML();
-      setReportPreview(reportHTML);
-      
-      // Simulate report generation delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const newReport: GeneratedReportData = {
-        id: `REP-${Date.now()}`,
+
+      // Prepare PDF options from report configuration
+      const options = {
         template: data.reportConfig.template,
-        filename: `${customer.company_name}_PM_Report_${new Date().toISOString().split('T')[0]}.pdf`,
-        fileSize: Math.floor(Math.random() * 1000000) + 500000, // Simulate file size
-        generatedAt: new Date(),
-        generatedBy: 'PM Workflow System',
-        url: '#', // Would be actual URL in production
-        deliveryStatus: 'pending',
-        downloadCount: 0,
-        version: 1
+        includeSections: data.reportConfig.includeSections,
+        includePhotos: data.reportConfig.includePhotos,
+        includeCharts: data.reportConfig.includeCharts,
+        includeDataTables: data.reportConfig.includeDataTables,
+        brandingLevel: data.reportConfig.brandingLevel,
+        confidentiality: data.reportConfig.confidentiality,
       };
+
+      // Generate PDF
+      const result = await PMReportGenerator.generateReport(workflowData, options);
+
+      if (!result.success) {
+        throw new Error(result.error || 'PDF generation failed');
+      }
+
+      // Store the generated PDF
+      setReportBlob(result.blob!);
+      setReportUrl(result.url!);
+      setReportGenerated(true);
       
-      onDataUpdate({
-        generatedReports: [...data.generatedReports, newReport]
-      });
+      logger.info(`PDF generated successfully in ${result.stats.generationTime.toFixed(0)}ms`);
+      logger.info(`File size: ${(result.stats.fileSize! / 1024).toFixed(1)} KB`);
       
     } catch (error) {
-      console.error('Error generating report:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setReportError(errorMessage);
+      logger.error('PDF generation failed:', error);
     } finally {
       setGeneratingReport(false);
     }
   };
 
-  const generateReportHTML = (): string => {
-    const reportData = generateReportData();
-    const serviceTier = customer.service_tier || 'CORE';
+  const downloadReport = () => {
+    if (!reportBlob) return;
     
+    try {
+      PMReportGenerator.downloadReport(reportBlob, undefined, workflowData);
+      logger.info('PDF download initiated');
+    } catch (error) {
+      logger.error('PDF download failed:', error);
+      setReportError('Failed to download PDF report');
+    }
+  };
+
+  const previewReport = () => {
+    if (!reportUrl) return;
+    
+    // Open PDF in new tab for preview
+    window.open(reportUrl, '_blank');
+    logger.info('PDF preview opened');
+  };
+
+  const simulateReportDelivery = async () => {
+    setSendingReport(true);
+    
+    try {
+      // Simulate email delivery - in real implementation, this would call an email service
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      logger.info(`Report sent to ${data.deliveryInfo.primaryRecipient}`);
+      
+      // TODO: Implement actual email delivery service
+      // await EmailService.sendReport({
+      //   to: data.deliveryInfo.primaryRecipient,
+      //   cc: data.deliveryInfo.ccRecipients,
+      //   subject: `PM Report - ${workflowData.phase1.customer.companyName}`,
+      //   body: generateEmailBody(),
+      //   attachment: reportBlob
+      // });
+      
+    } catch (error) {
+      logger.error('Report delivery failed:', error);
+      setReportError('Failed to send report');
+    } finally {
+      setSendingReport(false);
+    }
+  };
+
+  const generateEmailBody = (): string => {
+    const { session, phase1 } = workflowData;
     return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>${customer.company_name} - PM Service Report</title>
-        <style>
-          @page { margin: 0.75in; size: 8.5in 11in; }
-          body { font-family: Arial, sans-serif; line-height: 1.4; color: #333; }
-          .header { text-align: center; border-bottom: 3px solid #1e40af; padding-bottom: 20px; margin-bottom: 30px; }
-          .company-logo { font-size: 24px; font-weight: bold; color: #1e40af; margin-bottom: 10px; }
-          .report-title { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
-          .report-subtitle { font-size: 14px; color: #666; }
-          .section { margin-bottom: 30px; page-break-inside: avoid; }
-          .section-title { font-size: 16px; font-weight: bold; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 15px; }
-          .summary-box { background: #f8fafc; border-left: 4px solid #1e40af; padding: 15px; margin-bottom: 20px; }
-          .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
-          .metric-card { text-align: center; padding: 15px; border: 1px solid #e5e7eb; border-radius: 8px; }
-          .metric-value { font-size: 24px; font-weight: bold; color: #1e40af; }
-          .metric-label { font-size: 12px; color: #666; margin-top: 5px; }
-          .task-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          .task-table th { background: #f1f5f9; padding: 10px; text-align: left; border: 1px solid #e5e7eb; }
-          .task-table td { padding: 8px 10px; border: 1px solid #e5e7eb; }
-          .status-completed { color: #16a34a; font-weight: bold; }
-          .status-pending { color: #64748b; }
-          .issue-item { margin-bottom: 15px; padding: 12px; border-left: 4px solid #ef4444; background: #fef2f2; }
-          .issue-title { font-weight: bold; margin-bottom: 5px; }
-          .issue-severity-critical { border-left-color: #dc2626; }
-          .issue-severity-high { border-left-color: #ea580c; }
-          .issue-severity-medium { border-left-color: #ca8a04; }
-          .issue-severity-low { border-left-color: #16a34a; }
-          .recommendation-item { margin-bottom: 15px; padding: 12px; border-left: 4px solid #3b82f6; background: #eff6ff; }
-          .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="company-logo">AME CONTROLS</div>
-          <div class="report-title">Preventive Maintenance Service Report</div>
-          <div class="report-subtitle">${customer.company_name} - ${serviceTier} Service Tier</div>
-          <div class="report-subtitle">${new Date().toLocaleDateString()}</div>
-        </div>
+Dear ${data.deliveryInfo.primaryRecipient.split('@')[0]},
 
-        <div class="section">
-          <div class="section-title">Executive Summary</div>
-          <div class="summary-box">
-            ${data.summary.executiveSummary || 'Executive summary will be generated automatically.'}
-          </div>
-          
-          <div class="metrics-grid">
-            <div class="metric-card">
-              <div class="metric-value">${workflowData.serviceActivities.serviceMetrics.systemHealthScore}/100</div>
-              <div class="metric-label">System Health Score</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-value">${workflowData.serviceActivities.tasks.filter(t => t.status === 'Completed').length}/${workflowData.serviceActivities.tasks.length}</div>
-              <div class="metric-label">Tasks Completed</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-value">${workflowData.serviceActivities.issues.length}</div>
-              <div class="metric-label">Issues Identified</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-value">${workflowData.serviceActivities.recommendations.length}</div>
-              <div class="metric-label">Recommendations</div>
-            </div>
-          </div>
-        </div>
+Please find attached the ${session.serviceTier} tier preventive maintenance report for ${phase1.customer.companyName} - ${phase1.customer.siteName}.
 
-        <div class="section">
-          <div class="section-title">Work Performed</div>
-          <table class="task-table">
-            <thead>
-              <tr>
-                <th>Task</th>
-                <th>Status</th>
-                <th>Duration</th>
-                <th>Findings</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${workflowData.serviceActivities.tasks.map(task => `
-                <tr>
-                  <td>${task.name}</td>
-                  <td class="status-${task.status.toLowerCase().replace(' ', '-')}">${task.status}</td>
-                  <td>${task.actualDuration || task.estimatedDuration}min</td>
-                  <td>${task.findings || 'N/A'}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
+Service completed on: ${new Date(session.startTime).toLocaleDateString()}
+Technician: ${session.technicianName}
 
-        ${workflowData.serviceActivities.issues.length > 0 ? `
-        <div class="section">
-          <div class="section-title">Issues Identified</div>
-          ${workflowData.serviceActivities.issues.map(issue => `
-            <div class="issue-item issue-severity-${issue.severity.toLowerCase()}">
-              <div class="issue-title">${issue.severity}: ${issue.title}</div>
-              <div>${issue.description}</div>
-              ${issue.immediateAction ? `<div style="margin-top: 8px;"><strong>Action Taken:</strong> ${issue.immediateAction}</div>` : ''}
-            </div>
-          `).join('')}
-        </div>
-        ` : ''}
+${data.deliveryInfo.deliveryNotes || 'Thank you for choosing AME Controls for your building automation maintenance needs.'}
 
-        ${workflowData.serviceActivities.recommendations.length > 0 ? `
-        <div class="section">
-          <div class="section-title">Recommendations</div>
-          ${workflowData.serviceActivities.recommendations.map(rec => `
-            <div class="recommendation-item">
-              <div class="issue-title">${rec.type} - ${rec.title}</div>
-              <div>${rec.description}</div>
-              ${rec.justification ? `<div style="margin-top: 8px;"><strong>Justification:</strong> ${rec.justification}</div>` : ''}
-            </div>
-          `).join('')}
-        </div>
-        ` : ''}
-
-        <div class="footer">
-          <div>AME Controls - Building Automation Excellence</div>
-          <div>Report generated on ${new Date().toLocaleString()}</div>
-        </div>
-      </body>
-      </html>
-    `;
+Best regards,
+AME Controls Service Team
+    `.trim();
   };
 
-  const printReport = () => {
-    if (reportPreview) {
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(reportPreview);
-        printWindow.document.close();
-        printWindow.focus();
-        printWindow.print();
-        printWindow.close();
-      }
-    }
-  };
-
-  const addFinding = (finding: string) => {
-    if (finding.trim() && !data.summary.keyFindings.includes(finding.trim())) {
-      updateSummary('keyFindings', [...data.summary.keyFindings, finding.trim()]);
-    }
-  };
-
-  const removeFinding = (finding: string) => {
-    updateSummary('keyFindings', data.summary.keyFindings.filter(f => f !== finding));
-  };
-
-  const addRecipient = (email: string, name: string) => {
-    if (email.trim() && name.trim()) {
-      const newRecipient = {
-        name: name.trim(),
-        email: email.trim(),
-        role: 'Contact',
-        notificationType: 'primary' as const
-      };
-      updateDeliveryInfo('recipients', [...data.deliveryInfo.recipients, newRecipient]);
-    }
+  const getReportStats = () => {
+    const stats = {
+      totalPages: 8,
+      includePhotos: data.reportConfig.includePhotos ? workflowData.phase2.photos.length : 0,
+      includeCharts: data.reportConfig.includeCharts ? 4 : 0,
+      includeDataTables: data.reportConfig.includeDataTables ? 3 : 0,
+      tasksCompleted: workflowData.phase3.tasks.filter(t => t.status === 'Completed').length,
+      issuesFound: workflowData.phase3.issues.length,
+      recommendations: workflowData.phase3.recommendations.length
+    };
+    return stats;
   };
 
   const canCompletePhase = (): boolean => {
-    return ['summary', 'config', 'delivery'].every(section => validateSection(section)) &&
-           data.generatedReports.length > 0;
+    return ['summary', 'config', 'delivery'].every(section => validateSection(section));
   };
 
   const handlePhaseComplete = () => {
     if (canCompletePhase()) {
+      logger.info('Phase 4 Documentation completed - PM Workflow finished');
       onPhaseComplete();
     }
   };
 
   const progress = calculateProgress();
-  const reportData = generateReportData();
+  const reportStats = getReportStats();
 
   return (
     <div className="h-full flex flex-col">
       <PhaseHeader
         phase={4}
         title="Documentation & Reporting"
-        description="Generate professional service reports and delivery"
+        description="Generate professional documentation and deliver results"
         progress={progress}
-        requiredTasks={['Service Summary', 'Report Configuration', 'Delivery Setup', 'Report Generation']}
-        completedTasks={['summary', 'config', 'delivery', 'generation'].filter((section, index) => 
-          index < 3 ? validateSection(section) : data.generatedReports.length > 0
-        )}
+        requiredTasks={['Service Summary', 'Report Configuration', 'Delivery Setup']}
+        completedTasks={['summary', 'config', 'delivery'].filter(validateSection)}
+        estimatedTime={15}
+        actualTime={0}
       />
 
       <div className="flex-1 overflow-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-          <TabsList className="m-4 grid grid-cols-4">
+          <TabsList className="m-4 grid grid-cols-3">
             <TabsTrigger value="summary" className="gap-2">
               <FileText className="h-4 w-4" />
               Summary
@@ -447,16 +322,11 @@ ${healthScore >= 90 ? 'System is operating optimally with minor opportunities fo
             </TabsTrigger>
             <TabsTrigger value="config" className="gap-2">
               <Settings className="h-4 w-4" />
-              Configuration
+              Report Config
               {validateSection('config') && <CheckCircle2 className="h-3 w-3 text-green-600" />}
             </TabsTrigger>
-            <TabsTrigger value="preview" className="gap-2">
-              <Eye className="h-4 w-4" />
-              Preview
-              {reportPreview && <CheckCircle2 className="h-3 w-3 text-green-600" />}
-            </TabsTrigger>
             <TabsTrigger value="delivery" className="gap-2">
-              <Share2 className="h-4 w-4" />
+              <Send className="h-4 w-4" />
               Delivery
               {validateSection('delivery') && <CheckCircle2 className="h-3 w-3 text-green-600" />}
             </TabsTrigger>
@@ -465,585 +335,499 @@ ${healthScore >= 90 ? 'System is operating optimally with minor opportunities fo
           <div className="flex-1 overflow-y-auto px-4 pb-4">
             {/* Service Summary Tab */}
             <TabsContent value="summary" className="mt-0">
-              <div className="space-y-6">
-                <SectionCard
-                  title="Service Summary"
-                  description="Summarize the service performed and key findings"
-                  icon={<FileText className="h-4 w-4" />}
-                  required
-                >
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label>Executive Summary</Label>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={generateExecutiveSummary}
-                          className="gap-2"
-                        >
-                          <Settings className="h-3 w-3" />
-                          Auto-Generate
-                        </Button>
-                      </div>
-                      <Textarea
-                        value={data.summary.executiveSummary}
-                        onChange={(e) => updateSummary('executiveSummary', e.target.value)}
-                        placeholder="High-level summary of the service performed..."
-                        rows={6}
-                        className="resize-none"
-                      />
-                    </div>
+              <SectionCard
+                title="Service Summary"
+                description="Executive summary and key findings from the PM visit"
+                icon={<FileText className="h-4 w-4" />}
+                required
+              >
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-muted-foreground">
+                      Summarize the work performed and key findings
+                    </p>
+                    <Button onClick={generateAutoSummary} variant="outline" className="gap-2">
+                      <BarChart3 className="h-4 w-4" />
+                      Auto-Generate
+                    </Button>
+                  </div>
 
+                  <div className="space-y-2">
+                    <Label>Executive Summary *</Label>
+                    <Textarea
+                      value={data.serviceSummary.executiveSummary}
+                      onChange={(e) => updateServiceSummary({ executiveSummary: e.target.value })}
+                      placeholder="Brief overview of the service visit, what was accomplished, and overall system status..."
+                      rows={4}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label>Key Findings</Label>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={generateKeyFindings}
-                          className="gap-2"
-                        >
-                          <Settings className="h-3 w-3" />
-                          Auto-Generate
-                        </Button>
-                      </div>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Add key finding..."
-                          onKeyPress={(e) => {
-                            if (e.key === 'Enter') {
-                              addFinding((e.target as HTMLInputElement).value);
-                              (e.target as HTMLInputElement).value = '';
-                            }
-                          }}
-                        />
-                        <Button 
-                          onClick={() => {
-                            const input = document.querySelector('input[placeholder*="key finding"]') as HTMLInputElement;
-                            if (input?.value) {
-                              addFinding(input.value);
-                              input.value = '';
-                            }
-                          }}
-                          variant="outline"
-                        >
-                          Add
-                        </Button>
-                      </div>
-                      
+                      <Label>Key Findings</Label>
                       <div className="space-y-2">
-                        {data.summary.keyFindings.map((finding, index) => (
-                          <div key={index} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-900 rounded">
-                            <span className="text-sm">{finding}</span>
-                            <Button
-                              variant="ghost"
+                        {data.serviceSummary.keyFindings.map((finding, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <Input 
+                              value={finding} 
+                              onChange={(e) => {
+                                const updated = [...data.serviceSummary.keyFindings];
+                                updated[index] = e.target.value;
+                                updateServiceSummary({ keyFindings: updated });
+                              }}
+                            />
+                            <Button 
+                              variant="ghost" 
                               size="sm"
-                              onClick={() => removeFinding(finding)}
+                              onClick={() => {
+                                const updated = data.serviceSummary.keyFindings.filter((_, i) => i !== index);
+                                updateServiceSummary({ keyFindings: updated });
+                              }}
                             >
                               ×
                             </Button>
                           </div>
                         ))}
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            const updated = [...data.serviceSummary.keyFindings, ''];
+                            updateServiceSummary({ keyFindings: updated });
+                          }}
+                          className="gap-2"
+                        >
+                          + Add Finding
+                        </Button>
                       </div>
                     </div>
 
-                    {/* Service Metrics Overview */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                    <div className="space-y-2">
+                      <Label>Value Delivered</Label>
+                      <div className="space-y-2">
+                        {data.serviceSummary.valueDelivered.map((value, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <Input 
+                              value={value} 
+                              onChange={(e) => {
+                                const updated = [...data.serviceSummary.valueDelivered];
+                                updated[index] = e.target.value;
+                                updateServiceSummary({ valueDelivered: updated });
+                              }}
+                            />
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => {
+                                const updated = data.serviceSummary.valueDelivered.filter((_, i) => i !== index);
+                                updateServiceSummary({ valueDelivered: updated });
+                              }}
+                            >
+                              ×
+                            </Button>
+                          </div>
+                        ))}
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            const updated = [...data.serviceSummary.valueDelivered, ''];
+                            updateServiceSummary({ valueDelivered: updated });
+                          }}
+                          className="gap-2"
+                        >
+                          + Add Value
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Next Steps</Label>
+                      <Textarea
+                        value={data.serviceSummary.nextSteps.join('\n')}
+                        onChange={(e) => updateServiceSummary({ nextSteps: e.target.value.split('\n').filter(s => s.trim()) })}
+                        placeholder="Recommended next steps and actions..."
+                        rows={3}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Follow-up Actions</Label>
+                      <Textarea
+                        value={data.serviceSummary.followupActions.join('\n')}
+                        onChange={(e) => updateServiceSummary({ followupActions: e.target.value.split('\n').filter(a => a.trim()) })}
+                        placeholder="Specific follow-up items requiring attention..."
+                        rows={3}
+                      />
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="followup-required"
+                          checked={data.serviceSummary.followupRequired}
+                          onCheckedChange={(checked) => updateServiceSummary({ followupRequired: checked })}
+                        />
+                        <Label htmlFor="followup-required">Follow-up visit required</Label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick Stats */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h4 className="font-medium mb-3">Service Visit Stats</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-primary">
-                          {workflowData.serviceActivities.serviceMetrics.systemHealthScore}
-                        </div>
-                        <div className="text-sm text-muted-foreground">Health Score</div>
+                        <div className="text-2xl font-bold text-blue-600">{reportStats.tasksCompleted}</div>
+                        <div className="text-sm text-muted-foreground">Tasks Completed</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-green-600">
-                          {workflowData.serviceActivities.tasks.filter(t => t.status === 'Completed').length}
-                        </div>
-                        <div className="text-sm text-muted-foreground">Tasks Done</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-orange-600">
-                          {workflowData.serviceActivities.issues.length}
-                        </div>
+                        <div className="text-2xl font-bold text-orange-600">{reportStats.issuesFound}</div>
                         <div className="text-sm text-muted-foreground">Issues Found</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-600">
-                          {workflowData.serviceActivities.recommendations.length}
-                        </div>
+                        <div className="text-2xl font-bold text-green-600">{reportStats.recommendations}</div>
                         <div className="text-sm text-muted-foreground">Recommendations</div>
                       </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-purple-600">{reportStats.includePhotos}</div>
+                        <div className="text-sm text-muted-foreground">Photos Taken</div>
+                      </div>
                     </div>
                   </div>
-                </SectionCard>
-              </div>
+                </div>
+              </SectionCard>
             </TabsContent>
+
             {/* Report Configuration Tab */}
             <TabsContent value="config" className="mt-0">
-              <div className="space-y-6">
-                <SectionCard
-                  title="Report Configuration"
-                  description="Configure report template and content options"
-                  icon={<Settings className="h-4 w-4" />}
-                  required
-                >
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Report Template</Label>
-                        <Select
-                          value={data.reportConfig.template}
-                          onValueChange={(value) => updateReportConfig('template', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="customer">Customer Report - Simplified</SelectItem>
-                            <SelectItem value="technical">Technical Report - Detailed</SelectItem>
-                            <SelectItem value="executive">Executive Summary - High-level</SelectItem>
-                            <SelectItem value="complete">Complete Report - All Details</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Branding Level</Label>
-                        <Select
-                          value={data.reportConfig.brandingLevel}
-                          onValueChange={(value) => updateReportConfig('brandingLevel', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="full">Full AME Branding</SelectItem>
-                            <SelectItem value="minimal">Minimal Branding</SelectItem>
-                            <SelectItem value="none">No Branding</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label>Report Sections</Label>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {data.reportConfig.includeSections.map((section, index) => (
-                          <div key={section.section} className="flex items-center space-x-2 p-2 border rounded">
-                            <Checkbox
-                              checked={section.include}
-                              onCheckedChange={(checked) => {
-                                const updatedSections = [...data.reportConfig.includeSections];
-                                updatedSections[index] = { ...section, include: !!checked };
-                                updateReportConfig('includeSections', updatedSections);
-                              }}
-                            />
-                            <Label className="flex-1 capitalize">
-                              {section.section.replace('_', ' ')} Section
-                            </Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label>Content Options</Label>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            checked={data.reportConfig.includePhotos}
-                            onCheckedChange={(checked) => updateReportConfig('includePhotos', checked)}
-                          />
-                          <Label>Photos</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            checked={data.reportConfig.includeCharts}
-                            onCheckedChange={(checked) => updateReportConfig('includeCharts', checked)}
-                          />
-                          <Label>Charts</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            checked={data.reportConfig.includeDataTables}
-                            onCheckedChange={(checked) => updateReportConfig('includeDataTables', checked)}
-                          />
-                          <Label>Data Tables</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            checked={data.reportConfig.includeRecommendations}
-                            onCheckedChange={(checked) => updateReportConfig('includeRecommendations', checked)}
-                          />
-                          <Label>Recommendations</Label>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </SectionCard>
-              </div>
-            </TabsContent>
-
-            {/* Report Preview Tab */}
-            <TabsContent value="preview" className="mt-0">
-              <div className="space-y-6">
-                <SectionCard
-                  title="Report Preview & Generation"
-                  description="Preview and generate professional PDF reports"
-                  icon={<Eye className="h-4 w-4" />}
-                >
-                  <div className="space-y-4">
-                    {/* Generation Controls */}
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                      <div>
-                        <h4 className="font-medium">Report Generation</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Generate a professional PDF report based on your configuration
-                        </p>
-                      </div>
-                      <Button
-                        onClick={generatePDFReport}
-                        disabled={generatingReport}
-                        className="gap-2"
+              <SectionCard
+                title="Report Configuration"
+                description="Customize the professional PDF report format and content"
+                icon={<Settings className="h-4 w-4" />}
+                required
+              >
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Report Template *</Label>
+                      <Select 
+                        value={data.reportConfig.template} 
+                        onValueChange={(value) => updateReportConfig('template', value)}
                       >
-                        {generatingReport ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <FileText className="h-4 w-4" />
-                            Generate PDF
-                          </>
-                        )}
-                      </Button>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose template" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Customer">Customer Report - Executive Focus</SelectItem>
+                          <SelectItem value="Technical">Technical Report - Detailed Analysis</SelectItem>
+                          <SelectItem value="Executive">Executive Summary - High Level</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-
-                    {/* Charts and Data Visualization */}
-                    {data.reportConfig.includeCharts && (
-                      <div className="space-y-4">
-                        <h4 className="font-medium">Report Charts & Metrics</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* Task Completion Chart */}
-                          <Card>
-                            <CardHeader>
-                              <CardTitle className="text-sm">Task Completion Status</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <ResponsiveContainer width="100%" height={200}>
-                                <RechartsPieChart>
-                                  <Pie
-                                    data={reportData.taskCompletion}
-                                    cx="50%"
-                                    cy="50%"
-                                    outerRadius={60}
-                                    dataKey="value"
-                                  >
-                                    {reportData.taskCompletion.map((entry, index) => (
-                                      <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                  </Pie>
-                                  <Tooltip />
-                                  <Legend />
-                                </RechartsPieChart>
-                              </ResponsiveContainer>
-                            </CardContent>
-                          </Card>
-
-                          {/* System Health Score */}
-                          <Card>
-                            <CardHeader>
-                              <CardTitle className="text-sm">System Health Score</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <ResponsiveContainer width="100%" height={200}>
-                                <RadialBarChart cx="50%" cy="50%" innerRadius="20%" outerRadius="80%" data={reportData.systemHealth}>
-                                  <RadialBar
-                                    minAngle={15}
-                                    label={{ position: 'insideStart', fill: '#fff' }}
-                                    background
-                                    clockWise
-                                    dataKey="value"
-                                    fill={reportData.systemHealth[0]?.color}
-                                  />
-                                  <Legend iconSize={18} layout="vertical" verticalAlign="middle" align="right" />
-                                </RadialBarChart>
-                              </ResponsiveContainer>
-                            </CardContent>
-                          </Card>
-
-                          {/* Issue Severity Distribution */}
-                          {workflowData.serviceActivities.issues.length > 0 && (
-                            <Card>
-                              <CardHeader>
-                                <CardTitle className="text-sm">Issue Severity Distribution</CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <ResponsiveContainer width="100%" height={200}>
-                                  <BarChart data={reportData.issueSeverity}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" />
-                                    <YAxis />
-                                    <Tooltip />
-                                    <Bar dataKey="value" fill="#ef4444" />
-                                  </BarChart>
-                                </ResponsiveContainer>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {/* Recommendations by Type */}
-                          {workflowData.serviceActivities.recommendations.length > 0 && (
-                            <Card>
-                              <CardHeader>
-                                <CardTitle className="text-sm">Recommendations by Type</CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <ResponsiveContainer width="100%" height={200}>
-                                  <BarChart data={reportData.recommendationTypes}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" />
-                                    <YAxis />
-                                    <Tooltip />
-                                    <Bar dataKey="value" fill="#3b82f6" />
-                                  </BarChart>
-                                </ResponsiveContainer>
-                              </CardContent>
-                            </Card>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Generated Reports */}
-                    {data.generatedReports.length > 0 && (
-                      <div className="space-y-3">
-                        <h4 className="font-medium">Generated Reports</h4>
-                        {data.generatedReports.map((report) => (
-                          <Card key={report.id}>
-                            <CardContent className="p-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <div className="font-medium">{report.filename}</div>
-                                  <div className="text-sm text-muted-foreground">
-                                    Generated {report.generatedAt.toLocaleString()} • 
-                                    {Math.round(report.fileSize / 1024)} KB • 
-                                    {report.template} template
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant={
-                                    report.deliveryStatus === 'delivered' ? 'default' :
-                                    report.deliveryStatus === 'sent' ? 'secondary' :
-                                    report.deliveryStatus === 'pending' ? 'outline' : 'destructive'
-                                  }>
-                                    {report.deliveryStatus}
-                                  </Badge>
-                                  <Button variant="outline" size="sm" className="gap-1">
-                                    <Eye className="h-3 w-3" />
-                                    Preview
-                                  </Button>
-                                  <Button variant="outline" size="sm" onClick={printReport} className="gap-1">
-                                    <Printer className="h-3 w-3" />
-                                    Print
-                                  </Button>
-                                  <Button variant="outline" size="sm" className="gap-1">
-                                    <Download className="h-3 w-3" />
-                                    Download
-                                  </Button>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Report Preview */}
-                    {reportPreview && (
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-medium">Report Preview</h4>
-                          <Button variant="outline" size="sm" onClick={printReport} className="gap-2">
-                            <Printer className="h-4 w-4" />
-                            Print Report
-                          </Button>
-                        </div>
-                        <div 
-                          className="border rounded-lg p-4 bg-white text-black max-h-96 overflow-y-auto text-sm"
-                          style={{ fontFamily: 'Arial, sans-serif' }}
-                        >
-                          <div dangerouslySetInnerHTML={{ __html: reportPreview }} />
-                        </div>
-                      </div>
-                    )}
+                    <div className="space-y-2">
+                      <Label>Branding Level</Label>
+                      <Select 
+                        value={data.reportConfig.brandingLevel} 
+                        onValueChange={(value) => updateReportConfig('brandingLevel', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Full">Full AME Branding</SelectItem>
+                          <SelectItem value="Minimal">Minimal Branding</SelectItem>
+                          <SelectItem value="None">No Branding</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Confidentiality</Label>
+                      <Select 
+                        value={data.reportConfig.confidentiality} 
+                        onValueChange={(value) => updateReportConfig('confidentiality', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Public">Public</SelectItem>
+                          <SelectItem value="Confidential">Confidential</SelectItem>
+                          <SelectItem value="Restricted">Restricted</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                </SectionCard>
-              </div>
+
+                  <div>
+                    <Label className="text-base font-medium mb-3 block">Report Sections</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {[
+                        { key: 'executiveSummary', label: 'Executive Summary' },
+                        { key: 'systemOverview', label: 'System Overview' },
+                        { key: 'workPerformed', label: 'Work Performed' },
+                        { key: 'issues', label: 'Issues Found' },
+                        { key: 'recommendations', label: 'Recommendations' },
+                        { key: 'appendix', label: 'Technical Appendix' }
+                      ].map(section => (
+                        <div key={section.key} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`section-${section.key}`}
+                            checked={data.reportConfig.includeSections[section.key as keyof typeof data.reportConfig.includeSections]}
+                            onCheckedChange={(checked) => updateReportConfig(`includeSections.${section.key}`, checked)}
+                          />
+                          <Label htmlFor={`section-${section.key}`}>{section.label}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-base font-medium mb-3 block">Visual Elements</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="include-photos"
+                          checked={data.reportConfig.includePhotos}
+                          onCheckedChange={(checked) => updateReportConfig('includePhotos', checked)}
+                        />
+                        <Label htmlFor="include-photos" className="flex items-center gap-2">
+                          <Image className="h-4 w-4" />
+                          Photos ({reportStats.includePhotos})
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="include-charts"
+                          checked={data.reportConfig.includeCharts}
+                          onCheckedChange={(checked) => updateReportConfig('includeCharts', checked)}
+                        />
+                        <Label htmlFor="include-charts" className="flex items-center gap-2">
+                          <BarChart3 className="h-4 w-4" />
+                          Charts & Graphs
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="include-tables"
+                          checked={data.reportConfig.includeDataTables}
+                          onCheckedChange={(checked) => updateReportConfig('includeDataTables', checked)}
+                        />
+                        <Label htmlFor="include-tables" className="flex items-center gap-2">
+                          <Table className="h-4 w-4" />
+                          Data Tables
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Report Preview */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h4 className="font-medium mb-3">Report Preview</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <div className="font-medium">Template:</div>
+                        <div className="text-muted-foreground">{data.reportConfig.template}</div>
+                      </div>
+                      <div>
+                        <div className="font-medium">Estimated Pages:</div>
+                        <div className="text-muted-foreground">{reportStats.totalPages}</div>
+                      </div>
+                      <div>
+                        <div className="font-medium">Visual Elements:</div>
+                        <div className="text-muted-foreground">
+                          {[
+                            data.reportConfig.includePhotos && 'Photos',
+                            data.reportConfig.includeCharts && 'Charts',
+                            data.reportConfig.includeDataTables && 'Tables'
+                          ].filter(Boolean).join(', ') || 'Text only'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="font-medium">Confidentiality:</div>
+                        <div className="text-muted-foreground">{data.reportConfig.confidentiality}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </SectionCard>
             </TabsContent>
 
             {/* Delivery Tab */}
             <TabsContent value="delivery" className="mt-0">
-              <div className="space-y-6">
-                <SectionCard
-                  title="Report Delivery"
-                  description="Configure how reports will be delivered to the customer"
-                  icon={<Share2 className="h-4 w-4" />}
-                  required
-                >
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Delivery Method</Label>
-                        <Select
-                          value={data.deliveryInfo.method}
-                          onValueChange={(value) => updateDeliveryInfo('method', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="email">Email Delivery</SelectItem>
-                            <SelectItem value="portal">Customer Portal</SelectItem>
-                            <SelectItem value="print">Print & Hand Delivery</SelectItem>
-                            <SelectItem value="usb">USB Drive</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Delivery Date</Label>
-                        <Input
-                          type="date"
-                          value={data.deliveryInfo.deliveryDate.toISOString().split('T')[0]}
-                          onChange={(e) => updateDeliveryInfo('deliveryDate', new Date(e.target.value))}
-                        />
-                      </div>
+              <SectionCard
+                title="Report Delivery"
+                description="Configure how and where to deliver the final report"
+                icon={<Send className="h-4 w-4" />}
+                required
+              >
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Delivery Method *</Label>
+                      <Select 
+                        value={data.deliveryInfo.method} 
+                        onValueChange={(value) => updateDeliveryInfo('method', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="How to deliver" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Email">Email Only</SelectItem>
+                          <SelectItem value="Print">Print Only</SelectItem>
+                          <SelectItem value="Both">Email + Print Copy</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Primary Recipient *</Label>
+                      <Input
+                        value={data.deliveryInfo.primaryRecipient}
+                        onChange={(e) => updateDeliveryInfo('primaryRecipient', e.target.value)}
+                        placeholder="primary.contact@customer.com"
+                        type="email"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>CC Recipients</Label>
+                    <Input
+                      value={data.deliveryInfo.ccRecipients.join(', ')}
+                      onChange={(e) => updateDeliveryInfo('ccRecipients', e.target.value.split(',').map(email => email.trim()).filter(email => email))}
+                      placeholder="cc1@customer.com, cc2@customer.com"
+                    />
+                    <p className="text-sm text-muted-foreground">Separate multiple emails with commas</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Delivery Notes</Label>
+                    <Textarea
+                      value={data.deliveryInfo.deliveryNotes}
+                      onChange={(e) => updateDeliveryInfo('deliveryNotes', e.target.value)}
+                      placeholder="Any special delivery instructions or notes to include..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="signature-required"
+                      checked={data.deliveryInfo.signatureRequired}
+                      onCheckedChange={(checked) => updateDeliveryInfo('signatureRequired', checked)}
+                    />
+                    <Label htmlFor="signature-required">Customer signature required</Label>
+                  </div>
+
+                  {/* Report Actions */}
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                    <h4 className="font-medium">Report Generation & Delivery</h4>
+                    
+                    <div className="flex flex-wrap gap-3">
+                      <Button 
+                        onClick={generateReport}
+                        disabled={generatingReport || !canCompletePhase()}
+                        className="gap-2"
+                      >
+                        {generatingReport ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Generating PDF...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="h-4 w-4" />
+                            Generate PDF
+                          </>
+                        )}
+                      </Button>
+                      
+                      {reportGenerated && !reportError && (
+                        <>
+                          <Button variant="outline" className="gap-2" onClick={previewReport}>
+                            <Eye className="h-4 w-4" />
+                            Preview
+                          </Button>
+                          <Button variant="outline" className="gap-2" onClick={downloadReport}>
+                            <Download className="h-4 w-4" />
+                            Download
+                          </Button>
+                          <Button 
+                            onClick={simulateReportDelivery}
+                            disabled={sendingReport || !data.deliveryInfo.primaryRecipient}
+                            className="gap-2"
+                          >
+                            {sendingReport ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                Sending...
+                              </>
+                            ) : (
+                              <>
+                                <Mail className="h-4 w-4" />
+                                Send Report
+                              </>
+                            )}
+                          </Button>
+                        </>
+                      )}
                     </div>
 
-                    {data.deliveryInfo.method === 'email' && (
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label>Email Recipients</Label>
-                          <div className="flex gap-2">
-                            <Input
-                              placeholder="Name"
-                              id="recipient-name"
-                            />
-                            <Input
-                              placeholder="Email address"
-                              type="email"
-                              id="recipient-email"
-                            />
-                            <Button 
-                              onClick={() => {
-                                const nameInput = document.getElementById('recipient-name') as HTMLInputElement;
-                                const emailInput = document.getElementById('recipient-email') as HTMLInputElement;
-                                if (nameInput?.value && emailInput?.value) {
-                                  addRecipient(emailInput.value, nameInput.value);
-                                  nameInput.value = '';
-                                  emailInput.value = '';
-                                }
-                              }}
-                              variant="outline"
-                            >
-                              Add
-                            </Button>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            {data.deliveryInfo.recipients.map((recipient, index) => (
-                              <div key={index} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-900 rounded">
-                                <div>
-                                  <span className="font-medium">{recipient.name}</span>
-                                  <span className="text-sm text-muted-foreground ml-2">{recipient.email}</span>
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    const updatedRecipients = data.deliveryInfo.recipients.filter((_, i) => i !== index);
-                                    updateDeliveryInfo('recipients', updatedRecipients);
-                                  }}
-                                >
-                                  ×
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
+                    {reportGenerated && !reportError && (
+                      <Alert>
+                        <CheckCircle2 className="h-4 w-4" />
+                        <AlertDescription>
+                          Professional PDF report generated successfully! Ready for delivery to {data.deliveryInfo.primaryRecipient}
+                        </AlertDescription>
+                      </Alert>
                     )}
 
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          checked={data.deliveryInfo.signatureRequired}
-                          onCheckedChange={(checked) => updateDeliveryInfo('signatureRequired', checked)}
-                        />
-                        <Label>Customer Signature Required</Label>
-                      </div>
-                    </div>
-
-                    {data.deliveryInfo.signatureRequired && (
-                      <Alert>
+                    {reportError && (
+                      <Alert variant="destructive">
                         <AlertTriangle className="h-4 w-4" />
                         <AlertDescription>
-                          Customer signature will be captured upon report delivery.
+                          PDF Generation Error: {reportError}
                         </AlertDescription>
                       </Alert>
                     )}
                   </div>
-                </SectionCard>
-              </div>
+                </div>
+              </SectionCard>
             </TabsContent>
           </div>
 
           {/* Phase Completion Footer */}
-          <div className="border-t bg-white dark:bg-gray-950 p-4">
+          <div className="border-t bg-white p-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="text-sm">
-                  <span className="font-medium">Progress: {Math.round(progress)}%</span>
-                  <span className="text-muted-foreground ml-2">
-                    ({data.generatedReports.length} reports generated)
-                  </span>
-                </div>
-                
-                {data.generatedReports.length > 0 && (
-                  <div className="text-sm">
-                    <span className="font-medium">Ready for Delivery:</span>
-                    <span className="text-muted-foreground ml-2">
-                      {data.deliveryInfo.recipients.length} recipients configured
-                    </span>
-                  </div>
-                )}
+              <div className="text-sm">
+                <span className="font-medium">Progress: {Math.round(progress)}%</span>
+                <span className="text-muted-foreground ml-2">
+                  ({['summary', 'config', 'delivery'].filter(validateSection).length} of 3 sections completed)
+                </span>
               </div>
-
               <Button
                 onClick={handlePhaseComplete}
-                disabled={!canCompletePhase()}
+                disabled={!canCompletePhase() || !reportGenerated}
                 className="gap-2"
               >
                 Complete PM Workflow
-                <CheckCircle2 className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
 
-            {!canCompletePhase() && (
+            {(!canCompletePhase() || !reportGenerated) && (
               <Alert className="mt-3">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  Complete service summary, configure report settings, set up delivery options, and generate at least one report to finish the PM workflow.
+                  Complete service summary, configure report, set delivery details, and generate PDF to finish the workflow.
+                  {!validateSection('summary') && ' Fill in service summary.'}
+                  {!validateSection('config') && ' Select report template.'}
+                  {!validateSection('delivery') && ' Set delivery recipient.'}
+                  {!reportGenerated && ' Generate PDF report.'}
                 </AlertDescription>
               </Alert>
             )}
           </div>
         </Tabs>
       </div>
-
-      {/* Hidden print reference for PDF generation */}
-      <div ref={printRef} className="hidden" />
     </div>
   );
 };

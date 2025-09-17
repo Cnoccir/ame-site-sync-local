@@ -136,8 +136,34 @@ export class UserRoleService {
 export function useUserRole() {
   const { user } = useAuth();
   
+  // Extract firstName from user data
+  const getFirstName = (user: any): string => {
+    if (!user) return 'Tech';
+    
+    // Check user_metadata first
+    if (user.user_metadata?.first_name) {
+      return user.user_metadata.first_name;
+    }
+    
+    // Check raw_user_meta_data
+    if (user.raw_user_meta_data?.first_name) {
+      return user.raw_user_meta_data.first_name;
+    }
+    
+    // Extract from email
+    if (user.email) {
+      const emailPrefix = user.email.split('@')[0];
+      // Handle common patterns like john.doe, john_doe, johndoe
+      const nameParts = emailPrefix.replace(/[._]/g, ' ').split(' ');
+      return nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1).toLowerCase();
+    }
+    
+    return 'Tech';
+  };
+  
   return {
     role: UserRoleService.getUserRole(user),
+    firstName: getFirstName(user),
     permissions: UserRoleService.getUserPermissions(user),
     hasPermission: (permission: string) => UserRoleService.hasPermission(user, permission),
     hasAnyPermission: (permissions: string[]) => UserRoleService.hasAnyPermission(user, permissions),

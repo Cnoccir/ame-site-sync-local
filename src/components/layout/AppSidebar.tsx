@@ -53,16 +53,11 @@ const getNavigationItems = (hasPermission: (permission: string) => boolean, isTe
   // Always show PM Tasks for techs and others with permission
   if (hasPermission(USER_PERMISSIONS.PERFORM_PM_TASKS)) {
     if (isTech) {
-      // For techs: provide both standalone and pre-filled options
+      // For techs: single clear entry point
       operationsItems.push({ 
-        name: 'Start PM Workflow', 
+        name: 'Start PM Visit', 
         href: '/pm-workflow', 
         icon: Target 
-      });
-      operationsItems.push({ 
-        name: 'Quick Start (Pre-filled)', 
-        href: '/preventive-tasks', 
-        icon: CheckSquare 
       });
     } else {
       operationsItems.push({ 
@@ -127,12 +122,11 @@ export function AppSidebar() {
     >
       <SidebarHeader className="ame-sidebar-header">
         <div className="ame-logo">
-          <div className="ame-logo-text">AME INC.</div>
+          <div className="ame-logo-text">AME CONTROLS</div>
           {state === 'expanded' && !isMobile && (
             <>
-              <div className="ame-tagline">A PART OF NORDAMATIC GROUP</div>
               <div className="ame-system-title">
-                {isTech ? 'PM Workflow Guide' : 'Maintenance Management'}
+                {isTech ? 'PM Workflow Guide' : 'Maintenance System'}
               </div>
               {/* User Role Indicator */}
               <div className="mt-2 px-2 py-1 bg-primary/10 rounded text-xs text-primary font-medium uppercase tracking-wide">

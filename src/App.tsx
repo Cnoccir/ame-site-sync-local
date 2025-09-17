@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { MainLayout } from "./components/layout/MainLayout";
 import { Dashboard } from "./pages/Dashboard";
+import { TechDashboard } from "./pages/TechDashboard";
 import { Customers } from "./pages/Customers";
 import { Projects } from "./pages/Projects";
 import { Admin } from "./pages/Admin";
@@ -17,8 +18,20 @@ import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { PreventiveTasks } from "./pages/PreventiveTasks";
 import { PMGuidance } from "./pages/PMGuidance";
+import { useUserRole } from "./services/userRoleService";
 
 const queryClient = new QueryClient();
+
+// Conditional Dashboard Component
+const ConditionalDashboard = () => {
+  const { isTech } = useUserRole();
+  
+  if (isTech) {
+    return <TechDashboard />;
+  } else {
+    return <Dashboard />;
+  }
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -34,7 +47,7 @@ const App = () => (
           
           {/* Protected routes */}
           <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-            <Route index element={<Dashboard />} />
+            <Route index element={<ConditionalDashboard />} />
             <Route path="customers" element={<Customers />} />
             <Route path="projects" element={<Projects />} />
             <Route path="visit/:customerId" element={<Visit />} />

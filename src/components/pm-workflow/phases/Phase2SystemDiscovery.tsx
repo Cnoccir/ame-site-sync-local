@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { 
   Database, 
   Upload, 
@@ -22,10 +23,14 @@ import {
   Network,
   Settings,
   Plus,
-  Trash2
+  Trash2,
+  XCircle,
+  Activity
 } from 'lucide-react';
 import { PhaseHeader, SectionCard } from '../shared';
 import { logger } from '@/utils/logger';
+import TridiumExportService from '@/services/tridium/TridiumExportService';
+import { ProcessedTridiumExports, STATUS_COLORS } from '@/types/tridiumExport.types';
 
 // Import types
 import type { SystemDiscoveryData } from '@/types/pmWorkflow';
@@ -36,22 +41,6 @@ interface Phase2SystemDiscoveryProps {
   onPhaseComplete: () => void;
 }
 
-// Mock Tridium export data for demonstration
-const mockTridiumData = {
-  resourceExport: {
-    cpuUsage: 45,
-    memoryUsage: 67,
-    deviceCount: 84,
-    alarmCount: 3,
-    licenseUsage: '67%'
-  },
-  bacnetExport: [
-    { deviceId: 'AHU-01', deviceType: 'Air Handler', status: 'Online', vendor: 'Trane' },
-    { deviceId: 'VAV-101', deviceType: 'VAV Box', status: 'Online', vendor: 'KMC' },
-    { deviceId: 'CHWR-01', deviceType: 'Chiller', status: 'Offline', vendor: 'Johnson Controls' }
-  ]
-};
-
 export const Phase2SystemDiscovery: React.FC<Phase2SystemDiscoveryProps> = ({
   data,
   onDataUpdate,
@@ -60,6 +49,9 @@ export const Phase2SystemDiscovery: React.FC<Phase2SystemDiscoveryProps> = ({
   const [activeTab, setActiveTab] = useState('bms');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processingExports, setProcessingExports] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [processingError, setProcessingError] = useState<string>('');
+  const [parsedExportData, setParsedExportData] = useState<ProcessedTridiumExports | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const calculateProgress = (): number => {
@@ -117,34 +109,78 @@ export const Phase2SystemDiscovery: React.FC<Phase2SystemDiscoveryProps> = ({
     updateManualInventory('networkSegments', updated);
   };
 
-  const simulateFileUpload = (fileType: string) => {
-    setProcessingExports(true);
-    setUploadProgress(0);
+  // Real file processing functions
+  const handleFileUpload = useCallback(async (files: File[]) => {
+    if (files.length === 0) return;
     
-    // Simulate file upload and processing
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            onDataUpdate({
-              tridiumExports: {
-                ...data.tridiumExports,
-                processed: true,
-                uploadTime: new Date(),
-                ...mockTridiumData
-              }
-            });
-            setProcessingExports(false);
-            setUploadProgress(0);
-            logger.info(`Mock ${fileType} processed successfully`);
-          }, 500);
-          return 100;
+    setProcessingExports(true);
+    setUploadProgress(10);
+    setProcessingError('');
+    setUploadedFiles(files);
+    
+    try {
+      logger.info(`Processing ${files.length} Tridium export files`);
+      
+      // Process files with TridiumExportService
+      const processedData = await TridiumExportService.processMultipleExports(files);
+      
+      setUploadProgress(90);
+      
+      // Update component state
+      setParsedExportData(processedData);
+      
+      // Update parent data
+      onDataUpdate({
+        tridiumExports: {
+          ...data.tridiumExports,
+          processed: true,
+          uploadTime: new Date(),
+          resourceExport: processedData.resourceData,
+          bacnetExport: processedData.bacnetDevices,
+          n2Export: processedData.n2Devices,
+          summary: processedData.summary
         }
-        return prev + 10;
       });
-    }, 200);
-  };
+      
+      setUploadProgress(100);
+      logger.info(`Successfully processed ${processedData.filesProcessed.length} files`);
+      
+    } catch (error) {
+      logger.error('File processing error:', error);
+      setProcessingError(error.message || 'Failed to process export files');
+    } finally {
+      setTimeout(() => {
+        setProcessingExports(false);
+        setUploadProgress(0);
+      }, 1000);
+    }
+  }, [data.tridiumExports, onDataUpdate]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const files = Array.from(e.dataTransfer.files).filter(file => 
+      file.name.toLowerCase().endsWith('.csv') || 
+      file.name.toLowerCase().endsWith('.txt')
+    );
+    
+    if (files.length > 0) {
+      handleFileUpload(files);
+    }
+  }, [handleFileUpload]);
+
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if (files.length > 0) {
+      handleFileUpload(files);
+    }
+  }, [handleFileUpload]);
 
   const addPhoto = () => {
     // Simulate photo capture
@@ -334,60 +370,84 @@ export const Phase2SystemDiscovery: React.FC<Phase2SystemDiscoveryProps> = ({
                   <div className="space-y-4">
                     {!data.tridiumExports.processed ? (
                       <div className="space-y-4">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                          <Button
-                            variant="outline"
-                            onClick={() => simulateFileUpload('ResourceExport')}
-                            disabled={processingExports}
-                            className="gap-2"
-                          >
-                            <Cpu className="h-4 w-4" />
-                            Resource Export
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => simulateFileUpload('BACnetExport')}
-                            disabled={processingExports}
-                            className="gap-2"
-                          >
-                            <Network className="h-4 w-4" />
-                            BACnet Export
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => simulateFileUpload('N2Export')}
-                            disabled={processingExports}
-                            className="gap-2"
-                          >
-                            <HardDrive className="h-4 w-4" />
-                            N2 Export
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => simulateFileUpload('PlatformDetails')}
-                            disabled={processingExports}
-                            className="gap-2"
-                          >
-                            <FileText className="h-4 w-4" />
-                            Platform Details
-                          </Button>
+                        {/* Drag and Drop Upload Area */}
+                        <div 
+                          className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer"
+                          onDragOver={handleDragOver}
+                          onDrop={handleDrop}
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          <Upload className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                          <div className="space-y-2">
+                            <p className="text-lg font-medium">Upload Tridium Export Files</p>
+                            <p className="text-sm text-muted-foreground">
+                              Drag and drop CSV/TXT files here, or click to browse
+                            </p>
+                            <div className="text-xs text-muted-foreground space-y-1">
+                              <div>📊 <strong>ResourceExport.csv</strong> - System performance metrics</div>
+                              <div>🌐 <strong>BACnetExport.csv</strong> - Device inventory and status</div>
+                              <div>🔌 <strong>N2Export.csv</strong> - Legacy N2 device data</div>
+                              <div>📋 <strong>PlatformDetails.txt</strong> - Platform information</div>
+                            </div>
+                          </div>
                         </div>
 
+                        {/* Hidden file input */}
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          multiple
+                          accept=".csv,.txt"
+                          onChange={handleFileInputChange}
+                          className="hidden"
+                        />
+
+                        {/* Show uploaded files */}
+                        {uploadedFiles.length > 0 && (
+                          <div className="space-y-2">
+                            <h4 className="font-medium text-sm">Uploaded Files:</h4>
+                            <div className="grid gap-2">
+                              {uploadedFiles.map((file, index) => (
+                                <div key={index} className="flex items-center justify-between bg-gray-50 rounded p-2">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-blue-500" />
+                                    <span className="text-sm font-mono">{file.name}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      ({(file.size / 1024).toFixed(1)} KB)
+                                    </span>
+                                  </div>
+                                  <Badge variant="outline" className="text-xs">
+                                    {TridiumExportService.detectFileType(file.name)}
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Processing status */}
                         {processingExports && (
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                              <span className="text-sm">Processing exports...</span>
+                              <span className="text-sm flex items-center gap-2">
+                                <Activity className="h-4 w-4 animate-spin" />
+                                Processing exports...
+                              </span>
                               <span className="text-sm">{uploadProgress}%</span>
                             </div>
                             <Progress value={uploadProgress} />
                           </div>
                         )}
 
-                        <div className="text-center py-8 text-muted-foreground">
-                          <Upload className="h-12 w-12 mx-auto mb-4" />
-                          <p>Click the buttons above to simulate Tridium export processing</p>
-                          <p className="text-sm">In production, drag and drop CSV/TXT files here</p>
-                        </div>
+                        {/* Error display */}
+                        {processingError && (
+                          <Alert variant="destructive">
+                            <XCircle className="h-4 w-4" />
+                            <AlertDescription>
+                              Error processing files: {processingError}
+                            </AlertDescription>
+                          </Alert>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -402,62 +462,182 @@ export const Phase2SystemDiscovery: React.FC<Phase2SystemDiscoveryProps> = ({
                           <Card>
                             <CardContent className="p-4 text-center">
                               <Cpu className="h-8 w-8 mx-auto mb-2 text-blue-500" />
-                              <div className="text-2xl font-bold">{mockTridiumData.resourceExport.cpuUsage}%</div>
+                              <div className="text-2xl font-bold">
+                                {parsedExportData?.resourceData?.cpuUsage?.toFixed(0) || '—'}
+                                {parsedExportData?.resourceData?.cpuUsage ? '%' : ''}
+                              </div>
                               <div className="text-sm text-muted-foreground">CPU Usage</div>
                             </CardContent>
                           </Card>
                           <Card>
                             <CardContent className="p-4 text-center">
                               <HardDrive className="h-8 w-8 mx-auto mb-2 text-green-500" />
-                              <div className="text-2xl font-bold">{mockTridiumData.resourceExport.memoryUsage}%</div>
+                              <div className="text-2xl font-bold">
+                                {parsedExportData?.resourceData?.heapUsed 
+                                  ? `${Math.round((parsedExportData.resourceData.heapUsed / parsedExportData.resourceData.heapMax) * 100)}%`
+                                  : '—'
+                                }
+                              </div>
                               <div className="text-sm text-muted-foreground">Memory Usage</div>
                             </CardContent>
                           </Card>
                           <Card>
                             <CardContent className="p-4 text-center">
                               <Network className="h-8 w-8 mx-auto mb-2 text-purple-500" />
-                              <div className="text-2xl font-bold">{mockTridiumData.resourceExport.deviceCount}</div>
+                              <div className="text-2xl font-bold">
+                                {parsedExportData?.summary?.totalDevices || 
+                                 parsedExportData?.resourceData?.deviceCount || '—'}
+                              </div>
                               <div className="text-sm text-muted-foreground">Total Devices</div>
                             </CardContent>
                           </Card>
                           <Card>
                             <CardContent className="p-4 text-center">
                               <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-orange-500" />
-                              <div className="text-2xl font-bold">{mockTridiumData.resourceExport.alarmCount}</div>
+                              <div className="text-2xl font-bold">
+                                {parsedExportData?.summary?.devicesWithAlarms || '—'}
+                              </div>
                               <div className="text-sm text-muted-foreground">Active Alarms</div>
                             </CardContent>
                           </Card>
                         </div>
 
                         <div>
-                          <h4 className="font-medium mb-2">Device Inventory Sample</h4>
+                          <h4 className="font-medium mb-2 flex items-center justify-between">
+                            Device Inventory 
+                            {parsedExportData && (
+                              <span className="text-sm text-muted-foreground font-normal">
+                                {parsedExportData.summary.totalDevices} devices found
+                              </span>
+                            )}
+                          </h4>
                           <div className="border rounded-lg overflow-hidden">
-                            <table className="w-full text-sm">
-                              <thead className="bg-gray-50">
-                                <tr>
-                                  <th className="text-left p-2">Device ID</th>
-                                  <th className="text-left p-2">Type</th>
-                                  <th className="text-left p-2">Status</th>
-                                  <th className="text-left p-2">Vendor</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {mockTridiumData.bacnetExport.map((device, i) => (
-                                  <tr key={i} className="border-t">
-                                    <td className="p-2">{device.deviceId}</td>
-                                    <td className="p-2">{device.deviceType}</td>
-                                    <td className="p-2">
-                                      <Badge variant={device.status === 'Online' ? 'default' : 'destructive'}>
-                                        {device.status}
-                                      </Badge>
-                                    </td>
-                                    <td className="p-2">{device.vendor}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                            {parsedExportData && parsedExportData.bacnetDevices.length > 0 ? (
+                              <>
+                                <table className="w-full text-sm">
+                                  <thead className="bg-gray-50">
+                                    <tr>
+                                      <th className="text-left p-2">Device Name</th>
+                                      <th className="text-left p-2">Type</th>
+                                      <th className="text-left p-2">Status</th>
+                                      <th className="text-left p-2">Vendor</th>
+                                      <th className="text-left p-2">Model</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {parsedExportData.bacnetDevices.slice(0, 10).map((device, i) => (
+                                      <tr key={i} className="border-t hover:bg-gray-50">
+                                        <td className="p-2 font-mono text-xs">{device.name}</td>
+                                        <td className="p-2">{device.type}</td>
+                                        <td className="p-2">
+                                          <Badge 
+                                            variant={
+                                              device.status === 'ok' ? 'default' : 
+                                              device.status === 'unackedAlarm' ? 'secondary' : 'destructive'
+                                            }
+                                            className="text-xs"
+                                          >
+                                            {device.status === 'ok' ? 'Online' : 
+                                             device.status === 'unackedAlarm' ? 'Alarm' : 
+                                             device.status === 'down' ? 'Offline' : 'Fault'}
+                                          </Badge>
+                                        </td>
+                                        <td className="p-2">{device.vendor}</td>
+                                        <td className="p-2">{device.model}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                                {parsedExportData.bacnetDevices.length > 10 && (
+                                  <div className="bg-gray-50 px-2 py-1 text-xs text-muted-foreground text-center">
+                                    Showing first 10 of {parsedExportData.bacnetDevices.length} devices
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="p-4 text-center text-muted-foreground">
+                                <Database className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                <div className="text-sm">
+                                  Upload BACnet export CSV to view device inventory
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
+
+                        {/* System Health Summary */}
+                        {parsedExportData && (
+                          <div className="mt-4 space-y-4">
+                            <h4 className="font-medium">System Health Summary</h4>
+                            
+                            {/* Health Score */}
+                            <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium">Overall Health Score</span>
+                                <span className="text-2xl font-bold text-green-600">
+                                  {parsedExportData.summary.systemHealthScore}/100
+                                </span>
+                              </div>
+                              <Progress 
+                                value={parsedExportData.summary.systemHealthScore} 
+                                className="h-2"
+                              />
+                            </div>
+
+                            {/* Summary Grid */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                              <div className="bg-green-50 rounded p-3 text-center">
+                                <div className="text-lg font-bold text-green-600">
+                                  {parsedExportData.summary.onlineDevices}
+                                </div>
+                                <div className="text-xs text-green-700">Online Devices</div>
+                              </div>
+                              <div className="bg-red-50 rounded p-3 text-center">
+                                <div className="text-lg font-bold text-red-600">
+                                  {parsedExportData.summary.offlineDevices}
+                                </div>
+                                <div className="text-xs text-red-700">Offline Devices</div>
+                              </div>
+                              <div className="bg-orange-50 rounded p-3 text-center">
+                                <div className="text-lg font-bold text-orange-600">
+                                  {parsedExportData.summary.devicesWithAlarms}
+                                </div>
+                                <div className="text-xs text-orange-700">Devices with Alarms</div>
+                              </div>
+                              <div className="bg-blue-50 rounded p-3 text-center">
+                                <div className="text-lg font-bold text-blue-600">
+                                  {parsedExportData.summary.primaryVendors.length}
+                                </div>
+                                <div className="text-xs text-blue-700">Vendors</div>
+                              </div>
+                            </div>
+
+                            {/* Top Vendors */}
+                            {parsedExportData.summary.primaryVendors.length > 0 && (
+                              <div>
+                                <h5 className="text-sm font-medium mb-2">Top Vendors</h5>
+                                <div className="space-y-1">
+                                  {parsedExportData.summary.primaryVendors.slice(0, 3).map((vendor, i) => (
+                                    <div key={i} className="flex items-center justify-between text-sm bg-gray-50 rounded px-3 py-1">
+                                      <span>{vendor.vendor}</span>
+                                      <Badge variant="outline" className="text-xs">
+                                        {vendor.count} devices
+                                      </Badge>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Processing Info */}
+                            <div className="text-xs text-muted-foreground bg-gray-50 rounded p-2">
+                              <div className="flex justify-between items-center">
+                                <span>Files processed: {parsedExportData.filesProcessed.join(', ')}</span>
+                                <span>Processed: {parsedExportData.uploadTime.toLocaleTimeString()}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
