@@ -733,7 +733,7 @@ export const UnifiedSystemDiscovery: React.FC<UnifiedSystemDiscoveryProps> = ({
       }
     };
     restore();
-  }, [effectiveSessionId, discoveryRunId]);
+  }, [effectiveSessionId]); // Removed discoveryRunId to prevent double rebuild
   // Build UI tree from persisted JSON
   const rebuildTreeFromPersisted = useCallback((persisted: any) => {
     // Switch system type
