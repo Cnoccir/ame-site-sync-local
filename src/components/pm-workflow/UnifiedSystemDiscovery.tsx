@@ -689,8 +689,22 @@ export const UnifiedSystemDiscovery: React.FC<UnifiedSystemDiscoveryProps> = ({
         }
 
         const result = await PlatformDataService.getTridiumSystemData(effectiveSessionId);
+        console.log('🔄 RESTORE: Got tridiumSystemData result:', {
+          hasData: !!result.data,
+          hasError: !!result.error,
+          error: result.error
+        });
+        
         if (result.data) {
           const persisted = result.data as any;
+          console.log('📚 RESTORE: Persisted data structure:', {
+            hasSupervisor: !!persisted.supervisor,
+            hasSupervisorPlatform: !!persisted.supervisor?.platform,
+            hasSupervisorResources: !!persisted.supervisor?.resources,
+            hasJaces: !!persisted.jaces,
+            jaceCount: Object.keys(persisted.jaces || {}).length,
+            jaceNames: Object.keys(persisted.jaces || {})
+          });
 
           // Merge into local system data
           setSystemData(prev => ({

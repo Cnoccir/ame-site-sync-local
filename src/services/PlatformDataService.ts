@@ -335,10 +335,20 @@ export class PlatformDataService {
 
         switch (dataType) {
           case 'platform':
+            console.log(`💾 STORING SUPERVISOR PLATFORM - keys:`, Object.keys(data || {}));
             systemData.supervisor.platform = data as PlatformParsedData;
+            console.log(`✅ SUPERVISOR PLATFORM STORED - verifying:`, {
+              hasData: !!systemData.supervisor.platform,
+              hasSummary: !!systemData.supervisor.platform?.summary
+            });
             break;
           case 'resources':
+            console.log(`💾 STORING SUPERVISOR RESOURCES - keys:`, Object.keys(data || {}));
             systemData.supervisor.resources = data as ResourceParsedData;
+            console.log(`✅ SUPERVISOR RESOURCES STORED - verifying:`, {
+              hasData: !!systemData.supervisor.resources,
+              hasMetrics: !!systemData.supervisor.resources?.metrics
+            });
             break;
           case 'niagara_network':
             systemData.supervisor.network = data as NiagaraNetworkParsedData;
