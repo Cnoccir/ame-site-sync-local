@@ -191,7 +191,9 @@ export class PlatformDataService {
 
         logger.info('Tridium system data stored successfully in phase_2_data');
         
-        // ALSO persist to normalized tables (no data loss!)
+        // ALSO persist to normalized tables (no data loss!) - DISABLED until migration is run
+        // Uncomment after running migration 20251001000000
+        /*
         try {
           logger.info('Persisting to normalized schema tables...');
           
@@ -218,6 +220,7 @@ export class PlatformDataService {
           logger.error('Error persisting to normalized tables:', persistError);
           // Don't fail the whole operation - data is already in phase_2_data
         }
+        */
 
         return { success: true };
       })();
