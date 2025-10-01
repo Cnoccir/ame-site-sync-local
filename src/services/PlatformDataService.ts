@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '../utils/logger';
 import { isValidUUID } from '@/utils/uuid';
+import { SystemDiscoveryPersistenceService } from './SystemDiscoveryPersistenceService';
 import type {
   N2ParsedData,
   BACnetParsedData,
@@ -188,7 +189,36 @@ export class PlatformDataService {
           return { success: true, error: updateError.message } as any;
         }
 
-        logger.info('Tridium system data stored successfully');
+        logger.info('Tridium system data stored successfully in phase_2_data');
+        
+        // ALSO persist to normalized tables (no data loss!)
+        try {
+          logger.info('Persisting to normalized schema tables...');
+          
+          // Get customer_id from the session
+          const { data: sessionData } = await supabase
+            .from('pm_workflow_sessions')
+            .select('customer_id')
+            .eq('id', sessionId)
+            .single();
+          
+          const persistResult = await SystemDiscoveryPersistenceService.persistSystemDiscovery(
+            sessionId,
+            sessionData?.customer_id || null,
+            systemData,
+            `Discovery ${new Date().toLocaleString()}`
+          );
+          
+          if (persistResult.success) {
+            logger.info('✅ Normalized persistence successful:', persistResult.summary);
+          } else {
+            logger.warn('⚠️ Normalized persistence failed (data still in phase_2_data):', persistResult.error);
+          }
+        } catch (persistError) {
+          logger.error('Error persisting to normalized tables:', persistError);
+          // Don't fail the whole operation - data is already in phase_2_data
+        }
+
         return { success: true };
       })();
 
