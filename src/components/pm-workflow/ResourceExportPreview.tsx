@@ -1,21 +1,6 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import {
-  CheckCircle2,
-  Eye,
-  Trash2,
-  HardDrive,
-  Cpu,
-  Activity,
-  Clock,
-  AlertTriangle,
-  Database,
-  Zap,
-  TrendingUp
-} from 'lucide-react';
+import { HardDrive } from 'lucide-react';
+import { DynamicResourceMetricsDisplay } from './DynamicResourceMetricsDisplay';
 
 export interface ResourceExportPreviewProps {
   data: any;
@@ -131,6 +116,12 @@ export const ResourceExportPreview: React.FC<ResourceExportPreviewProps> = ({
   console.log('📊 Final resourceData:', resourceData);
   console.log('⚠️ Alerts:', alerts);
 
+  // Use dynamic display if we have raw/allMetrics data
+  if (data?.allMetrics || data?.raw) {
+    return <DynamicResourceMetricsDisplay data={data} fileName={fileName} />;
+  }
+
+  // Fallback for missing data
   if (!resourceData) {
     return (
       <div className="text-center py-8 text-gray-500">
@@ -167,6 +158,7 @@ export const ResourceExportPreview: React.FC<ResourceExportPreviewProps> = ({
     return 'outline';
   };
 
+  // Legacy fallback - this should rarely be reached now
   return (
     <div className="space-y-4">
       {/* Success banner */}

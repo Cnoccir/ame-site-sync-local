@@ -1137,22 +1137,30 @@ export class TridiumExportProcessor {
       const free = raw.find(m => m.name === 'heap.free');
       const total = raw.find(m => m.name === 'heap.total');
 
-      return {
-        used: used ? this.parseMemoryValue(used.value.toString()) : 0,
-        max: max ? this.parseMemoryValue(max.value.toString()) : 0,
-        free: free ? this.parseMemoryValue(free.value.toString()) : 0,
-        total: total ? this.parseMemoryValue(total.value.toString()) : 0
+      // Values are already parsed as numbers in MB by parseResourceValue
+      const heapMetrics = {
+        used: used ? (typeof used.value === 'number' ? used.value : 0) : 0,
+        max: max ? (typeof max.value === 'number' ? max.value : 0) : 0,
+        free: free ? (typeof free.value === 'number' ? free.value : 0) : 0,
+        total: total ? (typeof total.value === 'number' ? total.value : 0) : 0
       };
+      
+      console.log('[TridiumExportProcessor] Parsed heap metrics:', heapMetrics);
+      return heapMetrics;
     };
 
     const getMemoryMetrics = () => {
       const used = raw.find(m => m.name === 'mem.used');
       const total = raw.find(m => m.name === 'mem.total');
 
-      return {
-        used: used ? this.parseMemoryValue(used.value.toString()) : 0,
-        total: total ? this.parseMemoryValue(total.value.toString()) : 0
+      // Values are already parsed as numbers in MB by parseResourceValue
+      const memoryMetrics = {
+        used: used ? (typeof used.value === 'number' ? used.value : 0) : 0,
+        total: total ? (typeof total.value === 'number' ? total.value : 0) : 0
       };
+      
+      console.log('[TridiumExportProcessor] Parsed memory metrics:', memoryMetrics);
+      return memoryMetrics;
     };
 
     const getCapacityMetrics = () => {
@@ -1251,6 +1259,7 @@ export class TridiumExportProcessor {
       warnings.push(`High heap usage: ${Math.round((heap.used / heap.max) * 100)}%`);
     }
 
+    // Build metrics with ALL raw data preserved
     const metrics = {
       cpu: { usage: cpuUsage },
       heap: getHeapMetrics(),
@@ -1263,13 +1272,28 @@ export class TridiumExportProcessor {
       engineQueue: getEngineQueue()
     };
 
-    // Enhanced analysis
+    // Enhanced analysis for threshold checks and health scoring
     const analysis = this.enhanceResourceData(metrics, warnings, raw);
 
+    // Create a flat key-value map of ALL metrics for easy display and storage
+    const allMetrics: Record<string, any> = {};
+    raw.forEach(metric => {
+      allMetrics[metric.name] = {
+        value: metric.value,
+        unit: metric.unit,
+        limit: metric.limit,
+        peak: metric.peak
+      };
+    });
+
+    console.log('[TridiumExportProcessor] Total raw metrics parsed:', raw.length);
+    console.log('[TridiumExportProcessor] All metrics map:', allMetrics);
+
     return {
-      metrics,
+      metrics,        // Structured metrics for analytics
       warnings,
-      raw,
+      raw,           // Complete array of all parsed metrics
+      allMetrics,    // Flat key-value map for easy lookup
       analysis
     };
   }
@@ -2699,12 +2723,27 @@ export class TridiumExportProcessor {
       return { name, value: percentage, unit: '%' };
     }
 
-    // Handle memory values with units (e.g., "477 MB")
+    // Handle memory values with units (e.g., "477 MB") - normalize to MB
     const memoryMatch = valueStr.match(/([\d,]+)\s*(MB|KB|GB)/);
     if (memoryMatch) {
-      const value = parseInt(memoryMatch[1].replace(/,/g, ''));
+      const rawValue = parseInt(memoryMatch[1].replace(/,/g, ''));
       const unit = memoryMatch[2];
-      return { name, value, unit };
+      
+      // Normalize all memory values to MB
+      let valueInMB: number;
+      switch (unit) {
+        case 'KB': 
+          valueInMB = rawValue / 1024;
+          break;
+        case 'GB': 
+          valueInMB = rawValue * 1024;
+          break;
+        case 'MB':
+        default:
+          valueInMB = rawValue;
+      }
+      
+      return { name, value: valueInMB, unit: 'MB' };
     }
 
     // Handle values with limits (e.g., "3,303 (Limit: 5,000)")
