@@ -1,0 +1,117 @@
+technician_id,user_id,first_name,last_name,employee_id,email,phone,mobile_phone,role,department,employment_status,is_active,is_technician,extension,direct_line,employee_name
+EMP1170,,Mark,McLeod,,markm@ame-inc.com,,973-349-7044,Technician,,active,true,true,860,,Mark McLeod
+EMP1176,,Mohammad,Ahmmed,,mohammad@ame-inc.com,,973-518-3104,Field Technician,Field Operations,active,true,true,,,Mohammad Ahmmed
+EMP1157,,Joshua,Zottoli,,joshua@ame-inc.com,,973-518-4164,Field Technician,Field Operations,active,true,true,,,Joshua Zottoli
+EMP1120,,Anubhav,Anubhav,,anubhav@ame-inc.com,,973-349-6779,Technician,,active,true,false,,,Anubhav Anubhav
+EMP1177,,Nick,Winship,,nicholas@ame-inc.com,,908-635-8706,Technician,,active,true,true,720,,Nick Winship
+EMP1137,,Felipe,Lopez,,joselopez@ame-inc.com,,973-631-0489,Field Technician,Field Operations,active,true,true,,210-837-8883,Felipe Lopez
+EMP1166,,Mahmoud,Shehata,,mahmoud@ame-inc.com,,,Technician,,active,true,false,,,Mahmoud Shehata
+EMP1161,,Kelvin,Pichardo,,kelvin@ame-inc.com,,973-525-3126,Field Technician,Field Operations,active,true,true,,,Kelvin Pichardo
+EMP1196,,Steven,Mailloux,,steven@ame-inc.com,,973-557-1169,Technician,,active,true,true,1050,,Steven Mailloux
+EMP1119,,Amit,Mehta,,amitmehta@ame-inc.com,,862-355-6132,Field Technician,Field Operations,active,true,true,,,Amit Mehta
+EMP1155,,Jordan,Fazio,,jordan@ame-inc.com,,973-294-6214,Field Technician,Field Operations,active,true,true,,,Jordan Fazio
+EMP1188,,Rohan,Nikhare,,rohannikhare@ame-inc.com,,302-853-7011,Field Technician,Field Operations,active,true,true,,,Rohan Nikhare
+EMP1128,,Butch,Garry,,butch@ame-inc.com,,862-774-1124,Field Technician,Field Operations,active,true,true,,,Butch Garry
+EMP1200,,Vernie,Redano,,vernie@ame-inc.com,,973-618-7933,Field Technician,Field Operations,active,true,true,,,Vernie Redano
+EMP1116,,Abdulla,Siddi,,abdulla@ame-inc.com,,973-262-3246,Field Technician,Field Operations,active,true,true,500,,Abdulla Siddi
+EMP0003,,Anthony,DiCroce,,anthony@ame-inc.com,,973-647-9361,Field Technician,Field Operations,active,true,true,"280 ",862325-6820,Anthony DiCroce
+EMP1191,,Rushi,Gujar,,rushi@ame-inc.com,,973-525-3260,Technician,,active,true,false,,862-325-0161,Rushi Gujar
+EMP0013,,Mariela,Peralta,,mariela@ame-inc.com,,,Administrative,Administration,active,true,false,"220 ",862-325-3867,Mariela Peralta
+EMP0004,,Annie,Wong,,annie@ame-inc.com,,,Administrative,Administration,active,true,false,"360 ",862246-1563,Annie Wong
+EMP1135,,Dinesh,Nair,,dinesh@ame-inc.com,,973-618-8327,Field Technician,Field Operations,active,true,true,,,Dinesh Nair
+EMP1189,,Ron,Jeter,,ron@ame-inc.com,,973-303-0312,Field Technician,Field Operations,active,true,true,1030,,Ron Jeter
+EMP1115,,Aaron,Melendez,,aaron@ame-inc.com,,973-524-3686,Technician,,active,true,true,,,Aaron Melendez
+EMP0016,,Remote,Support Yogesh,,yogesh@ame-inc.com,,,Technician,,active,true,false,"400 ",862-325-0161,Remote Support Yogesh
+EMP1202,,Victor,Leon,,victorl@ame-inc.com,,973-513-0616,Technician,,active,true,true,,,Victor Leon
+EMP1179,,Paul,Bruno,,paulb@ame-inc.com,,732-668-1630,Technician,,active,true,true,910,,Paul Bruno
+EMP1140,,Gavin,Lall,,gavin@ame-inc.com,,862-441-2556,Field Technician,Field Operations,active,true,true,,,Gavin Lall
+EMP1127,,Brian,Savage,,briansavage@ame-inc.com,,201-704-8063,Technician,,active,true,true,620,,Brian Savage
+EMP1145,,Henry,Sanches,,Henry@ame-inc.com,,973-518-4794,Field Technician,Field Operations,active,true,true,,,Henry Sanches
+EMP1180,,Paul,Yingling,,paul@ame-inc.com,,973-214-6886,Technician,,active,true,true,920,,Paul Yingling
+EMP1143,,Gurpreet,Manda,,gurpreet@ame-inc.com,,608-695-6740,Field Technician,Field Operations,active,true,true,490,,Gurpreet Manda
+EMP1151,,Joe,Coscia,,joecoscia@ame-inc.com,,973-897-4560,Technician,,active,true,false,550,,Joe Coscia
+EMP1167,,Mamshad,Mohammed,,mamshad@ame-inc.com,,973-640-2058,Field Technician,Field Operations,active,true,true,,,Mamshad Mohammed
+EMP1182,,Perry,Condoluci,,perry@ame-inc.com,,973-561-7306,Field Technician,Field Operations,active,true,true,,,Perry Condoluci
+EMP0022,,Wilson,Herrera Junior,,wilson@ame-inc.com,,973-557-0095,Technician,,active,true,false,1120,732-347-0552,Wilson Herrera Junior
+EMP1160,,Keith,Breiner,,keith@ame-inc.com,,973-997-2326,Technician,,active,true,true,800,,Keith Breiner
+EMP1124,,Bill,Ivos,,bill@ame-inc.com,,973-417-5727,Field Technician,Field Operations,active,true,true,580,,Bill Ivos
+EMP1193,,Samer,Elghoben,,samer@ame-inc.com,,973-768-1626,Field Technician,Field Operations,active,true,true,,,Samer Elghoben
+EMP0017,,Richard,Bhajan,,richb@ame-inc.com,,973-629-2064,Technician,,active,true,false,1130,347-737-7729,Richard Bhajan
+EMP1175,,Mike,Vlacancich,,mike@ame-inc.com,,973-570-5775,Technician,,active,true,true,870,,Mike Vlacancich
+EMP1129,,Christian,Garcia,,christian@ame-inc.com,,862-763-3955,Field Technician,Field Operations,active,true,true,,,Christian Garcia
+EMP1117,,Ajai,Naicken,,ajai@ame-inc.com,,908-405-5069,Field Technician,Field Operations,active,true,true,1150,,Ajai Naicken
+EMP1192,,Saurabh,Karmalkar,,saurabh@ame-inc.com,,973-865-9421,Field Technician,Field Operations,active,true,true,,,Saurabh Karmalkar
+EMP1162,,Kevin,Dowd,,kevin@ame-inc.com,,862-666-0853,Technician,,active,true,true,,,Kevin Dowd
+EMP1158,,Justin,Bowen,,justin@ame-inc.com,,908-448-8404,Field Technician,Field Operations,active,true,true,510,,Justin Bowen
+EMP1144,,Hamyr,Oliveres,,hamyr@ame-inc.com,,973-800-6809,Field Technician,Field Operations,active,true,true,,,Hamyr Oliveres
+EMP1136,,Elliot,Avidane,,elliot@ame-inc.com,,917-417-6959,Field Technician,Field Operations,active,true,true,,,Elliot Avidane
+EMP0009,,Giresh,Ramsarran,,giresh@ame-inc.com,,973-647-7835,Field Technician,Field Operations,active,true,true,1180,862-276-8798,Giresh Ramsarran
+EMP1138,,Frank,DeTullio,,frank@ame-inc.com,,862-345-0372,Technician,,active,true,true,,,Frank DeTullio
+EMP0020,,Threshan,Ramsarran,,threshan@ame-inc.com,,973-486-5511,Field Technician,Field Operations,active,true,true,1070,862-276-4561,Threshan Ramsarran
+EMP0010,,Jim,Winship,,james@ame-inc.com,,908-442-2140,Management,Management,active,true,false,"740 , 310 ",862-325-3864,Jim Winship
+EMP1181,,Pavan,Kandhala,,pavan@ame-inc.com,,973-518-9904,Field Technician,Field Operations,active,true,true,,,Pavan Kandhala
+EMP1207,b42a970a-eb3f-4f7a-88af-e53ace87206f,Admin,User,,admin@ame-inc.com,,,Administrator,,active,true,false,,,Admin User
+EMP1190,,Ruben,De La Cruz,,ruben@ame-inc.com,,862-330-8680,Technician,,active,true,true,,,Ruben De La Cruz
+EMP1204,,Vincent,Daniello,,vincent@ame-inc.com,,973-800-4057,Technician,,active,true,true,1060,,Vincent Daniello
+EMP1178,,Nico,Delorenzo,,nico@ame-inc.com,,908-447-7010,Technician,,active,true,true,780,,Nico Delorenzo
+EMP1164,,Levi,Altein,,levi@ame-inc.com,,845-402-6481,Field Technician,Field Operations,active,true,true,,,Levi Altein
+EMP1150,,Jennifer,Iovane,,jenniferi@ame-inc.com,,516-725-0646,Technician,,active,true,false,,,Jennifer Iovane
+EMP1203,,Victor,Toledo,,victor@ame-inc.com,,973-557-7432,Technician,,active,true,true,1090,,Victor Toledo
+EMP1173,,Mike,Borges,,michael@ame-inc.com,,973-294-2837,Technician,,active,true,true,,,Mike Borges
+EMP0001,,Amit,Patel,,amit@ame-inc.com,,973-332-1303,Field Technician,Field Operations,active,true,true,"540 , 200 ",862-325-1213,Amit Patel
+EMP1198,,Thomas,Brodowski,,thomas@ame-inc.com,,973-567-8723,Technician,,active,true,true,,,Thomas Brodowski
+EMP1163,,Landon,Connor,,landon@ame-inc.com,,609-954-9758,Field Technician,Field Operations,active,true,true,530,,Landon Connor
+EMP1118,,Alicia,Capozzi,,alicia@ame-inc.com,,561-558-6425,Technician,,active,true,false,,,Alicia Capozzi
+EMP1141,,Giuseppe,DeLuca,,giuseppe@ame-inc.com,,973-936-3445,Field Technician,Field Operations,active,true,true,1190,,Giuseppe DeLuca
+EMP1132,,Danish,Shaikh,,danish@ame-inc.com,,973-369-5591,Field Technician,Field Operations,active,true,true,1160,,Danish Shaikh
+EMP1169,,Mario,Bolanos,,mario@ame-inc.com,,973-975-2494,Technician,,active,true,true,850,,Mario Bolanos
+EMP0011,,Kathy,Coviello,,kathy@ame-inc.com,,973-943-3307,Administrative,Administration,active,true,false,"230 ",862-325-4702,Kathy Coviello
+EMP0008,,Eric,Niedle,,eric@ame-inc.com,,908-581-1862,Administrative,Administration,active,true,false,"680 , 300 ",862-325-4973,Eric Niedle
+EMP1194,,Savitri,Pancham,,savitri@ame-inc.com,,,Administrative,Administration,active,true,false,430,,Savitri Pancham
+EMP1123,,Bhavik,Raithatha,,bhavik@ame-inc.com,,551-229-8301,Field Technician,Field Operations,active,true,true,,,Bhavik Raithatha
+EMP1134,,David,Amin,,david@ame-inc.com,,973-518-9868,Technician,,active,true,true,,,David Amin
+EMP0015,,Nikhil,Vaidya,,nikhil@ame-inc.com,,201-704-6767,Field Technician,Field Operations,active,true,true,980,732-532-9760,Nikhil Vaidya
+EMP1186,,Ricky,Chotalal,,ricky@ame-inc.com,,973-224-1553,Field Technician,Field Operations,active,true,true,970,,Ricky Chotalal
+EMP1139,,Francois,Machado,,francois@ame-inc.com,,631-897-4510,Field Technician,Field Operations,active,true,true,,,Francois Machado
+EMP1152,,John,Delouisa,,johnd@ame-inc.com,,908-625-3633,Technician,,active,true,true,760,,John Delouisa
+EMP0005,,Cheryle,Nunez,,cheryle@ame-inc.com,,201-560-2717,Administrative,Administration,active,true,false,"270 ",862325-6636,Cheryle Nunez
+EMP1149,,Jason,Goodie,,jasong@ame-incom,,973-946-9923,Field Technician,Field Operations,active,true,true,,,Jason Goodie
+EMP1146,,Jack,Rinderknecht,,jack@ame-inc.com,,862-396-7806,Field Technician,Field Operations,active,true,true,,,Jack Rinderknecht
+EMP1153,,John,Mazurek,,johnm@ame-inc.com,,732-496-9058,Technician,,active,true,true,,,John Mazurek
+EMP0023,,Wilson,Herrera Senior,,wilsonsenior@ame-inc.com,,973-525-6463,Technician,,active,true,false,990,973-525-6463,Wilson Herrera Senior
+EMP1122,,Asha,Padhi,,asha@ame-inc.com,,216-854-8351,Technician,,active,true,false,,,Asha Padhi
+EMP0007,,Devindra,Dilchand,,devindra@ame-inc.com,,201-956-9754,Field Technician,Field Operations,active,true,true,1170,856-515-0978,Devindra Dilchand
+EMP1147,,Jason,Dein,,jasondein@ame-inc.com,,973-294-8059,Field Technician,Field Operations,active,true,true,,,Jason Dein
+EMP1168,,Manuel,Molina,,manuel@ame-inc.com,,973-513-0617,Field Technician,Field Operations,active,true,true,,862-246-1550,Manuel Molina
+EMP0012,,Keyur,Desai,,keyur@ame-inc.com,,973-224-1472,Administrative,Administration,active,true,false,"810 , 290 ",862-325-6568,Keyur Desai
+EMP1197,,Terry,Cantwell,,terry@ame-inc.com,,908-930-7020,Technician,,active,true,true,,,Terry Cantwell
+EMP0014,,Nicole,LeBlanc,,nicole@ame-inc.com,,,Administrative,Administration,active,true,false,"240 ",862-325-3167,Nicole LeBlanc
+EMP1148,,Jason,DeJesus,,jason@ame-inc.com,,347-706-2166,Field Technician,Field Operations,active,true,true,,,Jason DeJesus
+EMP1205,,Yasir,Mohammed,,yasir@ame-inc.com,,862-451-0890,Field Technician,Field Operations,active,true,true,,,Yasir Mohammed
+EMP1165,,Lorenzo,Mastropasqua,,lorenzo@ame-inc.com,,973-369-2304,Technician,,active,true,true,830,,Lorenzo Mastropasqua
+EMP1195,,Shashank,Sartape,,shashank@ame-inc.com,,862-666-0953,Field Technician,Field Operations,active,true,true,,,Shashank Sartape
+EMP0019,,Steve,Illes,,steve@ame-inc.com,,732-725-2689,Administrative,Administration,active,true,false,"250 ",862-325-4581,Steve Illes
+EMP1154,,John,Signori,,john@ame-inc.com,,973-224-0551,Technician,,active,true,true,480,,John Signori
+EMP0018,,Rupert,Chandool,,rupert@ame-inc.com,,973-647-2902,Field Technician,Field Operations,active,true,true,900,973-445-3323,Rupert Chandool
+EMP1185,,Rich,Ink,,rich@ame-inc.com,,973-987-7919,Technician,,active,true,true,950,,Rich Ink
+EMP1156,,Jose,Hernandez,,jose@ame-inc.com,,862-396-7966,Technician,,active,true,true,,,Jose Hernandez
+EMP1125,,Bob,Okafor,,bob@ame-inc.com,,973-647-8079,Field Technician,Field Operations,active,true,true,,,Bob Okafor
+EMP1126,,Brian,Donoghue,,brian@ame-inc.com,,732-524-8826,Technician,,active,true,true,610,,Brian Donoghue
+EMP0002,,Amy,Miller,,amy@ame-inc.com,,973-865-9539,Administrative,Administration,active,true,false,"570 , 210 ",862-325-4580,Amy Miller
+EMP1187,,Robert,Lee,,robert@ame-inc.com,,973-518-5704,Technician,,active,true,true,,,Robert Lee
+EMP1131,,Craig,Wells,,craigwells@ame-inc.com,,732-877-4215,Technician,,active,true,true,,,Craig Wells
+EMP1130,,Craig,Struble,,craig@ame-inc.com,,973-396-6086,Technician,,active,true,true,600,,Craig Struble
+EMP1172,,Mercedes,Gonzales,,mercedes@ame-inc.com,,973-934-3443,Technician,,active,true,false,,,Mercedes Gonzales
+EMP0006,,Danny,DiPrenda,,danny@ame-inc.com,,973-525-6227,Administrative,Administration,active,true,false,"390 ",862-246-1591,Danny DiPrenda
+EMP1159,,Keenel,Rosete,,keenel@ame-inc.com,,347-865-3760,Technician,,active,true,false,,,Keenel Rosete
+EMP1142,,Glenn,Craft,,glennc@ame-inc.com,,201-452-3630,Technician,,active,true,true,700,,Glenn Craft
+EMP1183,,Peter,Petrenko,,peter@ame-inc.com,,732-682-7520,Technician,,active,true,true,930,,Peter Petrenko
+EMP1174,,Mike,Newcomer,,miken@ame-inc.com,,717-572-6378,Technician,,active,true,true,,,Mike Newcomer
+EMP1206,92693818-318c-49dd-b3e9-ff4b8bb85a23,Tech,User,,tech@ame-inc.com,,,Technician,,active,true,true,,,Tech User
+EMP0021,,Victoria,Meyer,,victoria@ame-inc.com,,973-750-6987,Administrative,Administration,active,true,false,"320 ",862-325-3866,Victoria Meyer
+EMP1171,,Mathew,Messer,,mathew@ame-inc.com,,973-647-8640,Field Technician,Field Operations,active,true,true,,,Mathew Messer
+EMP1121,,Ariel,San Gabriel,,ariel@ame-inc.com,,973-518-2356,Technician,,active,true,false,,,Ariel San Gabriel
+EMP1201,,Victor,Ayoola,,victorayoola@ame-inc.com,,973-768-1559,Technician,,active,true,true,,,Victor Ayoola
+EMP1133,,Dave,Cieszkiewicz,,dave@ame-inc.com,,732-397-2292,Technician,,active,true,true,650,,Dave Cieszkiewicz
+EMP1184,,Raymond,Nocciolo,,raymond@ame-inc.com,,973-800-3505,Field Technician,Field Operations,active,true,true,1020,,Raymond Nocciolo
+EMP1199,,Tyler,Holleran,,tyler@ame-inc.com,,862-266-5983,Technician,,active,true,true,,,Tyler Holleran

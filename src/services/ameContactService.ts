@@ -71,27 +71,27 @@ export class AMEContactService {
    */
   static async getTechnicians(): Promise<AMEContactSearchResult[]> {
     try {
+      // Show all active employees for team assignment (filtering can be added later)
       const { data, error } = await supabase
         .from('ame_employees')
-        .select('id, employee_name, mobile_phone, email, extension, direct_line, is_active, is_technician')
+        .select('id, employee_name, mobile_phone, email, extension, direct_line, is_active, is_technician, role')
         .eq('is_active', true)
-        .eq('is_technician', true)
         .order('employee_name', { ascending: true });
 
       if (error) {
-        console.error('Error fetching technicians:', error);
+        console.error('Error fetching employees for team assignment:', error);
         return [];
       }
 
-      return (data || []).map(tech => ({
-        id: tech.id,
-        name: tech.employee_name,
-        role: 'Technician',
-        phone: tech.mobile_phone,
-        email: tech.email,
-        technician_id: tech.id,
+      return (data || []).map(emp => ({
+        id: emp.id,
+        name: emp.employee_name,
+        role: emp.role || (emp.is_technician ? 'Technician' : 'Employee'),
+        phone: emp.mobile_phone,
+        email: emp.email,
+        technician_id: emp.id,
         employment_status: 'Active',
-        extension: tech.extension
+        extension: emp.extension
       }));
     } catch (error) {
       console.error('Error in getTechnicians:', error);
@@ -104,43 +104,24 @@ export class AMEContactService {
    */
   static async getAccountManagers(): Promise<AMEContactSearchResult[]> {
     try {
-      // Try ame_employees first, fallback to profiles if it doesn't exist
-      const { data: employeesData, error: employeesError } = await supabase
+      // Show all active employees (no filtering); consumer UI can filter later
+      const { data, error } = await supabase
         .from('ame_employees')
         .select('id, employee_name, mobile_phone, email, extension, direct_line, role, is_active')
         .eq('is_active', true)
-        .or('role.ilike.%Account Manager%,role.ilike.%Sales%,role.ilike.%Manager%')
         .order('employee_name', { ascending: true });
 
-      if (!employeesError && employeesData && employeesData.length > 0) {
-        return employeesData.map(emp => ({
-          id: emp.id,
-          name: emp.employee_name,
-          role: emp.role,
-          phone: emp.mobile_phone,
-          email: emp.email
-        }));
-      }
-
-      console.log('ame_employees table not found or empty, falling back to profiles');
-      
-      // Fallback to profiles table without role column
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .order('full_name', { ascending: true });
-
-      if (profilesError) {
-        console.error('Error fetching account managers from profiles:', profilesError);
+      if (error) {
+        console.error('Error fetching account managers from ame_employees:', error);
         return [];
       }
 
-      return (profilesData || []).map(profile => ({
-        id: profile.id,
-        name: profile.full_name || 'Unknown',
-        role: 'Staff', // Default role since profiles doesn't have role
-        phone: '',
-        email: profile.email
+      return (data || []).map(emp => ({
+        id: emp.id,
+        name: emp.employee_name,
+        role: emp.role,
+        phone: emp.mobile_phone,
+        email: emp.email
       }));
     } catch (error) {
       console.error('Error in getAccountManagers:', error);

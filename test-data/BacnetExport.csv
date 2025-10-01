@@ -1,0 +1,9 @@
+Name,Device ID,Status,Vendor,Model,Firmware Rev,Protocol Rev,Netwk,MAC Addr,Health,Enabled
+AHU-01,1001,{ok},Johnson Controls,VMA1045,v2.1,1.0,1,05:01:02:03,{ok} [2023-11-15 14:20:15],true
+AHU-02,1002,{ok},Johnson Controls,VMA1045,v2.1,1.0,1,05:01:02:04,{ok} [2023-11-15 14:19:45],true
+FCU-101,2001,{ok},Honeywell,W7220C,v1.3,1.0,2,05:02:01:01,{ok} [2023-11-15 14:21:30],true
+FCU-102,2002,{down},Honeywell,W7220C,v1.3,1.0,2,05:02:01:02,{down} [2023-11-15 10:30:22],true
+FCU-103,2003,{ok},Honeywell,W7220C,v1.3,1.0,2,05:02:01:03,{ok} [2023-11-15 14:18:55],true
+VAV-201,3001,{ok},Automated Logic,ZN551,v3.2,1.0,3,05:03:01:01,{ok} [2023-11-15 14:22:10],true
+VAV-202,3002,{ok},Automated Logic,ZN551,v3.2,1.0,3,05:03:01:02,{ok} [2023-11-15 14:20:45],true
+VAV-203,3003,{alarm},Automated Logic,ZN551,v3.2,1.0,3,05:03:01:03,{alarm} [2023-11-15 14:15:33],true

@@ -75,6 +75,21 @@ export const TRIDIUM_FORMAT_SPECS: Record<TridiumExportFormat, TridiumFormatSpec
     valueColumn: ''
   },
 
+  'ModbusExport': {
+    format: 'ModbusExport',
+    displayName: 'Modbus Device Export',
+    description: 'Modbus device inventory with slave addressing, polling configuration, and error statistics',
+    fileTypes: ['.csv'],
+    requiredColumns: ['Name', 'Address'],
+    optionalColumns: [
+      'Status', 'Slave ID', 'Connection Type', 'Register Count', 'Coil Count',
+      'Polling Rate', 'Timeout', 'Error Count', 'Enabled', 'Type', 'Vendor', 'Model'
+    ],
+    identifierColumns: ['Slave ID', 'Connection Type'],  // Modbus specific identifiers
+    keyColumn: 'Name',
+    statusColumn: 'Status'
+  },
+
   'Unknown': {
     format: 'Unknown',
     displayName: 'Unknown Format',

@@ -19,71 +19,71 @@ export class DropdownDataService {
    * Get all building types
    */
   static async getBuildingTypes(): Promise<DropdownOption[]> {
-    const { data, error } = await supabase
-      .from('building_types')
-      .select('id, type_name, description, display_order')
-      .eq('is_active', true)
-      .order('display_order');
-    
-    if (error) {
-      console.error('Error fetching building types:', error);
-      throw error;
+    try {
+      const { data, error } = await supabase
+        .from('building_types')
+        .select('id, type_name, description, display_order')
+        .eq('is_active', true)
+        .order('display_order');
+      if (error) throw error;
+      return (data || []).map(item => ({
+        id: item.id,
+        name: item.type_name,
+        description: item.description,
+        display_order: item.display_order
+      }));
+    } catch (e) {
+      console.warn('Building types not available; returning empty list');
+      return [];
     }
-    
-    return (data || []).map(item => ({
-      id: item.id,
-      name: item.type_name,
-      description: item.description,
-      display_order: item.display_order
-    }));
   }
 
   /**
    * Get all system architectures
    */
   static async getSystemArchitectures(): Promise<DropdownOption[]> {
-    const { data, error } = await supabase
-      .from('system_architectures')
-      .select('id, architecture_name, description, display_order')
-      .eq('is_active', true)
-      .order('display_order');
-    
-    if (error) {
-      console.error('Error fetching system architectures:', error);
-      throw error;
+    try {
+      const { data, error } = await supabase
+        .from('system_architectures')
+        .select('id, architecture_name, description, display_order')
+        .eq('is_active', true)
+        .order('display_order');
+      if (error) throw error;
+      return (data || []).map(item => ({
+        id: item.id,
+        name: item.architecture_name,
+        description: item.description,
+        display_order: item.display_order
+      }));
+    } catch (e) {
+      console.warn('System architectures not available; returning empty list');
+      return [];
     }
-    
-    return (data || []).map(item => ({
-      id: item.id,
-      name: item.architecture_name,
-      description: item.description,
-      display_order: item.display_order
-    }));
   }
 
   /**
    * Get all BAS platforms
    */
   static async getBasPlatforms(): Promise<DropdownOption[]> {
-    const { data, error } = await supabase
-      .from('bas_platforms')
-      .select('id, platform_name, platform_category, manufacturer, description, display_order')
-      .eq('is_active', true)
-      .order('display_order');
-    
-    if (error) {
-      console.error('Error fetching BAS platforms:', error);
-      throw error;
+    try {
+      const { data, error } = await supabase
+        .from('bas_platforms')
+        .select('id, platform_name, platform_category, manufacturer, description, display_order')
+        .eq('is_active', true)
+        .order('display_order');
+      if (error) throw error;
+      return (data || []).map(item => ({
+        id: item.id,
+        name: item.platform_name,
+        category: item.platform_category,
+        manufacturer: item.manufacturer,
+        description: item.description,
+        display_order: item.display_order
+      }));
+    } catch (e) {
+      console.warn('BAS platforms not available; returning empty list');
+      return [];
     }
-    
-    return (data || []).map(item => ({
-      id: item.id,
-      name: item.platform_name,
-      category: item.platform_category,
-      manufacturer: item.manufacturer,
-      description: item.description,
-      display_order: item.display_order
-    }));
   }
 
   /**
@@ -120,82 +120,72 @@ export class DropdownDataService {
    * Get all contact roles
    */
   static async getContactRoles(): Promise<DropdownOption[]> {
-    const { data, error } = await supabase
-      .from('contact_roles')
-      .select('id, role_name, description, display_order')
-      .eq('is_active', true)
-      .order('display_order');
-    
-    if (error) {
-      console.error('Error fetching contact roles:', error);
-      throw error;
+    try {
+      const { data, error } = await supabase
+        .from('contact_roles')
+        .select('id, role_name, description, display_order')
+        .eq('is_active', true)
+        .order('display_order');
+      if (error) throw error;
+      return (data || []).map(item => ({
+        id: item.id,
+        name: item.role_name,
+        description: item.description,
+        display_order: item.display_order
+      }));
+    } catch (e) {
+      console.warn('Contact roles not available; returning empty list');
+      return [];
     }
-    
-    return (data || []).map(item => ({
-      id: item.id,
-      name: item.role_name,
-      description: item.description,
-      display_order: item.display_order
-    }));
   }
 
   /**
    * Get all access methods
    */
   static async getAccessMethods(): Promise<DropdownOption[]> {
-    const { data, error } = await supabase
-      .from('access_methods')
-      .select('id, method_name, description, display_order')
-      .eq('is_active', true)
-      .order('display_order');
-    
-    if (error) {
-      console.error('Error fetching access methods:', error);
-      throw error;
+    try {
+      const { data, error } = await supabase
+        .from('access_methods')
+        .select('id, method_name, description, display_order')
+        .eq('is_active', true)
+        .order('display_order');
+      if (error) throw error;
+      return (data || []).map(item => ({
+        id: item.id,
+        name: item.method_name,
+        description: item.description,
+        display_order: item.display_order
+      }));
+    } catch (e) {
+      console.warn('Access methods not available; returning empty list');
+      return [];
     }
-    
-    return (data || []).map(item => ({
-      id: item.id,
-      name: item.method_name,
-      description: item.description,
-      display_order: item.display_order
-    }));
   }
 
   /**
    * Get all dropdown data at once (for form initialization)
    */
   static async getAllDropdownData() {
-    try {
-      const [
-        buildingTypes,
-        systemArchitectures,
-        basPlatforms,
-        contactRoles,
-        accessMethods,
-        technicians
-      ] = await Promise.all([
-        this.getBuildingTypes(),
-        this.getSystemArchitectures(),
-        this.getBasPlatforms(),
-        this.getContactRoles(),
-        this.getAccessMethods(),
-        this.getActiveTechnicians()
-      ]);
+    const results = await Promise.allSettled([
+      this.getBuildingTypes(),
+      this.getSystemArchitectures(),
+      this.getBasPlatforms(),
+      this.getContactRoles(),
+      this.getAccessMethods(),
+      this.getActiveTechnicians()
+    ]);
 
-      return {
-        buildingTypes,
-        systemArchitectures,
-        basPlatforms,
-        basPlatformsGrouped: await this.getBasPlatformsGrouped(),
-        contactRoles,
-        accessMethods,
-        technicians
-      };
-    } catch (error) {
-      console.error('Error fetching all dropdown data:', error);
-      throw error;
-    }
+    const [buildingTypes, systemArchitectures, basPlatforms, contactRoles, accessMethods, technicians] = results.map(r => r.status === 'fulfilled' ? r.value : []);
+
+    return {
+      buildingTypes,
+      systemArchitectures,
+      basPlatforms,
+      basPlatformsGrouped: (basPlatforms?.length ? (await this.getBasPlatformsGrouped()) : []),
+      contactRoles,
+      accessMethods,
+      technicians
+    };
   }
 
   /**

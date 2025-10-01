@@ -1,0 +1,10 @@
+Name,Value
+cpu.usage,15%
+heap.used,2342 MB
+heap.max,4096 MB
+version.niagara,4.12.1.120
+time.uptime,31 days 14:23:45
+globalCapacity.devices,150 (3000)
+globalCapacity.points,8472 (50000)
+platform.os,Windows Server 2019
+platform.java,11.0.2

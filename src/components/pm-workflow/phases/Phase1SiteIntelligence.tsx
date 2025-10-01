@@ -9,12 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Building, 
-  Users, 
-  Key, 
-  Shield, 
-  CheckCircle2, 
+import {
+  Building,
+  Users,
+  Key,
+  Shield,
+  CheckCircle2,
   AlertTriangle,
   Plus,
   Minus,
@@ -22,10 +22,16 @@ import {
   Mail,
   Clock,
   ArrowRight,
-  Search
+  Search,
+  User
 } from 'lucide-react';
 import { PhaseHeader, SectionCard } from '../shared';
 import { logger } from '@/utils/logger';
+import { SimProCustomerSearch } from '@/components/customers/SimProCustomerSearch';
+import { SearchableCombobox } from '@/components/ui/searchable-combobox';
+import { AMEContactService, AMEContactSearchResult } from '@/services/ameContactService';
+import { AMEEmployeeService } from '@/services/ameEmployeeService';
+import { DropdownDataService, DropdownOption, GroupedDropdownOption } from '@/services/dropdownDataService';
 
 // Import types
 import type { SiteIntelligenceData } from '@/types/pmWorkflow';
@@ -75,11 +81,195 @@ export const Phase1SiteIntelligence: React.FC<Phase1SiteIntelligenceProps> = ({
   const [activeTab, setActiveTab] = useState('customer');
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
+  const [technicianOptions, setTechnicianOptions] = useState<any[]>([]);
+  const [isLoadingTechnicians, setIsLoadingTechnicians] = useState(false);
+  const [accountManagerOptions, setAccountManagerOptions] = useState<any[]>([]);
+  const [isLoadingAccountManagers, setIsLoadingAccountManagers] = useState(false);
+  const [dropdownData, setDropdownData] = useState<any>(null);
+  const [isLoadingDropdowns, setIsLoadingDropdowns] = useState(true);
+
+  // Load all data on component mount
+  React.useEffect(() => {
+    loadDropdownData();
+  }, []);
+
+  const loadDropdownData = async () => {
+    setIsLoadingTechnicians(true);
+    setIsLoadingAccountManagers(true);
+    setIsLoadingDropdowns(true);
+    try {
+      // Fetch in parallel but don't fail everything if one call errors
+      const [dd, techs, mgrs] = await Promise.allSettled([
+        DropdownDataService.getCachedDropdownData(),
+        AMEContactService.getTechnicians(),
+        AMEEmployeeService.getAccountManagers()
+      ]);
+
+      if (dd.status === 'fulfilled') {
+        setDropdownData(dd.value);
+      } else {
+        console.warn('Dropdown reference data unavailable; continuing without it:', dd.reason);
+      }
+
+      if (techs.status === 'fulfilled') {
+        const formattedTechnicians = techs.value.map((tech: any) => ({
+          id: tech.id,
+          name: tech.name,
+          description: `${tech.phone ? `📱 ${tech.phone}` : ''}${tech.email ? ` 📧 ${tech.email}` : ''}`.trim(),
+          subtitle: tech.role || 'Technician',
+          phone: tech.phone,
+          email: tech.email,
+          extension: (tech as any)?.extension,
+          direct_line: (tech as any)?.direct_line
+        }));
+        setTechnicianOptions(formattedTechnicians);
+      } else {
+        console.error('Technician load failed:', techs.reason);
+        setTechnicianOptions([]);
+      }
+
+      if (mgrs.status === 'fulfilled') {
+        const formattedAccountManagers = mgrs.value.map((mgr: any) => ({
+          id: mgr.id,
+          name: AMEEmployeeService.getDisplayName(mgr),
+          description: `${mgr.mobile_phone ? `📱 ${mgr.mobile_phone}` : ''}${mgr.email ? ` 📧 ${mgr.email}` : ''}`.trim(),
+          subtitle: mgr.role || 'Account Manager',
+          phone: mgr.mobile_phone || mgr.phone,
+          email: mgr.email
+        }));
+        setAccountManagerOptions(formattedAccountManagers);
+      } else {
+        console.error('Account manager load failed:', mgrs.reason);
+        setAccountManagerOptions([]);
+      }
+    } catch (error) {
+      console.error('Unexpected error loading dropdown data:', error);
+    } finally {
+      setIsLoadingTechnicians(false);
+      setIsLoadingAccountManagers(false);
+      setIsLoadingDropdowns(false);
+    }
+  };
+
+  const handleAccountManagerSelection = (managerId: string) => {
+    if (!managerId) {
+      // Clear selection
+      onDataUpdate({
+        customer: {
+          ...data.customer,
+          accountManager: '',
+          accountManagerId: '',
+          accountManagerPhone: '',
+          accountManagerEmail: ''
+        }
+      });
+      return;
+    }
+
+    const selectedMgr = accountManagerOptions.find(mgr => mgr.id === managerId);
+    if (selectedMgr) {
+      onDataUpdate({
+        customer: {
+          ...data.customer,
+          accountManager: selectedMgr.name,
+          accountManagerId: managerId,
+          accountManagerPhone: selectedMgr.phone || '',
+          accountManagerEmail: selectedMgr.email || ''
+        }
+      });
+    }
+  };
+
+  const handleTechnicianSelection = (technicianId: string, isPrimary: boolean = true) => {
+    if (!technicianId) {
+      // Clear selection
+      if (isPrimary) {
+        onDataUpdate({
+          customer: {
+            ...data.customer,
+            primaryTechnicianId: '',
+            primaryTechnicianName: '',
+            primaryTechnicianPhone: '',
+            primaryTechnicianEmail: ''
+          }
+        });
+      } else {
+        onDataUpdate({
+          customer: {
+            ...data.customer,
+            secondaryTechnicianId: '',
+            secondaryTechnicianName: '',
+            secondaryTechnicianPhone: '',
+            secondaryTechnicianEmail: ''
+          }
+        });
+      }
+      return;
+    }
+
+    const selectedTech = technicianOptions.find(tech => tech.id === technicianId);
+    if (selectedTech) {
+      if (isPrimary) {
+        onDataUpdate({
+          customer: {
+            ...data.customer,
+            primaryTechnicianId: technicianId,
+            primaryTechnicianName: selectedTech.name,
+            primaryTechnicianPhone: selectedTech.phone || '',
+            primaryTechnicianEmail: selectedTech.email || ''
+          }
+        });
+      } else {
+        onDataUpdate({
+          customer: {
+            ...data.customer,
+            secondaryTechnicianId: technicianId,
+            secondaryTechnicianName: selectedTech.name,
+            secondaryTechnicianPhone: selectedTech.phone || '',
+            secondaryTechnicianEmail: selectedTech.email || ''
+          }
+        });
+      }
+    }
+  };
 
   const calculateProgress = (): number => {
-    const sections = ['customer', 'contacts', 'access', 'safety'];
+    const sections = ['customer', 'contacts', 'access', 'safety', 'team'];
     const completed = sections.filter(section => validateSection(section)).length;
     return (completed / sections.length) * 100;
+  };
+
+  const handleSimProAutofill = (autofillData: any) => {
+    onDataUpdate({
+      customer: {
+        ...data.customer,
+        companyName: autofillData.companyName || autofillData.company_name || data.customer.companyName,
+        siteName: autofillData.siteName || autofillData.site_name || autofillData.company_name || data.customer.siteName,
+        address: autofillData.address || autofillData.site_address || data.customer.address,
+        serviceTier: autofillData.serviceTier || autofillData.service_tier || data.customer.serviceTier,
+        contractNumber: autofillData.contractNumber || autofillData.contract_number || data.customer.contractNumber,
+        accountManager: autofillData.accountManager || autofillData.account_manager || data.customer.accountManager,
+        // Enhanced mapping for new fields
+        simproCustomerId: autofillData.simproCustomerId || autofillData.customer_id || data.customer.simproCustomerId
+      }
+    });
+
+    // If we have contact email, populate the first contact
+    if (autofillData.contact_email && data.contacts.length === 0) {
+      onDataUpdate({
+        contacts: [{
+          id: 'contact_1',
+          name: '',
+          phone: '',
+          email: autofillData.contact_email,
+          role: 'Primary Contact',
+          isPrimary: true,
+          isEmergency: false
+        }]
+      });
+    }
+
+    logger.info('SimPro autofill completed', autofillData);
   };
 
   const validateSection = (section: string): boolean => {
@@ -92,6 +282,8 @@ export const Phase1SiteIntelligence: React.FC<Phase1SiteIntelligenceProps> = ({
         return !!(data.access.method && data.access.parkingInstructions);
       case 'safety':
         return data.safety.requiredPPE.length > 0;
+      case 'team':
+        return !!(data.customer.primaryTechnicianId && data.customer.primaryTechnicianName); // Primary technician is required
       default:
         return false;
     }
@@ -175,7 +367,7 @@ export const Phase1SiteIntelligence: React.FC<Phase1SiteIntelligenceProps> = ({
   };
 
   const canCompletePhase = (): boolean => {
-    return ['customer', 'contacts', 'access', 'safety'].every(section => validateSection(section));
+    return ['customer', 'contacts', 'access', 'safety', 'team'].every(section => validateSection(section));
   };
 
   const handlePhaseComplete = () => {
@@ -198,15 +390,15 @@ export const Phase1SiteIntelligence: React.FC<Phase1SiteIntelligenceProps> = ({
         title="Site Intelligence & Setup"
         description="Gather essential customer, contact, and access information"
         progress={progress}
-        requiredTasks={['Customer Information', 'Primary Contacts', 'Site Access', 'Safety Requirements']}
-        completedTasks={['customer', 'contacts', 'access', 'safety'].filter(validateSection)}
+        requiredTasks={['Customer Information', 'Primary Contacts', 'Site Access', 'Safety Requirements', 'Team Assignment']}
+        completedTasks={['customer', 'contacts', 'access', 'safety', 'team'].filter(validateSection)}
         estimatedTime={20}
         actualTime={0}
       />
 
       <div className="flex-1 overflow-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-          <TabsList className="m-4 grid grid-cols-4">
+          <TabsList className="m-4 grid grid-cols-5">
             <TabsTrigger value="customer" className="gap-2">
               <Building className="h-4 w-4" />
               Customer
@@ -227,6 +419,10 @@ export const Phase1SiteIntelligence: React.FC<Phase1SiteIntelligenceProps> = ({
               Safety
               {validateSection('safety') && <CheckCircle2 className="h-3 w-3 text-green-600" />}
             </TabsTrigger>
+            <TabsTrigger value="team" className="gap-2">
+              <Users className="h-4 w-4" />
+              Team
+            </TabsTrigger>
           </TabsList>
 
           <div className="flex-1 overflow-y-auto px-4 pb-4">
@@ -239,46 +435,11 @@ export const Phase1SiteIntelligence: React.FC<Phase1SiteIntelligenceProps> = ({
                 required
               >
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Customer Search</Label>
-                    <div className="relative">
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                          <Input
-                            value={customerSearch}
-                            onChange={(e) => {
-                              setCustomerSearch(e.target.value);
-                              setShowCustomerSuggestions(e.target.value.length > 1);
-                            }}
-                            placeholder="Search existing customers..."
-                            className="pl-10"
-                          />
-                        </div>
-                        <Button variant="outline" onClick={() => setShowCustomerSuggestions(!showCustomerSuggestions)}>
-                          <Search className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      
-                      {showCustomerSuggestions && filteredCustomers.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                          {filteredCustomers.map(customer => (
-                            <button
-                              key={customer.id}
-                              onClick={() => selectCustomer(customer)}
-                              className="w-full text-left p-3 hover:bg-gray-50 border-b last:border-b-0"
-                            >
-                              <div className="font-medium">{customer.companyName}</div>
-                              <div className="text-sm text-gray-500">{customer.siteName}</div>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="outline" size="sm">{customer.serviceTier}</Badge>
-                                <span className="text-xs text-gray-400">{customer.contractNumber}</span>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                  <div className="space-y-4">
+                    <SimProCustomerSearch
+                      onAutofill={handleSimProAutofill}
+                      currentCompanyName={data.customer.companyName}
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -313,8 +474,8 @@ export const Phase1SiteIntelligence: React.FC<Phase1SiteIntelligenceProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label>Service Tier *</Label>
-                      <Select 
-                        value={data.customer.serviceTier} 
+                      <Select
+                        value={data.customer.serviceTier}
                         onValueChange={(value) => updateCustomer('serviceTier', value)}
                       >
                         <SelectTrigger>
@@ -337,13 +498,30 @@ export const Phase1SiteIntelligence: React.FC<Phase1SiteIntelligenceProps> = ({
                     </div>
                     <div className="space-y-2">
                       <Label>Account Manager</Label>
-                      <Input
-                        value={data.customer.accountManager}
-                        onChange={(e) => updateCustomer('accountManager', e.target.value)}
-                        placeholder="Manager name"
+                      <SearchableCombobox
+                        options={accountManagerOptions}
+                        value={data.customer.accountManagerId || ''}
+                        onValueChange={handleAccountManagerSelection}
+                        placeholder="Select account manager"
+                        searchPlaceholder="Search account managers..."
+                        emptyText="No account managers found."
+                        loading={isLoadingAccountManagers}
+                        allowClear={true}
                       />
+                      {data.customer.accountManager && (
+                        <div className="mt-2 text-sm text-muted-foreground">
+                          <div className="font-medium">{data.customer.accountManager}</div>
+                          {data.customer.accountManagerPhone && (
+                            <div>📱 {data.customer.accountManagerPhone}</div>
+                          )}
+                          {data.customer.accountManagerEmail && (
+                            <div>📧 {data.customer.accountManagerEmail}</div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
+
                 </div>
               </SectionCard>
             </TabsContent>
@@ -623,6 +801,100 @@ export const Phase1SiteIntelligence: React.FC<Phase1SiteIntelligenceProps> = ({
                 </div>
               </SectionCard>
             </TabsContent>
+
+            {/* Team Assignment Tab */}
+            <TabsContent value="team" className="mt-0">
+              <SectionCard
+                title="Team Assignment"
+                description="Assign primary and secondary technicians for this visit"
+                icon={<Users className="h-4 w-4" />}
+                required
+              >
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <Label htmlFor="primary_technician" className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-blue-500" />
+                        Primary Technician *
+                      </Label>
+                      <SearchableCombobox
+                        options={technicianOptions}
+                        value={data.customer.primaryTechnicianId || ''}
+                        onValueChange={(value) => handleTechnicianSelection(value, true)}
+                        placeholder="Select primary technician"
+                        searchPlaceholder="Search technicians by name..."
+                        emptyText="No technicians found. Check your connection."
+                        loading={isLoadingTechnicians}
+                        allowClear={true}
+                      />
+                      {data.customer.primaryTechnicianName && (
+                        <div className="mt-2 text-sm text-muted-foreground">
+                          <div className="font-medium">{data.customer.primaryTechnicianName}</div>
+                          {data.customer.primaryTechnicianPhone && (
+                            <div>📱 {data.customer.primaryTechnicianPhone}</div>
+                          )}
+                          {data.customer.primaryTechnicianEmail && (
+                            <div>📧 {data.customer.primaryTechnicianEmail}</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="secondary_technician" className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-green-500" />
+                        Secondary Technician
+                      </Label>
+                      <SearchableCombobox
+                        options={technicianOptions.filter(tech => tech.id !== data.customer.primaryTechnicianId)}
+                        value={data.customer.secondaryTechnicianId || ''}
+                        onValueChange={(value) => handleTechnicianSelection(value, false)}
+                        placeholder="Select secondary technician"
+                        searchPlaceholder="Search technicians by name..."
+                        emptyText="No technicians found. Check your connection."
+                        loading={isLoadingTechnicians}
+                        allowClear={true}
+                      />
+                      {data.customer.secondaryTechnicianName && (
+                        <div className="mt-2 text-sm text-muted-foreground">
+                          <div className="font-medium">{data.customer.secondaryTechnicianName}</div>
+                          {data.customer.secondaryTechnicianPhone && (
+                            <div>📱 {data.customer.secondaryTechnicianPhone}</div>
+                          )}
+                          {data.customer.secondaryTechnicianEmail && (
+                            <div>📧 {data.customer.secondaryTechnicianEmail}</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {(data.customer.primaryTechnicianName || data.customer.secondaryTechnicianName) && (
+                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <h4 className="font-medium text-blue-900 mb-2">Team Summary</h4>
+                      <div className="space-y-2 text-sm">
+                        {data.customer.primaryTechnicianName && (
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-blue-600" />
+                            <span className="font-medium">Primary:</span>
+                            <span>{data.customer.primaryTechnicianName}</span>
+                            <Badge variant="outline">Primary Technician</Badge>
+                          </div>
+                        )}
+                        {data.customer.secondaryTechnicianName && (
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-green-600" />
+                            <span className="font-medium">Secondary:</span>
+                            <span>{data.customer.secondaryTechnicianName}</span>
+                            <Badge variant="outline">Secondary Technician</Badge>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </SectionCard>
+            </TabsContent>
           </div>
 
           {/* Phase Completion Footer */}
@@ -631,7 +903,7 @@ export const Phase1SiteIntelligence: React.FC<Phase1SiteIntelligenceProps> = ({
               <div className="text-sm">
                 <span className="font-medium">Progress: {Math.round(progress)}%</span>
                 <span className="text-muted-foreground ml-2">
-                  ({['customer', 'contacts', 'access', 'safety'].filter(validateSection).length} of 4 sections completed)
+                  ({['customer', 'contacts', 'access', 'safety', 'team'].filter(validateSection).length} of 5 sections completed)
                 </span>
               </div>
               <Button
@@ -653,6 +925,7 @@ export const Phase1SiteIntelligence: React.FC<Phase1SiteIntelligenceProps> = ({
                   {!validateSection('contacts') && ' Add at least one contact.'}
                   {!validateSection('access') && ' Specify access method and parking.'}
                   {!validateSection('safety') && ' Select required PPE.'}
+                  {!validateSection('team') && ' Assign primary technician.'}
                 </AlertDescription>
               </Alert>
             )}

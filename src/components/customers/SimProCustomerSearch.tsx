@@ -147,9 +147,9 @@ export const SimProCustomerSearch: React.FC<SimProCustomerSearchProps> = ({
     <div className="space-y-4">
       {/* Search Input */}
       <div className="relative" ref={searchRef}>
-        <Label htmlFor="simpro-search" className="flex items-center gap-2">
+<Label htmlFor="simpro-search" className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-yellow-500" />
-          SimPro Customer Lookup
+          Customer Lookup
         </Label>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -158,7 +158,7 @@ export const SimProCustomerSearch: React.FC<SimProCustomerSearchProps> = ({
             ref={inputRef}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search existing customers to autofill data..."
+placeholder="Search AME customers to autofill data..."
             className="pl-10 pr-10"
             disabled={disabled}
           />

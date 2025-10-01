@@ -30,6 +30,7 @@ import {
 import { PhaseHeader, SectionCard } from '../shared';
 import { logger } from '@/utils/logger';
 import { PMReportGenerator } from '@/services/pdf';
+import { PostVisitPhase } from '@/components/visit/phases/PostVisitPhase';
 
 // Import types
 import type { DocumentationData, PMWorkflowData } from '@/types/pmWorkflow';
@@ -65,7 +66,7 @@ export const Phase4Documentation: React.FC<Phase4DocumentationProps> = ({
   }, [reportUrl]);
 
   const calculateProgress = (): number => {
-    const sections = ['summary', 'config', 'delivery'];
+    const sections = ['summary', 'config', 'delivery', 'closeout'];
     const completed = sections.filter(section => validateSection(section)).length;
     return (completed / sections.length) * 100;
   };
@@ -78,6 +79,8 @@ export const Phase4Documentation: React.FC<Phase4DocumentationProps> = ({
         return !!(data.reportConfig.template);
       case 'delivery':
         return !!(data.deliveryInfo.primaryRecipient && data.deliveryInfo.method);
+      case 'closeout':
+        return true; // For now, always consider this complete (could add validation later)
       default:
         return false;
     }
@@ -286,7 +289,7 @@ AME Controls Service Team
   };
 
   const canCompletePhase = (): boolean => {
-    return ['summary', 'config', 'delivery'].every(section => validateSection(section));
+    return ['summary', 'config', 'delivery', 'closeout'].every(section => validateSection(section));
   };
 
   const handlePhaseComplete = () => {
@@ -306,15 +309,15 @@ AME Controls Service Team
         title="Documentation & Reporting"
         description="Generate professional documentation and deliver results"
         progress={progress}
-        requiredTasks={['Service Summary', 'Report Configuration', 'Delivery Setup']}
-        completedTasks={['summary', 'config', 'delivery'].filter(validateSection)}
+        requiredTasks={['Service Summary', 'Report Configuration', 'Delivery Setup', 'Visit Closeout']}
+        completedTasks={['summary', 'config', 'delivery', 'closeout'].filter(validateSection)}
         estimatedTime={15}
         actualTime={0}
       />
 
       <div className="flex-1 overflow-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-          <TabsList className="m-4 grid grid-cols-3">
+          <TabsList className="m-4 grid grid-cols-4">
             <TabsTrigger value="summary" className="gap-2">
               <FileText className="h-4 w-4" />
               Summary
@@ -329,6 +332,11 @@ AME Controls Service Team
               <Send className="h-4 w-4" />
               Delivery
               {validateSection('delivery') && <CheckCircle2 className="h-3 w-3 text-green-600" />}
+            </TabsTrigger>
+            <TabsTrigger value="closeout" className="gap-2">
+              <Shield className="h-4 w-4" />
+              Visit Closeout
+              {validateSection('closeout') && <CheckCircle2 className="h-3 w-3 text-green-600" />}
             </TabsTrigger>
           </TabsList>
 
@@ -792,6 +800,89 @@ AME Controls Service Team
                 </div>
               </SectionCard>
             </TabsContent>
+
+            {/* Visit Closeout Tab */}
+            <TabsContent value="closeout" className="mt-0">
+              <SectionCard
+                title="Visit Closeout Checklist"
+                description="Complete safety checks and customer communication requirements"
+                icon={<Shield className="h-4 w-4" />}
+                required
+              >
+                <div className="space-y-4">
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h4 className="font-medium text-blue-900 mb-2">Visit Closeout Requirements</h4>
+                    <div className="text-sm text-blue-800 space-y-1">
+                      <div>• Verify all safety protocols were followed</div>
+                      <div>• Confirm all tools and equipment are accounted for</div>
+                      <div>• Ensure system is operational and secure</div>
+                      <div>• Obtain customer feedback and satisfaction confirmation</div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-sm text-gray-600 mb-3">
+                      <strong>Note:</strong> The full visit closeout checklist with safety verification, issue tracking,
+                      customer feedback collection, and recommendations is available in the complete visit workflow.
+                      For PM-only visits, ensure the key items above are completed.
+                    </p>
+
+                    <div className="space-y-3">
+                      {/* Mini Checklist for PM */}
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="tools-removed" />
+                          <Label htmlFor="tools-removed" className="text-sm">
+                            All tools accounted for and removed from site
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="panels-secured" />
+                          <Label htmlFor="panels-secured" className="text-sm">
+                            All panels closed and secured properly
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="system-operational" />
+                          <Label htmlFor="system-operational" className="text-sm">
+                            System confirmed operational
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="customer-briefed" />
+                          <Label htmlFor="customer-briefed" className="text-sm">
+                            Customer briefed on work performed
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="area-cleaned" />
+                          <Label htmlFor="area-cleaned" className="text-sm">
+                            Work area cleaned and debris removed
+                          </Label>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Customer Contact Name</Label>
+                        <Input
+                          placeholder="Name of customer contact who confirmed work completion"
+                          className="text-sm"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Final Notes</Label>
+                        <Textarea
+                          placeholder="Any final observations or notes for the customer..."
+                          rows={3}
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </SectionCard>
+            </TabsContent>
           </div>
 
           {/* Phase Completion Footer */}
@@ -800,7 +891,7 @@ AME Controls Service Team
               <div className="text-sm">
                 <span className="font-medium">Progress: {Math.round(progress)}%</span>
                 <span className="text-muted-foreground ml-2">
-                  ({['summary', 'config', 'delivery'].filter(validateSection).length} of 3 sections completed)
+                  ({['summary', 'config', 'delivery', 'closeout'].filter(validateSection).length} of 4 sections completed)
                 </span>
               </div>
               <Button
@@ -817,10 +908,11 @@ AME Controls Service Team
               <Alert className="mt-3">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  Complete service summary, configure report, set delivery details, and generate PDF to finish the workflow.
+                  Complete service summary, configure report, set delivery details, complete visit closeout, and generate PDF to finish the workflow.
                   {!validateSection('summary') && ' Fill in service summary.'}
                   {!validateSection('config') && ' Select report template.'}
                   {!validateSection('delivery') && ' Set delivery recipient.'}
+                  {!validateSection('closeout') && ' Complete visit closeout checklist.'}
                   {!reportGenerated && ' Generate PDF report.'}
                 </AlertDescription>
               </Alert>

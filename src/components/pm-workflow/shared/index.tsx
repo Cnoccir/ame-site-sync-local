@@ -3,13 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  CheckCircle2, 
-  Circle, 
-  Clock, 
-  AlertTriangle, 
-  Save, 
-  Wifi, 
+import {
+  CheckCircle2,
+  Circle,
+  Clock,
+  AlertTriangle,
+  Save,
+  Wifi,
   WifiOff,
   Target,
   Database,
@@ -19,6 +19,17 @@ import {
   Play
 } from 'lucide-react';
 import { PhaseProgress, NavigationState } from '@/types/pmWorkflow';
+
+// Export the new components
+export { PhaseSummaryCard } from './PhaseSummaryCard';
+export { PhaseCompletionSummary } from './PhaseCompletionSummary';
+export { PhaseDataReview } from './PhaseDataReview';
+export { CompactPhaseReview } from './CompactPhaseReview';
+export { generatePhaseReviewSections } from './PhaseReviewHelper';
+export { SimplePhasePreview } from './SimplePhasePreview';
+export { PhaseReviewModal } from './PhaseReviewModal';
+export { generatePhaseModalSections, getPhaseTitle } from './PhaseModalHelper';
+export { PhaseOverviewBar, generatePhaseSummary } from './PhaseOverviewBar';
 
 // =====================================
 // Phase Navigation Component

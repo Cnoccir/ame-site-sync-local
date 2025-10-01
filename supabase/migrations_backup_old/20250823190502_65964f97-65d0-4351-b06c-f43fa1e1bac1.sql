@@ -1,0 +1,3 @@
+-- Skip auth user creation in this migration
+-- Users should be created through Supabase Auth API or dashboard
+-- This migration is being skipped to avoid pgcrypto issues

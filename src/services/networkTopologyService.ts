@@ -120,12 +120,16 @@ export class NetworkTopologyService {
     const nodeType = this.determineNodeType(data, dataset.format, dataset.category);
     const status = row.parsedStatus || this.createUnknownStatus();
 
+    const rawAddress = data.Address || data.address || data['IP Address'] || '';
+    const ipMatch = String(rawAddress).match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
+    const ip = ipMatch ? ipMatch[0] : undefined;
+
     return {
       id: nodeId,
       name,
       type: nodeType,
       protocol,
-      address: data.Address || data.address || data['IP Address'],
+      address: rawAddress,
       status,
       children: [],
       metadata: {
@@ -135,6 +139,7 @@ export class NetworkTopologyService {
         deviceId: data['Device ID'] || data.device_id,
         controllerType: data['Controller Type'],
         platform: data.Platform || data.platform,
+        ip,
         sourceDataset: dataset.filename,
         sourceFormat: dataset.format,
         rawData: data

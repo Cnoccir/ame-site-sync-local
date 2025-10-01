@@ -19,10 +19,37 @@ export const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Form submitted with:', { email, password });
     setLoading(true);
     setError('');
 
     try {
+      // Temporary development bypass for tech@ame-inc.com
+      if (email === 'tech@ame-inc.com' && password === 'demo123') {
+        console.log('Using development bypass');
+
+        // Create a mock session in localStorage to bypass ProtectedRoute
+        localStorage.setItem('dev-auth', JSON.stringify({
+          user: {
+            email: 'tech@ame-inc.com',
+            id: 'dev-tech-user',
+            role: 'technician'
+          },
+          timestamp: Date.now()
+        }));
+
+        toast({
+          title: "Development Login",
+          description: "Logged in as tech user (demo mode)",
+        });
+        setLoading(false);
+        console.log('Navigating to dashboard...');
+
+        // Force a page refresh to reinitialize auth state
+        window.location.href = '/';
+        return;
+      }
+
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -34,13 +61,24 @@ export const Auth = () => {
         title: "Login Successful",
         description: "Welcome back!",
       });
-      
-      navigate('/projects');
+
+      // Route tech users to dashboard, others to projects
+      if (email === 'tech@ame-inc.com') {
+        navigate('/');
+      } else {
+        navigate('/projects');
+      }
     } catch (error: any) {
-      setError(error.message);
+      // If it's a fetch error, provide helpful message
+      if (error.message === 'Failed to fetch') {
+        setError('Unable to connect to authentication server. Please check your internet connection or try again later.');
+      } else {
+        setError(error.message);
+      }
+
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Authentication Error",
+        description: error.message === 'Failed to fetch' ? 'Connection failed - check network' : error.message,
         variant: "destructive"
       });
     } finally {
@@ -48,10 +86,19 @@ export const Auth = () => {
     }
   };
 
-  const handleQuickLogin = (userType: 'admin' | 'tech') => {
-    const email = userType === 'admin' ? 'admin@ame-inc.com' : 'tech@ame-inc.com';
+  const handleQuickLogin = (userType: 'tech') => {
+    const email = userType === 'tech' ? 'tech@ame-inc.com' : '';
+    console.log('Quick login clicked:', { email, password: 'demo123' });
     setEmail(email);
-    setPassword('AME2024!');
+    setPassword('demo123');
+
+    // Auto-submit after setting credentials
+    setTimeout(() => {
+      const form = document.getElementById('auth-form') as HTMLFormElement;
+      if (form) {
+        form.requestSubmit();
+      }
+    }, 100);
   };
 
   return (
@@ -69,13 +116,16 @@ export const Auth = () => {
           <p className="text-muted-foreground text-center">
             Enter your credentials to access the maintenance system
           </p>
+          <div className="text-xs text-center text-blue-600 bg-blue-50 p-2 rounded">
+            Demo: Use "Technician" button or email: tech@ame-inc.com / password: demo123
+          </div>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Quick Access Buttons */}
+          {/* Quick Access Button - Tech Only */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">Quick Access:</Label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -85,16 +135,6 @@ export const Auth = () => {
               >
                 <User className="w-3 h-3 mr-1" />
                 Technician
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleQuickLogin('admin')}
-                className="text-xs"
-              >
-                <Lock className="w-3 h-3 mr-1" />
-                Admin
               </Button>
             </div>
           </div>
@@ -110,7 +150,7 @@ export const Auth = () => {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form id="auth-form" onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input

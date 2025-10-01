@@ -235,6 +235,9 @@ export interface CustomerFormData extends UnifiedCustomer {
   system_credentials?: any;
   windows_credentials?: any;
   service_credentials?: any;
+
+  // Remote access credentials from new integration
+  remote_access_credentials?: any[];
 }
 
 /**

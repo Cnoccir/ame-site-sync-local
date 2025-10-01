@@ -7,11 +7,10 @@ import { NiagaraNetExportParser } from './parsers/niagaraNetExportParser';
 import { PlatformDetailsParser } from './parsers/platformDetailsParser';
 import { logger } from '@/utils/logger';
 
-// TODO: Import other parsers as they are implemented
+// Import all available parsers
 import { N2ExportParser } from './parsers/n2ExportParser';
 import { BACnetExportParser } from './parsers/bacnetExportParser';
-// import { NiagaraNetExportParser } from './parsers/niagaraNetExportParser';  
-// import { PlatformDetailsParser } from './parsers/platformDetailsParser';
+import { ModbusExportParser } from './parsers/modbusExportParser';
 
 export interface TridiumParseOptions {
   userFormatHint?: TridiumExportFormat;
@@ -45,9 +44,10 @@ export class TridiumParser {
       this.parsers.set('NiagaraNetExport', new NiagaraNetExportParser());
       this.parsers.set('PlatformDetails', new PlatformDetailsParser());
       
-      // TODO: Add other parsers as they are implemented
+      // Add all available parsers
       this.parsers.set('N2Export', new N2ExportParser());
       this.parsers.set('BACnetExport', new BACnetExportParser());
+      this.parsers.set('ModbusExport', new ModbusExportParser());
     }
   }
 
@@ -249,6 +249,62 @@ export class TridiumCSVParser {
   }
 
   // Add other legacy methods as needed for backward compatibility
-  static parseStatus = TridiumParser.prototype.constructor;
-  static parseValue = TridiumParser.prototype.constructor;
+  static parseStatus(statusValue: string) {
+    // Inline copy of base parser logic (kept in sync)
+    if (!statusValue || statusValue.trim() === '') {
+      return {
+        status: 'unknown',
+        severity: 'normal',
+        details: ['No status information'],
+        badge: { text: 'UNKNOWN', variant: 'default' }
+      } as any;
+    }
+    const status = statusValue.toLowerCase().trim();
+    const details: string[] = [];
+    let finalStatus: 'ok' | 'down' | 'alarm' | 'fault' | 'unknown' = 'unknown';
+    let severity: 'normal' | 'warning' | 'critical' = 'normal';
+    let badgeText = 'UNKNOWN';
+    let badgeVariant: 'default' | 'success' | 'warning' | 'destructive' = 'default';
+    const bracedMatch = status.match(/\{([^}]+)\}/);
+    const statusFlags = bracedMatch ? bracedMatch[1].split(',').map(s => s.trim().toLowerCase())
+                                    : ['ok','down','alarm','fault','unackedalarm','connected','disconnected','online','offline'].filter(f => status.includes(f));
+    if (statusFlags.includes('ok')) {
+      finalStatus = 'ok'; severity = 'normal'; details.push('System operational'); badgeText = 'OK'; badgeVariant = 'success';
+    } else if (statusFlags.includes('down')) {
+      finalStatus = 'down'; severity = 'critical'; details.push('Device offline'); badgeText = 'DOWN'; badgeVariant = 'destructive';
+      if (statusFlags.includes('fault')) { finalStatus = 'fault'; details.push('Fault condition detected'); badgeText = 'FAULT/DOWN'; }
+      if (statusFlags.includes('alarm') || statusFlags.includes('unackedalarm')) { details.push('Alarm condition present'); if (!statusFlags.includes('fault')) badgeText = 'DOWN/ALARM'; }
+    } else if (statusFlags.includes('fault')) {
+      finalStatus = 'fault'; severity = 'critical'; details.push('Fault condition detected'); badgeText = 'FAULT'; badgeVariant = 'destructive';
+    } else if (statusFlags.includes('unackedalarm') || statusFlags.includes('alarm')) {
+      finalStatus = 'alarm'; severity = 'warning'; details.push('Unacknowledged alarm'); badgeText = 'ALARM'; badgeVariant = 'warning';
+    } else {
+      details.push(`Status: ${statusValue}`);
+      badgeText = statusValue.length > 10 ? statusValue.substring(0, 10) + '...' : statusValue;
+    }
+    return { status: finalStatus, severity, details, badge: { text: badgeText, variant: badgeVariant } } as any;
+  }
+
+  static parseValue(value: any) {
+    const stringValue = String(value ?? '').trim();
+    if (!stringValue) return { value: '', formatted: '', type: 'text' } as any;
+    const limitMatch = stringValue.match(/([\d,]+(?:\.\d+)?)\s*\(.*?[lL]imit[^\d]*([\d,]+(?:\.\d+)?)/);
+    if (limitMatch) {
+      const current = parseFloat(limitMatch[1].replace(/,/g, ''));
+      const limit = parseFloat(limitMatch[2].replace(/,/g, ''));
+      return { value: current, unit: `of ${limit}`, formatted: stringValue, type: 'count', metadata: { limit, percentage: limit > 0 ? (current / limit) * 100 : 0 } } as any;
+    }
+    const percentMatch = stringValue.match(/([\d.]+)\s*%/);
+    if (percentMatch) return { value: parseFloat(percentMatch[1]), unit: '%', formatted: stringValue, type: 'percentage' } as any;
+    const memoryMatch = stringValue.match(/([\d,.]+)\s*(KB|MB|GB|[Bb]ytes?)/i);
+    if (memoryMatch) {
+      const v = parseFloat(memoryMatch[1].replace(/,/g, ''));
+      return { value: v, unit: memoryMatch[2], formatted: stringValue, type: 'memory', metadata: { originalValue: v, originalUnit: memoryMatch[2] } } as any;
+    }
+    const commaNumberMatch = stringValue.match(/^([\d,]+)$/);
+    if (commaNumberMatch) return { value: parseInt(commaNumberMatch[1].replace(/,/g, '')), formatted: stringValue, type: 'count' } as any;
+    const numericMatch = stringValue.match(/^-?[\d.]+$/);
+    if (numericMatch) return { value: parseFloat(stringValue), formatted: stringValue, type: 'count' } as any;
+    return { value: stringValue, formatted: stringValue, type: 'text' } as any;
+  }
 }

@@ -74,9 +74,11 @@ export class NiagaraNetExportParser extends TridiumBaseParser {
 
         // Normalize/annotate useful metadata
         row.data.nodeKind = this.inferNodeKind(rowData);
+        row.data.isJACE = this.isJACEDevice(rowData);
         row.data.ip = this.extractIPFromAddress(rowData.Address);
         row.data.clientConnected = this.normalizeConn(rowData['Client Conn']);
         row.data.serverConnected = this.normalizeConn(rowData['Server Conn']);
+        row.data.isOnline = row.parsedStatus?.status === 'ok';
 
         return row;
       });
@@ -142,10 +144,27 @@ export class NiagaraNetExportParser extends TridiumBaseParser {
     const type = (data['Type'] || '').toString().toLowerCase();
     const name = (data['Name'] || '').toString().toLowerCase();
 
-    if (type.includes('niagara') && (name.includes('supervisor') || hostModel.includes('workstation'))) {
+    // Supervisor detection: workstation or explicitly labeled supervisor
+    if (type.includes('niagara') && (name.includes('supervisor') || name.includes('supv') || hostModel.includes('workstation'))) {
       return 'supervisor';
     }
-    return 'jace';
+
+    // JACE detection: TITAN, JACE models, JVLN, NPM, J8, EDGE
+    const jacePatterns = /titan|jace|jvln|npm|j8|edge|jac-/i;
+    if (jacePatterns.test(hostModel) || jacePatterns.test(name)) {
+      return 'jace';
+    }
+
+    // Default to station (could be workstation, cloud, or other)
+    return 'station';
+  }
+
+  /**
+   * Determine if a node is a JACE (field controller) vs Supervisor/Workstation
+   * This is used by discovery logic to filter what gets added to the tree
+   */
+  private isJACEDevice(data: Record<string, any>): boolean {
+    return this.inferNodeKind(data) === 'jace';
   }
 
   private generateNiagaraSummary(rows: TridiumDataRow[]) {

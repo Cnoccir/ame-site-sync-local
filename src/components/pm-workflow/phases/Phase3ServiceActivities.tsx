@@ -32,7 +32,7 @@ import {
   Circle
 } from 'lucide-react';
 import { PhaseHeader, SectionCard } from '../shared';
-import SOPService, { SOPData } from '@/services/sopService';
+import { TaskSOPService, TaskWithSOP } from '@/services/TaskSOPService';
 import { logger } from '@/utils/logger';
 
 // Import types
@@ -74,21 +74,37 @@ export const Phase3ServiceActivities: React.FC<Phase3ServiceActivitiesProps> = (
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get tasks for customer's service tier
-  const getTasksForServiceTier = (): SOPData[] => {
-    return SOPService.getSOPsForServiceTier(serviceTier);
+  const [tasksForTier, setTasksForTier] = useState<TaskWithSOP[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+
+  const loadTasksForServiceTier = async () => {
+    setLoadingTasks(true);
+    try {
+      const tasks = await TaskSOPService.getTasksForServiceTier(serviceTier as 'CORE' | 'ASSURE' | 'GUARDIAN');
+      setTasksForTier(tasks);
+      logger.info(`Loaded ${tasks.length} tasks for ${serviceTier} tier`);
+    } catch (error) {
+      logger.error('Error loading tasks for service tier:', error);
+    } finally {
+      setLoadingTasks(false);
+    }
   };
+
+  // Load tasks for service tier on component mount or service tier change
+  useEffect(() => {
+    loadTasksForServiceTier();
+  }, [serviceTier]);
 
   // Initialize tasks if not already present
   useEffect(() => {
-    if (data.tasks.length === 0) {
-      const tasksForTier = getTasksForServiceTier();
-      const initialTasks: TaskExecutionData[] = tasksForTier.map(sop => ({
-        id: sop.id,
-        sopId: sop.id,
-        name: sop.title,
-        phase: sop.phase as any,
+    if (data.tasks.length === 0 && tasksForTier.length > 0) {
+      const initialTasks: TaskExecutionData[] = tasksForTier.map(taskWithSOP => ({
+        id: taskWithSOP.task_id,
+        sopId: taskWithSOP.sop?.sop_id || taskWithSOP.task_id,
+        name: taskWithSOP.task_name,
+        phase: taskWithSOP.phase as any,
         serviceTier: serviceTier,
-        estimatedDuration: sop.estimatedDuration,
+        estimatedDuration: taskWithSOP.estimated_duration_min || 30,
         status: 'Pending',
         findings: '',
         actions: '',
@@ -96,14 +112,28 @@ export const Phase3ServiceActivities: React.FC<Phase3ServiceActivitiesProps> = (
         recommendations: [],
         photos: [],
         dataCollected: {},
-        reportSection: getReportSection(sop.phase),
-        reportImpact: getReportImpact(sop.phase)
+        reportSection: getReportSection(taskWithSOP.phase || 'Work'),
+        reportImpact: getReportImpact(taskWithSOP.phase || 'Work'),
+        // Additional fields from new task structure
+        systemFamily: taskWithSOP.system_family,
+        vendorFlavor: taskWithSOP.vendor_flavor,
+        audienceLevel: taskWithSOP.audience_level,
+        initialSteps: taskWithSOP.initial_steps,
+        sopRefs: taskWithSOP.sop_refs,
+        acceptanceCriteria: taskWithSOP.acceptance_criteria,
+        artifacts: taskWithSOP.artifacts,
+        prerequisites: taskWithSOP.prerequisites,
+        toolsRequired: taskWithSOP.tools_required,
+        safetyTags: taskWithSOP.safety_tags,
+        referenceLinks: taskWithSOP.reference_links,
+        notes: taskWithSOP.notes,
+        sop: taskWithSOP.sop
       }));
-      
+
       onDataUpdate({ tasks: initialTasks });
       logger.info(`Initialized ${initialTasks.length} tasks for ${serviceTier} tier`);
     }
-  }, [serviceTier, data.tasks.length]);
+  }, [tasksForTier, data.tasks.length, serviceTier]);
 
   const getReportSection = (phase: string): 'executive' | 'system' | 'work' | 'recommendations' => {
     switch (phase) {

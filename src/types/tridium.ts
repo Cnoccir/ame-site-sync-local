@@ -1,8 +1,9 @@
 // Export format types based on actual Tridium exports
-export type TridiumExportFormat = 
+export type TridiumExportFormat =
   | 'N2Export'           // N2 network device exports
   | 'BACnetExport'       // BACnet device inventory
-  | 'ResourceExport'     // System resource metrics  
+  | 'ModbusExport'       // Modbus device inventory
+  | 'ResourceExport'     // System resource metrics
   | 'NiagaraNetExport'   // Niagara station network
   | 'PlatformDetails'    // Platform information text files
   | 'Unknown';

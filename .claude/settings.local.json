@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run lint)",
+      "Bash(npx eslint:*)",
+      "Bash(node:*)",
+      "Bash(supabase db dump:*)",
+      "mcp__supabase__execute_sql",
+      "Bash(find:*)",
+      "Bash(npm install:*)",
+      "mcp__supabase__list_tables",
+      "Bash(psql:*)"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
+}

@@ -1,0 +1,5 @@
+Path,Name,Type,Exts,Address,Fox Port,Use Foxs,Host Model,Host Model Version,Version,Credential Store,Status,Enabled,Health
+/Drivers/NiagaraNetwork/SF_NERO_FX1,SF_NERO_FX1,NiagaraStation,station,ip:192.168.1.51,1911,false,TITAN,TITAN-2,4.12.1.120,credential,{ok} {ok},true,{ok} [2023-11-15 14:23:45]
+/Drivers/NiagaraNetwork/SF_NERO_FX2,SF_NERO_FX2,NiagaraStation,station,ip:192.168.1.52,1911,false,TITAN,TITAN-2,4.12.1.120,credential,{ok} {ok},true,{ok} [2023-11-15 14:22:30]
+/Drivers/NiagaraNetwork/SF_NERO_FX3,SF_NERO_FX3,NiagaraStation,station,ip:192.168.1.53,1911,false,TITAN,TITAN-2,4.12.1.120,credential,{down} {down},true,{down} [2023-11-15 10:15:22]
+/Drivers/NiagaraNetwork/SF_NERO_FX4,SF_NERO_FX4,NiagaraStation,station,ip:192.168.1.54,1911,false,TITAN,TITAN-2,4.12.1.120,credential,{ok} {ok},true,{ok} [2023-11-15 14:20:18]

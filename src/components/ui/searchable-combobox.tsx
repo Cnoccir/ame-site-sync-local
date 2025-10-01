@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Check, ChevronsUpDown } from "lucide-react"
+import { Check, ChevronsUpDown, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -33,6 +33,7 @@ interface SearchableComboboxProps {
   className?: string
   disabled?: boolean
   loading?: boolean
+  allowClear?: boolean
 }
 
 export function SearchableCombobox({
@@ -45,6 +46,7 @@ export function SearchableCombobox({
   className,
   disabled = false,
   loading = false,
+  allowClear = false,
 }: SearchableComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [searchValue, setSearchValue] = React.useState("")
@@ -69,6 +71,11 @@ export function SearchableCombobox({
     setSearchValue("")
   }
 
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onValueChange("")
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -84,14 +91,22 @@ export function SearchableCombobox({
           disabled={disabled || loading}
         >
           <span className="truncate">
-            {loading 
-              ? "Loading..." 
-              : selectedOption 
-                ? selectedOption.name 
+            {loading
+              ? "Loading..."
+              : selectedOption
+                ? selectedOption.name
                 : placeholder
             }
           </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <div className="ml-2 flex items-center gap-1">
+            {allowClear && selectedOption && !disabled && !loading && (
+              <X
+                className="h-4 w-4 shrink-0 opacity-50 hover:opacity-100 transition-opacity"
+                onClick={handleClear}
+              />
+            )}
+            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+          </div>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">

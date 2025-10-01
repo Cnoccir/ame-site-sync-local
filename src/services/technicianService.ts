@@ -1,104 +1,100 @@
 /**
  * Technician Service - Handles technician data and search
- * Currently uses mock data, can be extended with Google Sheets integration
+ * Uses the real AME employee database
  */
+
+import { supabase } from '@/integrations/supabase/client';
 
 export interface Technician {
   id: string;
   name: string;
   email: string;
   phone: string;
-  role: 'primary' | 'secondary' | 'lead' | 'apprentice';
-  specialties: string[];
+  role: string; // Job role from employee database
+  department?: string;
+  extension?: string;
+  direct_line?: string;
+  is_technician: boolean;
   isActive: boolean;
 }
 
 export class TechnicianService {
-  // Mock technician data - replace with Google Sheets or database integration
-  private static mockTechnicians: Technician[] = [
-    {
-      id: 'tech_001',
-      name: 'John Smith',
-      email: 'j.smith@amecontrols.com',
-      phone: '(555) 123-4567',
-      role: 'lead',
-      specialties: ['Niagara', 'BACnet', 'Commissioning'],
-      isActive: true
-    },
-    {
-      id: 'tech_002', 
-      name: 'Jane Doe',
-      email: 'j.doe@amecontrols.com',
-      phone: '(555) 234-5678',
-      role: 'primary',
-      specialties: ['Johnson Controls', 'Honeywell', 'Energy Management'],
-      isActive: true
-    },
-    {
-      id: 'tech_003',
-      name: 'Mike Johnson', 
-      email: 'm.johnson@amecontrols.com',
-      phone: '(555) 345-6789',
-      role: 'primary',
-      specialties: ['Siemens', 'Schneider', 'Network Troubleshooting'],
-      isActive: true
-    },
-    {
-      id: 'tech_004',
-      name: 'Sarah Wilson',
-      email: 's.wilson@amecontrols.com', 
-      phone: '(555) 456-7890',
-      role: 'secondary',
-      specialties: ['Graphics', 'Training', 'Documentation'],
-      isActive: true
-    },
-    {
-      id: 'tech_005',
-      name: 'David Brown',
-      email: 'd.brown@amecontrols.com',
-      phone: '(555) 567-8901', 
-      role: 'apprentice',
-      specialties: ['Installation', 'Basic Programming'],
-      isActive: true
-    }
-  ];
 
   /**
-   * Search technicians by name or specialties
+   * Search technicians by name, email, or role
    */
   static async searchTechnicians(query: string): Promise<Technician[]> {
     if (!query || query.trim().length < 2) {
       return [];
     }
 
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 200));
+    try {
+      const searchTerm = query.toLowerCase().trim();
 
-    const searchTerm = query.toLowerCase().trim();
-    
-    return this.mockTechnicians.filter(tech =>
-      tech.isActive && (
-        tech.name.toLowerCase().includes(searchTerm) ||
-        tech.email.toLowerCase().includes(searchTerm) ||
-        tech.specialties.some(spec => spec.toLowerCase().includes(searchTerm))
-      )
-    ).sort((a, b) => {
-      // Prioritize by role: lead > primary > secondary > apprentice
-      const roleOrder = { 'lead': 0, 'primary': 1, 'secondary': 2, 'apprentice': 3 };
-      return roleOrder[a.role] - roleOrder[b.role];
-    });
+      const { data, error } = await supabase
+        .from('ame_employees')
+        .select('*')
+        .eq('is_active', true)
+        .or(`employee_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,role.ilike.%${searchTerm}%`)
+        .order('is_technician', { ascending: false })
+        .order('employee_name');
+
+      if (error) {
+        console.error('Error searching technicians:', error);
+        return [];
+      }
+
+      return data.map(emp => ({
+        id: emp.id,
+        name: emp.employee_name,
+        email: emp.email || '',
+        phone: emp.mobile_phone || emp.direct_line || '',
+        role: emp.role || '',
+        department: emp.department || '',
+        extension: emp.extension || '',
+        direct_line: emp.direct_line || '',
+        is_technician: emp.is_technician || false,
+        isActive: emp.is_active
+      }));
+    } catch (error) {
+      console.error('Error searching technicians:', error);
+      return [];
+    }
   }
 
   /**
-   * Get all active technicians
+   * Get all active technicians (prioritize is_technician = true)
    */
   static async getAllActiveTechnicians(): Promise<Technician[]> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    return this.mockTechnicians
-      .filter(tech => tech.isActive)
-      .sort((a, b) => a.name.localeCompare(b.name));
+    try {
+      const { data, error } = await supabase
+        .from('ame_employees')
+        .select('*')
+        .eq('is_active', true)
+        .order('is_technician', { ascending: false })
+        .order('employee_name');
+
+      if (error) {
+        console.error('Error fetching technicians:', error);
+        return [];
+      }
+
+      return data.map(emp => ({
+        id: emp.id,
+        name: emp.employee_name,
+        email: emp.email || '',
+        phone: emp.mobile_phone || emp.direct_line || '',
+        role: emp.role || '',
+        department: emp.department || '',
+        extension: emp.extension || '',
+        direct_line: emp.direct_line || '',
+        is_technician: emp.is_technician || false,
+        isActive: emp.is_active
+      }));
+    } catch (error) {
+      console.error('Error fetching technicians:', error);
+      return [];
+    }
   }
 
   /**
@@ -106,64 +102,125 @@ export class TechnicianService {
    */
   static async getTechnicianById(id: string): Promise<Technician | null> {
     if (!id) return null;
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    return this.mockTechnicians.find(tech => tech.id === id) || null;
+
+    try {
+      const { data, error } = await supabase
+        .from('ame_employees')
+        .select('*')
+        .eq('id', id)
+        .eq('is_active', true)
+        .single();
+
+      if (error || !data) {
+        return null;
+      }
+
+      return {
+        id: data.id,
+        name: data.employee_name,
+        email: data.email || '',
+        phone: data.mobile_phone || data.direct_line || '',
+        role: data.role || '',
+        department: data.department || '',
+        extension: data.extension || '',
+        direct_line: data.direct_line || '',
+        is_technician: data.is_technician || false,
+        isActive: data.is_active
+      };
+    } catch (error) {
+      console.error('Error fetching technician by ID:', error);
+      return null;
+    }
   }
 
   /**
    * Get technicians by role
    */
-  static async getTechniciansByRole(role: Technician['role']): Promise<Technician[]> {
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    return this.mockTechnicians
-      .filter(tech => tech.isActive && tech.role === role)
-      .sort((a, b) => a.name.localeCompare(b.name));
+  static async getTechniciansByRole(role: string): Promise<Technician[]> {
+    try {
+      const { data, error } = await supabase
+        .from('ame_employees')
+        .select('*')
+        .eq('is_active', true)
+        .ilike('role', `%${role}%`)
+        .order('is_technician', { ascending: false })
+        .order('employee_name');
+
+      if (error) {
+        console.error('Error fetching technicians by role:', error);
+        return [];
+      }
+
+      return data.map(emp => ({
+        id: emp.id,
+        name: emp.employee_name,
+        email: emp.email || '',
+        phone: emp.mobile_phone || emp.direct_line || '',
+        role: emp.role || '',
+        department: emp.department || '',
+        extension: emp.extension || '',
+        direct_line: emp.direct_line || '',
+        is_technician: emp.is_technician || false,
+        isActive: emp.is_active
+      }));
+    } catch (error) {
+      console.error('Error fetching technicians by role:', error);
+      return [];
+    }
   }
 
   /**
    * Format technician display name
    */
   static formatTechnicianName(tech: Technician): string {
-    return `${tech.name} (${tech.role.charAt(0).toUpperCase() + tech.role.slice(1)})`;
+    return `${tech.name} (${tech.role})`;
   }
 
   /**
    * Format technician for dropdown display
    */
   static formatTechnicianDropdown(tech: Technician): string {
-    const specialtyText = tech.specialties.slice(0, 2).join(', ');
-    return `${tech.name} • ${tech.role} • ${specialtyText}`;
+    const parts = [tech.name];
+    if (tech.role) parts.push(tech.role);
+    if (tech.department) parts.push(tech.department);
+    return parts.join(' • ');
   }
 
-  // TODO: Replace with Google Sheets integration
-  // Example Google Sheets API integration:
-  /*
-  static async fetchTechniciansFromGoogleSheets(): Promise<Technician[]> {
-    const SHEET_ID = 'your-google-sheet-id';
-    const API_KEY = 'your-api-key';
-    const RANGE = 'Technicians!A2:G'; // Adjust range as needed
-    
-    const response = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`
-    );
-    
-    const data = await response.json();
-    
-    return data.values?.map((row: string[]) => ({
-      id: row[0],
-      name: row[1], 
-      email: row[2],
-      phone: row[3],
-      role: row[4] as Technician['role'],
-      specialties: row[5]?.split(',').map(s => s.trim()) || [],
-      isActive: row[6]?.toLowerCase() === 'true'
-    })) || [];
+  /**
+   * Get only field technicians
+   */
+  static async getFieldTechnicians(): Promise<Technician[]> {
+    try {
+      const { data, error } = await supabase
+        .from('ame_employees')
+        .select('*')
+        .eq('is_active', true)
+        .eq('is_technician', true)
+        .order('employee_name');
+
+      if (error) {
+        console.error('Error fetching field technicians:', error);
+        return [];
+      }
+
+      return data.map(emp => ({
+        id: emp.id,
+        name: emp.employee_name,
+        email: emp.email || '',
+        phone: emp.mobile_phone || emp.direct_line || '',
+        role: emp.role || '',
+        department: emp.department || '',
+        extension: emp.extension || '',
+        direct_line: emp.direct_line || '',
+        is_technician: emp.is_technician || false,
+        isActive: emp.is_active
+      }));
+    } catch (error) {
+      console.error('Error fetching field technicians:', error);
+      return [];
+    }
   }
-  */
+
 }
 
 export default TechnicianService;

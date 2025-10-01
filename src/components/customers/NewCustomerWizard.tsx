@@ -20,6 +20,7 @@ import { SimProCustomerSearch } from './SimProCustomerSearch';
 import { EnhancedGoogleDriveFolderSearch } from './EnhancedGoogleDriveFolderSearch';
 import { SearchableCombobox } from '@/components/ui/searchable-combobox';
 import { AMEContactService } from '@/services/ameContactService';
+import { AMEEmployeeService } from '@/services/ameEmployeeService';
 import { RemoteAccessCredentialsManager } from '../remote-access/RemoteAccessCredentialsManager';
 import { SystemCredentialsManager } from '../system-access/SystemCredentialsManager';
 import { useGoogleDriveAuth } from '@/hooks/useGoogleDriveAuth';
@@ -532,7 +533,7 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
       const [data, technicians, accountManagers] = await Promise.all([
         DropdownDataService.getCachedDropdownData(),
         AMEContactService.getTechnicians(),
-        AMEContactService.getAccountManagers()
+        AMEEmployeeService.getAccountManagers()
       ]);
       
       console.log('Dropdown data loaded:', data);
@@ -566,13 +567,13 @@ export const NewCustomerWizard: React.FC<NewCustomerWizardProps> = ({
       console.log('Formatted technicians:', formattedTechnicians);
       setTechnicianOptions(formattedTechnicians);
       
-      // Format account managers for SearchableCombobox
+      // Format account managers for SearchableCombobox using AMEEmployeeService structure
       const formattedAccountManagers = accountManagers.map(mgr => ({
         id: mgr.id,
-        name: mgr.name,
-        description: `${mgr.phone ? `📱 ${mgr.phone}` : ''}${mgr.email ? ` 📧 ${mgr.email}` : ''}`.trim(),
+        name: AMEEmployeeService.getDisplayName(mgr),
+        description: `${mgr.mobile_phone ? `📱 ${mgr.mobile_phone}` : ''}${mgr.email ? ` 📧 ${mgr.email}` : ''}`.trim(),
         subtitle: mgr.role || 'Account Manager',
-        phone: mgr.phone,
+        phone: mgr.mobile_phone || mgr.phone,
         email: mgr.email
       }));
       

@@ -76,6 +76,20 @@ export interface SiteIntelligenceData {
     serviceTier: string;
     contractNumber: string;
     accountManager: string;
+    // Enhanced admin fields
+    basPlatform?: string;
+    systemArchitecture?: string;
+    primaryTechnicianId?: string;
+    primaryTechnicianName?: string;
+    primaryTechnicianEmail?: string;
+    primaryTechnicianPhone?: string;
+    secondaryTechnicianId?: string;
+    secondaryTechnicianName?: string;
+    secondaryTechnicianEmail?: string;
+    secondaryTechnicianPhone?: string;
+    driveFolderId?: string;
+    driveFolderUrl?: string;
+    simproCustomerId?: string;
   };
   contacts: ContactInfo[];
   access: AccessInfo;
@@ -102,6 +116,32 @@ export interface TridiumExportData {
   platformDetails?: string; // Text file content
   uploadTime?: Date;
   processed: boolean;
+  
+  // Database-enabled upload fields
+  databaseEnabled?: boolean;
+  systemBaselineId?: string;
+  importSummary?: {
+    totalDevices?: number;
+    systemBaselineId?: string;
+    datasetsCount?: number;
+    importTime?: Date;
+    totalAlerts?: number;
+    criticalAlerts?: number;
+    processingTime?: number;
+    databaseSaved?: boolean;
+    // Legacy fields
+    jaceCount?: number;
+    networkCount?: number;
+    filesProcessed?: number;
+    errors?: number;
+    architecture?: string;
+  };
+  
+  // Legacy fields for backward compatibility
+  systemArchitecture?: string;
+  systemTree?: any;
+  processedData?: any;
+  hasEnhancedAnalysis?: boolean;
 }
 
 export interface ManualInventoryData {
@@ -126,6 +166,25 @@ export interface SystemDiscoveryData {
   tridiumExports: TridiumExportData;
   manualInventory: ManualInventoryData;
   photos: PhotoData[];
+  // Enhanced admin fields
+  remoteAccess?: {
+    credentials: any[];
+    hasCredentials: boolean;
+    vpnRequired?: boolean;
+    vpnConfig?: any;
+  };
+  systemAccess?: {
+    bmsCredentials?: any;
+    windowsCredentials?: any;
+    serviceCredentials?: any;
+    lastUpdated?: Date;
+  };
+  projectFolder?: {
+    folderId: string;
+    folderName: string;
+    folderUrl: string;
+    lastUpdated: Date;
+  };
 }
 
 // ===== PHASE 3: SERVICE ACTIVITIES =====

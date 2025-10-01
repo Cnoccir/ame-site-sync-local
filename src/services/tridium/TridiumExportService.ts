@@ -10,6 +10,8 @@ import {
   ExportFileType,
   DEVICE_CATEGORIES 
 } from '@/types/tridiumExport.types';
+import { TridiumParser } from '@/utils/tridium/tridiumParser';
+import { TridiumDataset } from '@/types/tridium';
 
 /**
  * Tridium Export Processing Service
@@ -53,10 +55,15 @@ export class TridiumExportService {
               }
             });
 
+            // Compute memory usage from mem.* or heap.*
+            const memUsedMB = this.parseMemoryMB(metrics['mem.used'] || metrics['heap.used'] || '0 MB');
+            const memTotalMB = this.parseMemoryMB(metrics['mem.total'] || metrics['heap.max'] || '0 MB');
+            const memoryUsagePct = memTotalMB > 0 ? Math.round((memUsedMB / memTotalMB) * 100) : 0;
+
             // Parse specific metrics
             const resourceData: ResourceExportData = {
               cpuUsage: this.parsePercentage(metrics['cpu.usage'] || '0%'),
-              memoryUsage: this.parsePercentage(metrics['engine.scan.usage'] || '0%'),
+              memoryUsage: memoryUsagePct, // FIXED: was engine.scan.usage
               heapUsed: this.parseMemoryMB(metrics['heap.used'] || '0 MB'),
               heapMax: this.parseMemoryMB(metrics['heap.max'] || '0 MB'),
               uptime: metrics['time.uptime'] || 'Unknown',
@@ -178,27 +185,66 @@ export class TridiumExportService {
     for (const upload of uploads) {
       try {
         upload.status = 'processing';
-        
-        switch (upload.type) {
-          case 'resource':
-            resourceData = await this.parseResourceExport(upload.file);
-            upload.data = resourceData;
-            break;
-            
-          case 'bacnet':
-            bacnetDevices = await this.parseBACnetExport(upload.file);
-            upload.data = bacnetDevices;
-            break;
-            
-          case 'n2':
-            n2Devices = await this.parseN2Export(upload.file);
-            upload.data = n2Devices;
-            break;
+
+        // Unified parsing via TridiumParser
+        const content = await upload.file.text();
+        const result = await TridiumParser.parseFile(content, upload.file.name);
+        if (result.success && result.dataset) {
+          const ds: TridiumDataset = result.dataset;
+          upload.data = ds;
+
+          // Collect backward-compatible aggregates
+          if (ds.format === 'ResourceExport') {
+            // Optionally map to ResourceExportData if needed
+            resourceData = resourceData || {
+              cpuUsage: 0,
+              memoryUsage: 0,
+              heapUsed: 0,
+              heapMax: 0,
+              uptime: '',
+              deviceCount: 0,
+              deviceLimit: 0,
+              pointCount: 0,
+              pointLimit: 0,
+              historyCount: 0,
+              engineUsage: 0,
+              scanLifetime: 0,
+              scanPeak: 0,
+              componentCount: 0,
+              licenseUsage: '',
+              rawMetrics: {}
+            };
+          } else if (ds.format === 'BACnetExport') {
+            bacnetDevices = ds.rows.map(r => ({
+              name: r.data.Name || '',
+              type: r.data.Type || '',
+              deviceId: String(r.data['Device ID'] || ''),
+              status: (r.parsedStatus?.status || 'unknown') as any,
+              network: String(r.data.Netwk || ''),
+              macAddress: String(r.data['MAC Addr'] || ''),
+              vendor: String(r.data.Vendor || ''),
+              model: String(r.data.Model || ''),
+              firmwareVersion: String(r.data['Firmware Rev'] || ''),
+              health: String(r.data.Health || ''),
+              enabled: String(r.data.Enabled || '').toLowerCase() === 'true',
+              lastSeen: undefined
+            }));
+          } else if (ds.format === 'N2Export') {
+            n2Devices = ds.rows.map(r => ({
+              name: r.data.Name || '',
+              status: (r.parsedStatus?.status || 'unknown') as any,
+              address: parseInt(r.data.Address || '0'),
+              controllerType: r.data['Controller Type'] || ''
+            }));
+          }
+
+          upload.status = 'completed';
+          filesProcessed.push(upload.file.name);
+        } else {
+          upload.status = 'error';
+          upload.error = result.errors?.join('; ') || 'Unknown parse error';
         }
-        
-        upload.status = 'completed';
-        filesProcessed.push(upload.file.name);
-      } catch (error) {
+      } catch (error: any) {
         upload.status = 'error';
         upload.error = error.message;
         console.error(`Error processing ${upload.file.name}:`, error);
@@ -309,15 +355,16 @@ export class TridiumExportService {
     return match ? match[1] : '';
   }
 
-  private static parseDeviceStatus(status: string): 'ok' | 'unackedAlarm' | 'down' | 'fault' {
+  private static parseDeviceStatus(status: string): 'ok' | 'unackedAlarm' | 'down' | 'fault' | 'unknown' {
     const cleanStatus = status.replace(/[{}]/g, '').toLowerCase();
     
     if (cleanStatus.includes('ok')) return 'ok';
     if (cleanStatus.includes('unackedalarm')) return 'unackedAlarm';
     if (cleanStatus.includes('down')) return 'down';
     if (cleanStatus.includes('fault')) return 'fault';
+    if (cleanStatus.includes('alarm')) return 'unackedAlarm';
     
-    return 'ok'; // Default fallback
+    return 'unknown'; // Default to unknown, not ok
   }
 
   private static extractTimestamp(health: string): string | undefined {

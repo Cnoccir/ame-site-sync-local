@@ -1,0 +1,35 @@
+Vendor: Tridium Inc.
+Product: Niagara Supervisor
+Version: 4.12.1.120
+Build Time: Aug 11 2023 11:45:23 AM
+Host OS: Windows Server 2019
+Host Name: SF-NERO-SUPV
+Host Model: TITAN
+IP Address: 192.168.1.50
+CPU Architecture: x64
+Java Version: 11.0.2
+Memory: 8192 MB
+
+Modules:
+- alarm (1.0.4.5)
+- bacnet (4.12.1.120)
+- control (4.12.1.120)
+- driver (4.12.1.120)
+- history (4.12.1.120)
+- n2 (4.12.1.120)
+- niagara (4.12.1.120)
+- schedule (4.12.1.120)
+- web (4.12.1.120)
+- workbench (4.12.1.120)
+
+Licenses:
+- Niagara Framework (Enterprise)
+- BACnet License (Unlimited Points)
+- Web License (10 Users)
+- Workbench License (5 Users)
+
+Applications:
+- config (station)
+- NiagaraNetwork (driver)
+- BacnetNetwork (driver)
+- N2Network (driver)

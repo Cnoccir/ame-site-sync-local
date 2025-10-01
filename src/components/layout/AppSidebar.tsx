@@ -1,14 +1,16 @@
-import { Link, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Users, 
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import {
+  LayoutDashboard,
+  Users,
   Building2,
   FileText,
-  Settings, 
+  Settings,
   HelpCircle,
   CheckSquare,
   Target,
-  BarChart3
+  BarChart3,
+  Building
 } from 'lucide-react';
 import {
   Sidebar,
@@ -24,46 +26,45 @@ import {
 } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { useUserRole, USER_PERMISSIONS } from '@/services/userRoleService';
+import { SessionManagementModal } from '@/components/pm-workflow/SessionManagementModal';
 
 // Navigation items with role-based visibility
 const getNavigationItems = (hasPermission: (permission: string) => boolean, isTech: boolean) => {
   const items = [];
 
-  // Main section - only for admins and managers
-  if (hasPermission(USER_PERMISSIONS.VIEW_DASHBOARD)) {
-    items.push({
-      title: 'MAIN',
-      items: [
-        { name: 'Dashboard', href: '/', icon: LayoutDashboard }
-      ]
-    });
-  }
+  // Main section - always show Dashboard
+  items.push({
+    title: 'MAIN',
+    items: [
+      { name: 'Dashboard', href: '/', icon: LayoutDashboard }
+    ]
+  });
 
   // Operations section - role-based items
   const operationsItems = [];
-  
+
   if (hasPermission(USER_PERMISSIONS.MANAGE_PROJECTS)) {
     operationsItems.push({ name: 'Project Selector', href: '/projects', icon: Building2 });
   }
-  
+
   if (hasPermission(USER_PERMISSIONS.MANAGE_CUSTOMERS)) {
     operationsItems.push({ name: 'Customer Management', href: '/customers', icon: Users });
   }
-  
+
   // Always show PM Tasks for techs and others with permission
   if (hasPermission(USER_PERMISSIONS.PERFORM_PM_TASKS)) {
     if (isTech) {
-      // For techs: single clear entry point
-      operationsItems.push({ 
-        name: 'Start PM Visit', 
-        href: '/pm-workflow', 
-        icon: Target 
+      // For techs: single clear entry point with session management
+      operationsItems.push({
+        name: 'Start PM Visit',
+        action: 'pm-session', // Special action instead of href
+        icon: Target
       });
     } else {
-      operationsItems.push({ 
-        name: 'PM Service Tasks', 
-        href: '/preventive-tasks', 
-        icon: CheckSquare 
+      operationsItems.push({
+        name: 'PM Service Tasks',
+        href: '/preventive-tasks',
+        icon: CheckSquare
       });
     }
   }
@@ -108,11 +109,30 @@ const getNavigationItems = (hasPermission: (permission: string) => boolean, isTe
 
 export function AppSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { state, isMobile } = useSidebar();
   const { role, hasPermission, isTech } = useUserRole();
-  
+  const [showSessionModal, setShowSessionModal] = useState(false);
+
   // Get navigation items based on user role
   const navigationItems = getNavigationItems(hasPermission, isTech);
+
+  const handleSessionStart = (sessionId: string, workflowData: any) => {
+    // Navigate to PM workflow with session data
+    navigate(`/pm-workflow/${sessionId}`, {
+      state: {
+        sessionId,
+        workflowData
+      }
+    });
+  };
+
+  const handleItemClick = (item: any) => {
+    if (item.action === 'pm-session') {
+      setShowSessionModal(true);
+    }
+    // For regular href items, the Link component handles navigation
+  };
 
   return (
     <Sidebar 
@@ -120,20 +140,15 @@ export function AppSidebar() {
       collapsible="icon"
       variant={isMobile ? "floating" : "sidebar"}
     >
-      <SidebarHeader className="ame-sidebar-header">
-        <div className="ame-logo">
-          <div className="ame-logo-text">AME CONTROLS</div>
-          {state === 'expanded' && !isMobile && (
-            <>
-              <div className="ame-system-title">
-                {isTech ? 'PM Workflow Guide' : 'Maintenance System'}
-              </div>
-              {/* User Role Indicator */}
-              <div className="mt-2 px-2 py-1 bg-primary/10 rounded text-xs text-primary font-medium uppercase tracking-wide">
-                {role} User
-              </div>
-            </>
-          )}
+      <SidebarHeader className="bg-slate-800 text-white p-4">
+        <div className="text-center">
+          <h1 className="text-xl font-bold text-white mb-1">AME INC.</h1>
+          <p className="text-gray-300 text-xs uppercase tracking-wide mb-2">
+            A PART OF NORDOMATIC GROUP
+          </p>
+          <div className="bg-slate-700 rounded px-3 py-1">
+            <span className="text-white text-xs">Maintenance Management</span>
+          </div>
         </div>
       </SidebarHeader>
 
@@ -148,21 +163,31 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {section.items.map((item) => {
-                  const isActive = location.pathname === item.href;
+                  const isActive = item.href && location.pathname === item.href;
                   return (
                     <SidebarMenuItem key={item.name}>
-                      <SidebarMenuButton asChild>
-                        <Link
-                          to={item.href}
-                          className={cn(
-                            "ame-nav-item",
-                            isActive && "active"
-                          )}
+                      {item.href ? (
+                        <SidebarMenuButton asChild>
+                          <Link
+                            to={item.href}
+                            className={cn(
+                              "ame-nav-item",
+                              isActive && "active"
+                            )}
+                          >
+                            <item.icon className="text-base w-6 text-center" />
+                            {state === 'expanded' && <span>{item.name}</span>}
+                          </Link>
+                        </SidebarMenuButton>
+                      ) : (
+                        <SidebarMenuButton
+                          onClick={() => handleItemClick(item)}
+                          className={cn("ame-nav-item")}
                         >
                           <item.icon className="text-base w-6 text-center" />
                           {state === 'expanded' && <span>{item.name}</span>}
-                        </Link>
-                      </SidebarMenuButton>
+                        </SidebarMenuButton>
+                      )}
                     </SidebarMenuItem>
                   );
                 })}
@@ -171,6 +196,12 @@ export function AppSidebar() {
           </SidebarGroup>
         ))}
       </SidebarContent>
+
+      <SessionManagementModal
+        isOpen={showSessionModal}
+        onClose={() => setShowSessionModal(false)}
+        onSessionStart={handleSessionStart}
+      />
     </Sidebar>
   );
 }
