@@ -2303,8 +2303,35 @@ export const UnifiedSystemDiscovery: React.FC<UnifiedSystemDiscoveryProps> = ({
 
     const networkNode = findNetworkNode(newTree);
     if (networkNode) {
-      // Add discovered JACEs as children
-      const jaceNodes = discoveredJACEs.map((jace, index) => ({
+      // CRITICAL: Deduplicate - check which JACEs already exist
+      const existingJACENames = new Set(
+        (networkNode.children || [])
+          .filter(child => child.type === 'jace')
+          .map(child => child.jaceInfo?.name || child.name)
+          .filter(Boolean)
+      );
+      
+      console.log(`🔍 Existing JACEs: ${Array.from(existingJACENames).join(', ')}`);
+      
+      // Filter out JACEs that already exist
+      const newJACEs = discoveredJACEs.filter(jace => {
+        const jaceName = jace.name || `JACE-${Math.random()}`;
+        const exists = existingJACENames.has(jaceName);
+        if (exists) {
+          console.log(`⚠️ Skipping duplicate JACE in buildJACETreeFromNetworkExport: ${jaceName}`);
+        }
+        return !exists;
+      });
+      
+      if (newJACEs.length === 0) {
+        console.log('✅ All JACEs already exist - no duplicates to add');
+        return; // All JACEs already exist, no need to update tree
+      }
+      
+      console.log(`➕ Adding ${newJACEs.length} new JACEs (${discoveredJACEs.length - newJACEs.length} skipped as duplicates)`);
+      
+      // Add only NEW discovered JACEs as children
+      const jaceNodes = newJACEs.map((jace, index) => ({
         id: `jace-${jace.name || index}`,
         name: jace.name || `JACE-${index + 1}`,
         type: 'jace' as const,
