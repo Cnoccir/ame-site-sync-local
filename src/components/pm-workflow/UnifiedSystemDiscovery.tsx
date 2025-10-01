@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -178,6 +178,10 @@ export const UnifiedSystemDiscovery: React.FC<UnifiedSystemDiscoveryProps> = ({
   const [pendingFile, setPendingFile] = useState<{ file: File; targetNodeId?: string } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showAddDriverModal, setShowAddDriverModal] = useState<string | null>(null);
+  
+  // Processing lock to prevent duplicate processing
+  const processingLockRef = useRef<Set<string>>(new Set());
+  const processedFilesRef = useRef<Set<string>>(new Set());
 
   // Database persistence state
   const [databaseCallQueue, setDatabaseCallQueue] = useState<Map<string, any>>(new Map());
@@ -932,10 +936,33 @@ export const UnifiedSystemDiscovery: React.FC<UnifiedSystemDiscoveryProps> = ({
   }, [selectedNode]);
 
   const processUploadedFile = useCallback(async (parsedData?: any) => {
-    if (!pendingFile) return;
+    if (!pendingFile) {
+      console.warn('⚠️ processUploadedFile called with no pendingFile');
+      return;
+    }
 
     const { file, targetNodeId } = pendingFile;
     const nodeId = targetNodeId || selectedNode;
+    
+    // Create unique file identifier for deduplication
+    const fileId = `${file.name}-${file.size}-${file.lastModified}-${nodeId}`;
+    
+    // Check if already processing this exact file
+    if (processingLockRef.current.has(fileId)) {
+      console.warn(`🚫 File already being processed: ${file.name} at node ${nodeId}`);
+      return;
+    }
+    
+    // Check if this file was already processed
+    if (processedFilesRef.current.has(fileId)) {
+      console.warn(`🚫 File already processed: ${file.name} at node ${nodeId}`);
+      setPendingFile(null);
+      return;
+    }
+    
+    // Acquire processing lock
+    console.log(`🔒 Acquiring processing lock for: ${file.name} at node ${nodeId}`);
+    processingLockRef.current.add(fileId);
 
     setIsProcessing(true);
     setPendingFile(null);
@@ -1247,6 +1274,14 @@ export const UnifiedSystemDiscovery: React.FC<UnifiedSystemDiscoveryProps> = ({
         uploadStatus: 'error'
       }));
     } finally {
+      // Release processing lock
+      console.log(`🔓 Releasing processing lock for: ${file.name} at node ${nodeId}`);
+      processingLockRef.current.delete(fileId);
+      
+      // Mark as processed to prevent future re-processing
+      processedFilesRef.current.add(fileId);
+      console.log(`✅ File marked as processed: ${file.name}`);
+      
       setIsProcessing(false);
     }
   }, [pendingFile, selectedNode, sessionId, systemType, switchToMode, onDataChange]);
