@@ -114,7 +114,15 @@ export class TridiumParsedNormalizer {
     console.log('🔧 Input top-level keys:', Object.keys(input || {}));
     
     if (input?.metrics) {
-      console.log('⚠️ Input already has metrics, returning as-is');
+      console.log('✅ Input already has metrics field - returning as-is (NO normalization needed)');
+      console.log('📊 Metrics structure:', {
+        hasCPU: !!input.metrics.cpu,
+        hasHeap: !!input.metrics.heap,
+        hasCapacities: !!input.metrics.capacities,
+        components: input.metrics.capacities?.components,
+        pointsCurrent: input.metrics.capacities?.points?.current,
+        devicesLimit: input.metrics.capacities?.devices?.limit
+      });
       return input as ResourceParsedData;
     }
     

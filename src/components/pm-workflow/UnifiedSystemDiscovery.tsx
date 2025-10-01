@@ -843,9 +843,19 @@ export const UnifiedSystemDiscovery: React.FC<UnifiedSystemDiscoveryProps> = ({
             if (jData.resources) {
               const resourceChild = jaceNode.children?.find(c => c.id === `${jaceId}-resource`);
               if (resourceChild) {
+                console.log(`💼 LOADING resources for JACE "${jaceName}" from persisted data:`, {
+                  hasMetrics: !!jData.resources.metrics,
+                  hasCapacities: !!jData.resources.metrics?.capacities,
+                  components: jData.resources.metrics?.capacities?.components,
+                  topLevelKeys: Object.keys(jData.resources || {})
+                });
                 resourceChild.uploadStatus = 'parsed';
                 resourceChild.parsedData = jData.resources;
                 resourceChild.hasAnalysis = !!jData.resources?.analysis;
+                console.log(`✅ SET parsedData for resource node ${resourceChild.id}:`, {
+                  nodeHasMetrics: !!resourceChild.parsedData?.metrics,
+                  nodeComponents: resourceChild.parsedData?.metrics?.capacities?.components
+                });
               }
             }
             

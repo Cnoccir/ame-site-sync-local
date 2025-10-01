@@ -326,7 +326,17 @@ export class PlatformDataService {
             systemData.jaces[jaceName].platform = data as PlatformParsedData;
             break;
           case 'resources':
+            console.log(`💾 STORING resources for JACE "${jaceName}":`, {
+              hasMetrics: !!(data as any)?.metrics,
+              hasCapacities: !!(data as any)?.metrics?.capacities,
+              components: (data as any)?.metrics?.capacities?.components,
+              topLevelKeys: Object.keys(data || {})
+            });
             systemData.jaces[jaceName].resources = data as ResourceParsedData;
+            console.log(`✅ STORED resources for JACE "${jaceName}" - verifying:`, {
+              storedHasMetrics: !!systemData.jaces[jaceName].resources?.metrics,
+              storedComponents: systemData.jaces[jaceName].resources?.metrics?.capacities?.components
+            });
             break;
           case 'bacnet':
             systemData.jaces[jaceName].drivers.bacnet = data as BACnetParsedData;
