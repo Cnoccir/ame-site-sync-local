@@ -1068,16 +1068,28 @@ export const UnifiedSystemDiscovery: React.FC<UnifiedSystemDiscoveryProps> = ({
         if (targetLocation.type === 'supervisor') {
           if (!updated.supervisor) updated.supervisor = {} as any;
           (updated.supervisor as any)[dataType] = processedData;
+          console.log(`✅ Stored ${dataType} data to SUPERVISOR`);
         } else if (targetLocation.type === 'jace') {
           const jaceName = targetLocation.name || 'primary_jace';
+          
+          // Validation: Check if we're about to overwrite existing data
+          if (updated.jaces[jaceName] && (updated.jaces[jaceName] as any)[dataType]) {
+            console.warn(`⚠️ OVERWRITING existing ${dataType} data for JACE "${jaceName}"!`);
+            console.warn('Previous data:', (updated.jaces[jaceName] as any)[dataType]);
+            console.warn('New data:', processedData);
+          }
+          
           if (!updated.jaces[jaceName]) {
+            console.log(`🆕 Creating new JACE entry: "${jaceName}"`);
             updated.jaces[jaceName] = { drivers: {} } as any;
           }
 
           if (dataType === 'bacnet' || dataType === 'n2' || dataType === 'modbus' || dataType === 'lon') {
             updated.jaces[jaceName].drivers[dataType] = processedData;
+            console.log(`✅ Stored ${dataType} driver data to JACE "${jaceName}"`);
           } else if (dataType === 'platform' || dataType === 'resources') {
             (updated.jaces[jaceName] as any)[dataType] = processedData;
+            console.log(`✅ Stored ${dataType} data to JACE "${jaceName}"`);
           }
         }
 
@@ -1213,6 +1225,8 @@ export const UnifiedSystemDiscovery: React.FC<UnifiedSystemDiscoveryProps> = ({
 
   // Resolve a friendly JACE name for persistence (prefer discovered jaceInfo.name)
   const resolveJaceNameFromNodeId = useCallback((nodeId: string): string => {
+    console.log(`🔍 Resolving JACE name for nodeId: ${nodeId}`);
+    
     // Climb up to the parent JACE node if this is a child (e.g., jace-0-platform)
     const climbToJace = (node: SystemTreeNode | null): SystemTreeNode | null => {
       if (!node) return null;
@@ -1231,21 +1245,56 @@ export const UnifiedSystemDiscovery: React.FC<UnifiedSystemDiscoveryProps> = ({
     };
 
     const node = findNodeById(systemTree, nodeId);
+    console.log(`📍 Found node:`, node ? { id: node.id, name: node.name, type: node.type, jaceInfo: node.jaceInfo } : null);
+    
     const jaceNode = node?.type === 'jace' ? node : climbToJace(node);
-    const friendly = jaceNode?.jaceInfo?.name || jaceNode?.name?.replace(/\s*\(.+\)$/, '') || undefined;
-
-    if (friendly) return friendly;
-    const match = nodeId.match(/jace-(\d+)/);
-    return match ? `JACE_${match[1]}` : 'primary_jace';
+    console.log(`📍 JACE node:`, jaceNode ? { id: jaceNode.id, name: jaceNode.name, jaceInfo: jaceNode.jaceInfo } : null);
+    
+    // Priority 1: Use jaceInfo.name (from network discovery)
+    if (jaceNode?.jaceInfo?.name) {
+      console.log(`✅ Using jaceInfo.name: "${jaceNode.jaceInfo.name}"`);
+      return jaceNode.jaceInfo.name;
+    }
+    
+    // Priority 2: Extract name from node.name (remove IP suffix)
+    if (jaceNode?.name) {
+      const cleanName = jaceNode.name.replace(/\s*\(.+\)$/, '').trim();
+      if (cleanName && cleanName !== 'JACE' && cleanName !== 'Engine Only System') {
+        console.log(`✅ Using extracted name: "${cleanName}"`);
+        return cleanName;
+      }
+    }
+    
+    // Priority 3: Extract from nodeId pattern (jace-SF_NERO_FX1_51)
+    const nameMatch = nodeId.match(/jace-([A-Za-z0-9_]+)_\d+/);
+    if (nameMatch) {
+      const extractedName = nameMatch[1].replace(/_/g, '.');
+      console.log(`✅ Using extracted from nodeId: "${extractedName}"`);
+      return extractedName;
+    }
+    
+    // Priority 4: Numeric fallback
+    const numMatch = nodeId.match(/jace-(\d+)/);
+    const fallback = numMatch ? `JACE_${numMatch[1]}` : 'primary_jace';
+    console.log(`🚨 Falling back to: "${fallback}"`);
+    return fallback;
   }, [systemTree, findNodeById]);
 
   const determineTargetLocation = (nodeId: string): { type: 'supervisor' | 'jace'; name?: string } => {
     // Network exports always go to supervisor level
     if (nodeId.includes('supervisor') || nodeId.includes('niagara-net')) {
+      console.log(`📍 Target Location: Supervisor (nodeId: ${nodeId})`);
       return { type: 'supervisor' };
     }
     // Prefer resolving JACE name from the tree
     const resolved = resolveJaceNameFromNodeId(nodeId);
+    console.log(`📍 Target Location: JACE "${resolved}" (nodeId: ${nodeId})`);
+    
+    // Additional validation: ensure we have a meaningful JACE name
+    if (!resolved || resolved === 'primary_jace') {
+      console.warn(`⚠️ Could not resolve specific JACE name for nodeId: ${nodeId}, using default: ${resolved}`);
+    }
+    
     return { type: 'jace', name: resolved };
   };
 
