@@ -171,6 +171,16 @@ export class PlatformDataService {
           }
         };
 
+        // LOG what we're about to save
+        console.log('💾 SAVING TO DATABASE - systemData structure:', {
+          hasSupervisor: !!systemData.supervisor,
+          hasSupervisorPlatform: !!systemData.supervisor?.platform,
+          hasSupervisorResources: !!systemData.supervisor?.resources,
+          hasSupervisorNetwork: !!systemData.supervisor?.network,
+          jaceCount: Object.keys(systemData.jaces || {}).length,
+          jaceNames: Object.keys(systemData.jaces || {})
+        });
+
         // Always write a local fallback first so refresh survives even if DB fails
         try { PlatformDataService.writeLocal(sessionId, updatedPhase2Data); } catch {}
 
@@ -309,8 +319,18 @@ export class PlatformDataService {
       const currentResult = await this.getTridiumSystemData(sessionId);
       let systemData: TridiumSystemData;
 
+      console.log(`📚 LOADED existing systemData for ${dataType}:`, {
+        hasData: !!currentResult.data,
+        hasError: !!currentResult.error,
+        hasSupervisor: !!currentResult.data?.supervisor,
+        hasSupervisorPlatform: !!currentResult.data?.supervisor?.platform,
+        hasSupervisorResources: !!currentResult.data?.supervisor?.resources,
+        jaceCount: Object.keys(currentResult.data?.jaces || {}).length
+      });
+
       if (currentResult.error || !currentResult.data) {
         // Initialize new system data structure
+        console.log(`⚠️ No existing data, creating new systemData structure`);
         systemData = {
           architecture: targetLocation?.type === 'supervisor' ? 'supervisor' : 'single-jace',
           jaces: {},
@@ -325,6 +345,7 @@ export class PlatformDataService {
           }
         };
       } else {
+        console.log(`✅ Using existing systemData`);
         systemData = currentResult.data;
       }
 
