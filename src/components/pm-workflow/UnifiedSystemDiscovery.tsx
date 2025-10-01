@@ -940,19 +940,59 @@ export const UnifiedSystemDiscovery: React.FC<UnifiedSystemDiscoveryProps> = ({
     setIsProcessing(true);
     setPendingFile(null);
 
-    // Declare fileContent outside try block so it's accessible throughout function
-    let fileContent = '';
+      // Declare fileContent outside try block so it's accessible throughout function
+      let fileContent = '';
 
-    try {
-      // Parse the file FIRST to get actual data for visualization
-      let processedData = parsedData;
-      // Re-parse if no processedData OR if it is a preview shape (from LiveCSVPreview)
-      const isPreviewShape = processedData && typeof processedData === 'object' && 'data' in processedData && 'mappings' in processedData;
-      if (!processedData || isPreviewShape) {
-        try {
-          // Use TridiumExportProcessor to parse the file immediately
+      try {
+        // Parse the file FIRST to get actual data for visualization
+        let processedData = parsedData;
+        
+        // CRITICAL FIX: Detect LiveCSVPreview shape and convert it properly
+        const isLivePreviewShape = processedData && typeof processedData === 'object' && 
+          'data' in processedData && 'mappings' in processedData && 'type' in processedData;
+        
+        console.log('📋 Preview Data Check:', {
+          hasProcessedData: !!processedData,
+          isLivePreviewShape,
+          type: (processedData as any)?.type,
+          dataLength: (processedData as any)?.data?.length
+        });
+        
+        // Handle LiveCSVPreview data format
+        if (isLivePreviewShape) {
+          console.log('✅ Converting LiveCSVPreview data to TridiumExportProcessor format');
           fileContent = await file.text();
+          const previewData = processedData as any;
+          
+          // Convert LiveCSVPreview shape to proper TridiumExportProcessor format
+          // This avoids re-parsing and duplication
           const fileType = TridiumExportProcessor.detectFileFormat(file.name, fileContent);
+          
+          // Re-parse using TridiumExportProcessor for proper structure
+          // BUT use the preview data as validation
+          console.log(`🔄 Re-parsing ${previewData.type} file with TridiumExportProcessor for proper structure`);
+          
+          if (fileType.type === 'network') {
+            processedData = TridiumExportProcessor.parseNiagaraNetworkExport(fileContent);
+            console.log('🌐 Network data re-parsed:', processedData);
+          } else if (fileType.type === 'resource') {
+            processedData = TridiumExportProcessor.parseResourceExport(fileContent);
+            console.log('📊 Resource data re-parsed:', processedData);
+          } else if (fileType.type === 'bacnet') {
+            processedData = TridiumExportProcessor.parseBACnetExport(fileContent);
+            console.log('🔌 BACnet data re-parsed:', processedData);
+          } else if (fileType.type === 'n2') {
+            processedData = TridiumExportProcessor.parseN2Export(fileContent);
+            console.log('📡 N2 data re-parsed:', processedData);
+          } else {
+            console.warn('⚠️ Unknown file type from LiveCSVPreview, using raw preview data');
+            // Keep the preview data as-is if we can't determine type
+          }
+        } else if (!processedData) {
+          try {
+            // Use TridiumExportProcessor to parse the file immediately
+            fileContent = await file.text();
+            const fileType = TridiumExportProcessor.detectFileFormat(file.name, fileContent);
 
           console.log('🔍 Processing file:', file.name, 'detected type:', fileType.type);
 
