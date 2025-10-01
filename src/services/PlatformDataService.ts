@@ -352,27 +352,33 @@ export class PlatformDataService {
       // Store data in appropriate location
       if (targetLocation?.type === 'supervisor' || dataType === 'niagara_network') {
         // Network data always goes to supervisor level
-        if (!systemData.supervisor) systemData.supervisor = {};
+        if (!systemData.supervisor) systemData.supervisor = {} as any;
+        
+        // CRITICAL: Preserve existing supervisor data when adding new pieces
+        // Don't create a new object, modify the existing one
+        const existingSupervisor = systemData.supervisor;
 
         switch (dataType) {
           case 'platform':
             console.log(`💾 STORING SUPERVISOR PLATFORM - keys:`, Object.keys(data || {}));
-            systemData.supervisor.platform = data as PlatformParsedData;
+            existingSupervisor.platform = data as PlatformParsedData;
             console.log(`✅ SUPERVISOR PLATFORM STORED - verifying:`, {
               hasData: !!systemData.supervisor.platform,
-              hasSummary: !!systemData.supervisor.platform?.summary
+              hasSummary: !!systemData.supervisor.platform?.summary,
+              stillHasResources: !!systemData.supervisor.resources // Check if resources survived
             });
             break;
           case 'resources':
             console.log(`💾 STORING SUPERVISOR RESOURCES - keys:`, Object.keys(data || {}));
-            systemData.supervisor.resources = data as ResourceParsedData;
+            existingSupervisor.resources = data as ResourceParsedData;
             console.log(`✅ SUPERVISOR RESOURCES STORED - verifying:`, {
               hasData: !!systemData.supervisor.resources,
-              hasMetrics: !!systemData.supervisor.resources?.metrics
+              hasMetrics: !!systemData.supervisor.resources?.metrics,
+              stillHasPlatform: !!systemData.supervisor.platform // Check if platform survived
             });
             break;
           case 'niagara_network':
-            systemData.supervisor.network = data as NiagaraNetworkParsedData;
+            existingSupervisor.network = data as NiagaraNetworkParsedData;
             break;
         }
       } else {
