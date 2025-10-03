@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -122,16 +122,22 @@ export const SystemCredentialsManager: React.FC<SystemCredentialsManagerProps> =
   const [showAdvanced, setShowAdvanced] = useState(false);
   const { toast } = useToast();
 
-  // Notify parent of changes
+  // Notify parent of changes (avoid infinite loop by using ref for callback)
+  const onChangeRef = useRef(onChange);
+  
   useEffect(() => {
-    if (onChange) {
-      onChange({
+    onChangeRef.current = onChange;
+  });
+  
+  useEffect(() => {
+    if (onChangeRef.current) {
+      onChangeRef.current({
         bms: bmsCredentials,
         windows: windowsCredentials,
         services: serviceCredentials
       });
     }
-  }, [bmsCredentials, windowsCredentials, serviceCredentials, onChange]);
+  }, [bmsCredentials, windowsCredentials, serviceCredentials]);
 
   // Auto-update port when system type changes
   useEffect(() => {

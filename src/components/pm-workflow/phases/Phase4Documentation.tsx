@@ -74,7 +74,7 @@ export const Phase4Documentation: React.FC<Phase4DocumentationProps> = ({
   const validateSection = (section: string): boolean => {
     switch (section) {
       case 'summary':
-        return !!(data.serviceSummary.executiveSummary && data.serviceSummary.keyFindings.length > 0);
+        return !!(data.serviceSummary.executiveSummary && (data.serviceSummary.keyFindings || []).length > 0);
       case 'config':
         return !!(data.reportConfig.template);
       case 'delivery':
@@ -92,15 +92,19 @@ export const Phase4Documentation: React.FC<Phase4DocumentationProps> = ({
     const phase2 = workflowData.phase2;
     const phase3 = workflowData.phase3;
 
+    const tasks = phase3?.tasks || [];
+    const issues = phase3?.issues || [];
+    const recommendations = phase3?.recommendations || [];
+
     const autoSummary = {
-      executiveSummary: `Completed ${workflowData.session.serviceTier} tier preventive maintenance service for ${phase1.customer.companyName} - ${phase1.customer.siteName}. System health assessment performed on ${phase2.bmsSystem.platform || 'BMS'} platform with ${phase3.tasks.filter(t => t.status === 'Completed').length} maintenance tasks completed.`,
+      executiveSummary: `Completed ${workflowData.session.serviceTier} tier preventive maintenance service for ${phase1?.customer?.companyName || 'Customer'} - ${phase1?.customer?.siteName || 'Site'}. System health assessment performed on ${phase2?.bmsSystem?.platform || 'BMS'} platform with ${tasks.filter(t => t.status === 'Completed').length} maintenance tasks completed.`,
       
       keyFindings: [
-        `BMS Platform: ${phase2.bmsSystem.platform || 'Not specified'}`,
+        `BMS Platform: ${phase2?.bmsSystem?.platform || 'Not specified'}`,
         `Service Tier: ${workflowData.session.serviceTier}`,
-        `Tasks Completed: ${phase3.tasks.filter(t => t.status === 'Completed').length}/${phase3.tasks.length}`,
-        `Issues Found: ${phase3.issues.length}`,
-        `Recommendations: ${phase3.recommendations.length}`
+        `Tasks Completed: ${tasks.filter(t => t.status === 'Completed').length}/${tasks.length}`,
+        `Issues Found: ${issues.length}`,
+        `Recommendations: ${recommendations.length}`
       ].filter(finding => !finding.includes('Not specified')),
       
       valueDelivered: [
@@ -108,23 +112,23 @@ export const Phase4Documentation: React.FC<Phase4DocumentationProps> = ({
         'Critical alarms addressed',
         'Documentation updated',
         'Preventive maintenance tasks performed',
-        phase3.issues.length > 0 && 'System issues identified and addressed',
-        phase3.recommendations.length > 0 && 'Improvement recommendations provided'
+        issues.length > 0 && 'System issues identified and addressed',
+        recommendations.length > 0 && 'Improvement recommendations provided'
       ].filter(Boolean) as string[],
       
-      systemImprovements: phase3.recommendations.map(rec => rec.title),
+      systemImprovements: recommendations.map(rec => rec.title),
       
       nextSteps: [
         'Continue regular preventive maintenance schedule',
-        phase3.issues.filter(i => i.status === 'Deferred').length > 0 && 'Address deferred maintenance items',
-        phase3.recommendations.filter(r => r.type === 'Immediate').length > 0 && 'Implement immediate recommendations'
+        issues.filter(i => i.status === 'Deferred').length > 0 && 'Address deferred maintenance items',
+        recommendations.filter(r => r.type === 'Immediate').length > 0 && 'Implement immediate recommendations'
       ].filter(Boolean) as string[],
       
-      followupRequired: phase3.issues.some(i => i.status === 'Deferred') || phase3.recommendations.some(r => r.type === 'Immediate'),
+      followupRequired: issues.some(i => i.status === 'Deferred') || recommendations.some(r => r.type === 'Immediate'),
       
       followupActions: [
-        ...phase3.issues.filter(i => i.status === 'Deferred').map(i => `Resolve: ${i.title}`),
-        ...phase3.recommendations.filter(r => r.type === 'Immediate').map(r => `Implement: ${r.title}`)
+        ...issues.filter(i => i.status === 'Deferred').map(i => `Resolve: ${i.title}`),
+        ...recommendations.filter(r => r.type === 'Immediate').map(r => `Implement: ${r.title}`)
       ]
     };
 
@@ -278,12 +282,12 @@ AME Controls Service Team
   const getReportStats = () => {
     const stats = {
       totalPages: 8,
-      includePhotos: data.reportConfig.includePhotos ? workflowData.phase2.photos.length : 0,
+      includePhotos: data.reportConfig.includePhotos ? (workflowData.phase2?.photos || []).length : 0,
       includeCharts: data.reportConfig.includeCharts ? 4 : 0,
       includeDataTables: data.reportConfig.includeDataTables ? 3 : 0,
-      tasksCompleted: workflowData.phase3.tasks.filter(t => t.status === 'Completed').length,
-      issuesFound: workflowData.phase3.issues.length,
-      recommendations: workflowData.phase3.recommendations.length
+      tasksCompleted: (workflowData.phase3?.tasks || []).filter(t => t.status === 'Completed').length,
+      issuesFound: (workflowData.phase3?.issues || []).length,
+      recommendations: (workflowData.phase3?.recommendations || []).length
     };
     return stats;
   };
@@ -374,12 +378,12 @@ AME Controls Service Team
                     <div className="space-y-2">
                       <Label>Key Findings</Label>
                       <div className="space-y-2">
-                        {data.serviceSummary.keyFindings.map((finding, index) => (
+                        {(data.serviceSummary.keyFindings || []).map((finding, index) => (
                           <div key={index} className="flex items-center gap-2">
                             <Input 
                               value={finding} 
                               onChange={(e) => {
-                                const updated = [...data.serviceSummary.keyFindings];
+                                const updated = [...(data.serviceSummary.keyFindings || [])];
                                 updated[index] = e.target.value;
                                 updateServiceSummary({ keyFindings: updated });
                               }}
@@ -388,7 +392,7 @@ AME Controls Service Team
                               variant="ghost" 
                               size="sm"
                               onClick={() => {
-                                const updated = data.serviceSummary.keyFindings.filter((_, i) => i !== index);
+                                const updated = (data.serviceSummary.keyFindings || []).filter((_, i) => i !== index);
                                 updateServiceSummary({ keyFindings: updated });
                               }}
                             >
@@ -400,7 +404,7 @@ AME Controls Service Team
                           variant="outline" 
                           size="sm" 
                           onClick={() => {
-                            const updated = [...data.serviceSummary.keyFindings, ''];
+                            const updated = [...(data.serviceSummary.keyFindings || []), ''];
                             updateServiceSummary({ keyFindings: updated });
                           }}
                           className="gap-2"
@@ -413,12 +417,12 @@ AME Controls Service Team
                     <div className="space-y-2">
                       <Label>Value Delivered</Label>
                       <div className="space-y-2">
-                        {data.serviceSummary.valueDelivered.map((value, index) => (
+                        {(data.serviceSummary.valueDelivered || []).map((value, index) => (
                           <div key={index} className="flex items-center gap-2">
                             <Input 
                               value={value} 
                               onChange={(e) => {
-                                const updated = [...data.serviceSummary.valueDelivered];
+                                const updated = [...(data.serviceSummary.valueDelivered || [])];
                                 updated[index] = e.target.value;
                                 updateServiceSummary({ valueDelivered: updated });
                               }}
@@ -427,7 +431,7 @@ AME Controls Service Team
                               variant="ghost" 
                               size="sm"
                               onClick={() => {
-                                const updated = data.serviceSummary.valueDelivered.filter((_, i) => i !== index);
+                                const updated = (data.serviceSummary.valueDelivered || []).filter((_, i) => i !== index);
                                 updateServiceSummary({ valueDelivered: updated });
                               }}
                             >
@@ -439,7 +443,7 @@ AME Controls Service Team
                           variant="outline" 
                           size="sm" 
                           onClick={() => {
-                            const updated = [...data.serviceSummary.valueDelivered, ''];
+                            const updated = [...(data.serviceSummary.valueDelivered || []), ''];
                             updateServiceSummary({ valueDelivered: updated });
                           }}
                           className="gap-2"
@@ -454,7 +458,7 @@ AME Controls Service Team
                     <div className="space-y-2">
                       <Label>Next Steps</Label>
                       <Textarea
-                        value={data.serviceSummary.nextSteps.join('\n')}
+                        value={(data.serviceSummary.nextSteps || []).join('\n')}
                         onChange={(e) => updateServiceSummary({ nextSteps: e.target.value.split('\n').filter(s => s.trim()) })}
                         placeholder="Recommended next steps and actions..."
                         rows={3}
@@ -463,7 +467,7 @@ AME Controls Service Team
                     <div className="space-y-2">
                       <Label>Follow-up Actions</Label>
                       <Textarea
-                        value={data.serviceSummary.followupActions.join('\n')}
+                        value={(data.serviceSummary.followupActions || []).join('\n')}
                         onChange={(e) => updateServiceSummary({ followupActions: e.target.value.split('\n').filter(a => a.trim()) })}
                         placeholder="Specific follow-up items requiring attention..."
                         rows={3}
@@ -579,7 +583,7 @@ AME Controls Service Team
                         <div key={section.key} className="flex items-center space-x-2">
                           <Checkbox
                             id={`section-${section.key}`}
-                            checked={data.reportConfig.includeSections[section.key as keyof typeof data.reportConfig.includeSections]}
+                            checked={data.reportConfig.includeSections?.[section.key as keyof typeof data.reportConfig.includeSections] || false}
                             onCheckedChange={(checked) => updateReportConfig(`includeSections.${section.key}`, checked)}
                           />
                           <Label htmlFor={`section-${section.key}`}>{section.label}</Label>
@@ -699,7 +703,7 @@ AME Controls Service Team
                   <div className="space-y-2">
                     <Label>CC Recipients</Label>
                     <Input
-                      value={data.deliveryInfo.ccRecipients.join(', ')}
+                      value={(data.deliveryInfo.ccRecipients || []).join(', ')}
                       onChange={(e) => updateDeliveryInfo('ccRecipients', e.target.value.split(',').map(email => email.trim()).filter(email => email))}
                       placeholder="cc1@customer.com, cc2@customer.com"
                     />

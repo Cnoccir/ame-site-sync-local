@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,7 @@ import { PhaseNavigation, ProgressTracker, PhaseReviewModal, generatePhaseModalS
 
 // Import Phase Components  
 import { Phase1SiteIntelligence } from './phases/Phase1SiteIntelligence';
+import { Phase2SystemDiscovery } from './phases/Phase2SystemDiscovery';
 import { UnifiedSystemDiscovery } from './UnifiedSystemDiscovery';
 import { DiscoveryFoundation } from './DiscoveryFoundation';
 import { FeatureFlagService } from '@/config/featureFlags';
@@ -115,7 +116,18 @@ const createMockWorkflowData = (serviceTier: 'CORE' | 'ASSURE' | 'GUARDIAN' = 'C
       networkSegments: [],
       notes: ''
     },
-    photos: []
+    photos: [],
+    systemAccess: {
+      bmsCredentials: undefined,
+      windowsCredentials: undefined,
+      serviceCredentials: undefined
+    },
+    remoteAccess: {
+      credentials: [],
+      hasCredentials: false,
+      vpnRequired: false
+    },
+    projectFolder: undefined
   };
 
   const serviceActivities: ServiceActivitiesData = {
@@ -229,6 +241,15 @@ export const PMWorkflowGuide: React.FC<PMWorkflowGuideProps> = ({
     }
   }, [workflowData]);
 
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(saveTimersRef.current).forEach(timer => {
+        if (timer) clearTimeout(timer);
+      });
+    };
+  }, []);
+
   const initializeWorkflow = async () => {
     try {
       setLoading(true);
@@ -314,6 +335,9 @@ export const PMWorkflowGuide: React.FC<PMWorkflowGuideProps> = ({
     }
   };
 
+  // Debounce timers for each phase to prevent spam
+  const saveTimersRef = useRef<{ [key: number]: NodeJS.Timeout | null }>({});
+
   const handleDataUpdate = async (phase: 1 | 2 | 3 | 4, data: any) => {
     if (!workflowData) return;
     
@@ -340,25 +364,33 @@ export const PMWorkflowGuide: React.FC<PMWorkflowGuideProps> = ({
     // Update progress
     updatePhaseProgress(phase);
 
-    // Save to database if we have an active session
+    // Save to database if we have an active session (with debouncing)
     if (activeSessionId && !mockMode) {
-      try {
-        await UnifiedCustomerDataService.updatePhaseData(phase, updatedData[`phase${phase}`], activeSessionId);
-        setHasUnsavedChanges(false);
-        setLastSaved(new Date());
-
-        logger.info(`Phase ${phase} data saved to database`, data);
-      } catch (error) {
-        logger.error('Failed to save phase data:', error);
-        toast({
-          title: 'Save Error',
-          description: 'Failed to save changes. Please try again.',
-          variant: 'destructive'
-        });
+      // Clear existing timer for this phase
+      if (saveTimersRef.current[phase]) {
+        clearTimeout(saveTimersRef.current[phase]!);
       }
+
+      // Set new debounced save with 1 second delay
+      saveTimersRef.current[phase] = setTimeout(async () => {
+        try {
+          await UnifiedCustomerDataService.updatePhaseData(phase, updatedData[`phase${phase}`], activeSessionId);
+          setHasUnsavedChanges(false);
+          setLastSaved(new Date());
+
+          logger.info(`Phase ${phase} data saved to database`);
+        } catch (error) {
+          logger.error('Failed to save phase data:', error);
+          toast({
+            title: 'Save Error',
+            description: 'Failed to save changes. Please try again.',
+            variant: 'destructive'
+          });
+        }
+      }, 1000); // 1 second debounce
     }
 
-    logger.info(`Phase ${phase} data updated`, data);
+    logger.debug(`Phase ${phase} data updated locally (save pending)`);
   };
 
   const validatePhaseCompletion = (phase: 1 | 2 | 3 | 4, data: any): { completed: boolean; completedTasks: string[]; percentage: number } => {
@@ -673,48 +705,14 @@ export const PMWorkflowGuide: React.FC<PMWorkflowGuideProps> = ({
         )}
         
         {currentPhase === 2 && (
-          FeatureFlagService.isEnabled('FOUNDATION_DISCOVERY') ? (
-            <DiscoveryFoundation
-              sessionId={activeSessionId}
-              customerId={workflowData.session.customerId}
-              siteName={workflowData.phase1?.customer?.siteName || workflowData.session.customerName}
-            />
-          ) : (
-            <UnifiedSystemDiscovery
-              sessionId={activeSessionId}
-              customerId={workflowData.session.customerId}
-              siteName={workflowData.phase1?.customer?.siteName || workflowData.session.customerName}
-              onDataChange={(partial) => {
-                handleDataUpdate(2, {
-                  tridiumExports: {
-                    ...workflowData.phase2?.tridiumExports,
-                    processed: true,
-                    uploadTime: new Date(),
-                    processedData: partial,
-                    hasEnhancedAnalysis: true
-                  }
-                });
-              }}
-              onSystemDataComplete={(finalData) => {
-                handleDataUpdate(2, {
-                  tridiumExports: {
-                    ...workflowData.phase2?.tridiumExports,
-                    processed: true,
-                    uploadTime: new Date(),
-                    processedData: finalData,
-                    hasEnhancedAnalysis: true,
-                    importSummary: {
-                      totalDevices: (finalData as any)?.summary?.totalDevices || (finalData as any)?.totalDevices,
-                      datasetsCount: (finalData as any)?.datasets?.length,
-                      totalAlerts: (finalData as any)?.alerts?.total,
-                      criticalAlerts: (finalData as any)?.alerts?.critical,
-                      databaseSaved: true
-                    }
-                  }
-                });
-              }}
-            />
-          )
+          <Phase2SystemDiscovery
+            data={workflowData.phase2}
+            onDataUpdate={(data) => handleDataUpdate(2, data)}
+            onPhaseComplete={() => handlePhaseChange(3)}
+            sessionId={activeSessionId}
+            customerId={workflowData.session.customerId}
+            siteName={workflowData.phase1?.customer?.siteName || workflowData.session.customerName}
+          />
         )}
         
         {currentPhase === 3 && (
@@ -767,7 +765,6 @@ export const PMWorkflowGuide: React.FC<PMWorkflowGuideProps> = ({
             {currentPhase < 4 && (
               <Button 
                 onClick={() => handlePhaseChange((currentPhase + 1) as 2 | 3 | 4)}
-                disabled={!currentPhaseData?.canProceed && !mockMode}
               >
                 Next Phase
               </Button>

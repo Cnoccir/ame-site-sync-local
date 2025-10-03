@@ -84,7 +84,7 @@ export class PMWorkflowPersistenceService {
    */
   static async updateSession(sessionId: string, updates: Partial<PMWorkflowSession>): Promise<PMWorkflowSession> {
     try {
-      logger.info('Updating PM workflow session', { sessionId, phase: updates.current_phase });
+      logger.debug('Updating PM workflow session', { sessionId, phase: updates.current_phase });
 
       const { data, error } = await supabase
         .from('pm_workflow_sessions')
@@ -111,6 +111,8 @@ export class PMWorkflowPersistenceService {
    */
   static async updatePhaseData(sessionId: string, phase: number, phaseData: any): Promise<PMWorkflowSession> {
     try {
+      // NOTE: Merging is now handled upstream in unifiedCustomerDataService for phase 2
+      // This method now just does a direct update
       const phaseColumn = `phase_${phase}_data`;
       const updates: any = {
         [phaseColumn]: phaseData,

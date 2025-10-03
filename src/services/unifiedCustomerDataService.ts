@@ -262,10 +262,32 @@ export class UnifiedCustomerDataService {
         throw new Error('No active session found');
       }
 
-      logger.info('Updating phase data with sync', { phase, sessionId: targetSessionId });
+      logger.debug('Updating phase data with sync', { phase, sessionId: targetSessionId });
 
-      // Update phase data in session
-      await PMWorkflowPersistenceService.updatePhaseData(targetSessionId, phase, phaseData);
+      // CRITICAL: For phase 2, preserve tridiumSystemData which is managed by UnifiedSystemDiscovery
+      if (phase === 2) {
+        // Fetch existing phase 2 data first
+        const session = await PMWorkflowPersistenceService.getSession(targetSessionId);
+        const existingPhase2 = session?.phase_2_data || {};
+        
+        // Merge incoming data but ALWAYS preserve tridiumSystemData
+        const mergedPhaseData = {
+          ...existingPhase2,
+          ...phaseData,
+          // NEVER overwrite tridiumSystemData - it's managed by UnifiedSystemDiscovery/PlatformDataService
+          tridiumSystemData: existingPhase2.tridiumSystemData || phaseData.tridiumSystemData
+        };
+        
+        logger.debug('Phase 2 merge preserving tridiumSystemData', {
+          hadExisting: !!existingPhase2.tridiumSystemData,
+          preservedIt: !!mergedPhaseData.tridiumSystemData
+        });
+        
+        await PMWorkflowPersistenceService.updatePhaseData(targetSessionId, phase, mergedPhaseData);
+      } else {
+        // For other phases, proceed normally
+        await PMWorkflowPersistenceService.updatePhaseData(targetSessionId, phase, phaseData);
+      }
 
       // If this is phase 1 (customer data), sync with ame_customers table and persist normalized snapshot
       if (phase === 1 && phaseData.customer) {

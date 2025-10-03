@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Settings, Eye, EyeOff, TestTube, Copy, Trash2, GripVertical, AlertCircle, CheckCircle, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,15 +59,23 @@ export const RemoteAccessCredentialsManager: React.FC<RemoteAccessCredentialsMan
     }
   }, [customerId, isFormMode, showVpnConfig]);
 
-  // Notify parent of changes
+  // Notify parent of changes (avoid infinite loop by using refs for callbacks)
+  const onChangeRef = useRef(onChange);
+  const onCredentialsChangeRef = useRef(onCredentialsChange);
+  
   useEffect(() => {
-    if (onChange) {
-      onChange(credentials, vpnConfig);
+    onChangeRef.current = onChange;
+    onCredentialsChangeRef.current = onCredentialsChange;
+  });
+  
+  useEffect(() => {
+    if (onChangeRef.current) {
+      onChangeRef.current(credentials, vpnConfig);
     }
-    if (onCredentialsChange) {
-      onCredentialsChange(credentials);
+    if (onCredentialsChangeRef.current) {
+      onCredentialsChangeRef.current(credentials);
     }
-  }, [credentials, vpnConfig, onChange, onCredentialsChange]);
+  }, [credentials, vpnConfig]);
 
   const loadCredentials = async () => {
     if (!customerId) return;
